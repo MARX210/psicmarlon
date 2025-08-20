@@ -7,7 +7,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Validar com Zod
     const validation = patientRegistrationSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
@@ -74,7 +73,6 @@ export async function POST(req: Request) {
     console.error('Erro na API:', error);
     const dbError = error as any;
     if (dbError.code === '23505') {
-      // Código para violação de chave única (ex: CPF duplicado)
       return NextResponse.json(
         { error: `Erro de duplicidade: ${dbError.detail}` },
         { status: 409 }

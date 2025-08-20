@@ -70,8 +70,6 @@ export function RegistrationForm() {
   const selectedPatientType = form.watch("tipoPaciente");
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     if (selectedPatientType) {
       const timestamp = Date.now().toString(36);
       const randomPart = Math.random().toString(36).substring(2, 9);
@@ -81,8 +79,6 @@ export function RegistrationForm() {
   }, [selectedPatientType, form]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
     if (cep.replace(/\D/g, "").length === 8) {
       fetch(`https://viacep.com.br/ws/${cep}/json/`)
         .then((res) => res.json())
