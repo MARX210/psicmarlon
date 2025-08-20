@@ -98,12 +98,12 @@ export default function Home() {
           </div>
           <div className="flex-shrink-0">
             <Image 
-                src={"/psicmarlon/images/imgmarlon.jpg"}
-                alt="Pessoa em uma sessão de terapia online"
+                src={"https://placehold.co/400x300.png"}
+                alt="Psicólogo em um ambiente de consultório"
                 width={400}
                 height={300}
                 className="rounded-lg w-full max-w-sm h-auto"
-                data-ai-hint="therapy session"
+                data-ai-hint="therapist office"
             />
           </div>
       </section>
