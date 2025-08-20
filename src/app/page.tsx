@@ -5,6 +5,7 @@ import { Calendar, UserPlus, Stethoscope, UserCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+
 export default function Home() {
   return (
     <div className="space-y-16 md:space-y-24">
@@ -76,13 +77,13 @@ export default function Home() {
           </Card>
       </section>
 
-      <section className="bg-card p-8 rounded-lg shadow-sm flex flex-col md:flex-row items-center gap-8">
-          <div className="flex-1">
+      <section className="bg-card p-6 md:p-8 rounded-lg shadow-sm flex flex-col md:flex-row items-center gap-8">
+          <div className="flex-1 text-center md:text-left">
               <h2 className="text-3xl font-bold font-headline text-foreground">Pronto para organizar sua agenda?</h2>
               <p className="mt-2 text-muted-foreground">
                   Comece agora a otimizar seu tempo. Adicione um novo paciente ou visualize sua agenda de compromissos.
               </p>
-               <div className="mt-6 flex gap-4">
+               <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-4">
                  <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
                   <Link href="/agenda">
                     Ver Agenda
@@ -101,7 +102,7 @@ export default function Home() {
                 alt="Pessoa em uma sessão de terapia online"
                 width={400}
                 height={300}
-                className="rounded-lg"
+                className="rounded-lg w-full max-w-sm h-auto"
                 data-ai-hint="therapy session"
             />
           </div>

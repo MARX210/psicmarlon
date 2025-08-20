@@ -16,9 +16,19 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
 
 export function Header() {
   const pathname = usePathname();
+  const { theme } = useTheme();
+  const [logoSrc, setLogoSrc] = useState("/images/logobranca.png"); // Padrão para SSR
+
+  useEffect(() => {
+    // Define a logo com base no tema do lado do cliente para evitar erro de hidratação
+    setLogoSrc(theme === "dark" ? "/images/logopreta.png" : "/images/logobranca.png");
+  }, [theme]);
+
 
   const navLinks = [
     { href: "/", label: "Início" },
@@ -28,7 +38,7 @@ export function Header() {
 
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto flex justify-between items-center p-4">
+      <div className="container mx-auto flex justify-between items-center p-4 gap-4">
         <Link href="/" className="flex items-center gap-2 flex-shrink-0">
           <>
             <Image
@@ -50,8 +60,8 @@ export function Header() {
           </>
         </Link>
 
-        <div className="flex-grow flex justify-center items-center md:flex hidden">
-           <span className="text-xl font-bold font-headline text-foreground whitespace-nowrap">
+        <div className="flex-grow flex justify-center items-center">
+           <span className="hidden md:block text-xl font-bold font-headline text-foreground whitespace-nowrap">
             PSICMARLON
           </span>
         </div>
@@ -64,7 +74,7 @@ export function Header() {
                 asChild
                 variant="ghost"
                 className={cn(
-                  "text-base lg:text-lg",
+                  "text-sm lg:text-base",
                   (pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href))) &&
                     "font-bold text-primary underline"
                 )}
@@ -96,7 +106,7 @@ export function Header() {
                       <Link
                         href={link.href}
                         className={cn(
-                          "text-xl text-center p-2 rounded-lg",
+                          "text-lg text-center p-2 rounded-lg",
                           (pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href)))
                             ? "bg-primary text-primary-foreground font-bold"
                             : "text-foreground hover:bg-accent"

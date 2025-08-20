@@ -213,8 +213,8 @@ export function SchedulingForm() {
 
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-      <div className="md:col-span-2">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <div className="lg:col-span-2">
          <Card>
             <CardHeader>
                 <CardTitle>Nova Consulta</CardTitle>
@@ -369,7 +369,7 @@ export function SchedulingForm() {
         </Card>
       </div>
 
-      <div className="md:col-span-3">
+      <div className="lg:col-span-3">
         <Card>
             <CardHeader>
                 <CardTitle>Calendário</CardTitle>
@@ -377,7 +377,7 @@ export function SchedulingForm() {
                     Selecione uma data para ver os agendamentos.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col md:flex-row gap-8">
+            <CardContent className="flex flex-col xl:flex-row gap-8">
                  <Calendar
                     mode="single"
                     selected={selectedDate}
@@ -400,7 +400,7 @@ export function SchedulingForm() {
                       booked: "bg-primary/20 text-primary-foreground",
                       unavailable: "bg-destructive/80 text-destructive-foreground line-through",
                     }}
-                    className="mx-auto"
+                    className="mx-auto border rounded-lg"
                   />
                   <div className="flex-1">
                       <h3 className="font-bold text-lg mb-4">
@@ -414,12 +414,12 @@ export function SchedulingForm() {
                       ) : appointmentsOnSelectedDate.length > 0 ? (
                             <ul className="space-y-3">
                                 {appointmentsOnSelectedDate.map(app => (
-                                    <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex justify-between items-center">
+                                    <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                         <div>
                                             <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span className="font-bold">{app.time}</span> - {app.patientName}</p>
                                             <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min</p>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 self-end sm:self-center">
                                             <Button variant="ghost" size="icon" onClick={() => {}}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
@@ -437,7 +437,7 @@ export function SchedulingForm() {
                   </div>
             </CardContent>
             <CardFooter>
-                <div className="flex items-center gap-6 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
                     <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-primary/20"></div>Dia com Agendamento</div>
                     <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-destructive/80"></div>Domingo/Feriado</div>
                 </div>

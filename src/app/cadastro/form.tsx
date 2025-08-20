@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -102,12 +103,12 @@ export function RegistrationForm() {
               Informações básicas do paciente.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField
               control={form.control}
               name="nome"
               render={({ field }) => (
-                <FormItem className="md:col-span-2">
+                <FormItem className="lg:col-span-2">
                   <FormLabel>Nome Completo</FormLabel>
                   <FormControl>
                     <Input placeholder="Nome completo do paciente" {...field} />
@@ -175,12 +176,12 @@ export function RegistrationForm() {
           <CardHeader>
             <CardTitle>Contato</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
-                <FormItem className="md:col-span-2">
+                <FormItem className="lg:col-span-2">
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input placeholder="email@exemplo.com" {...field} />
@@ -193,7 +194,7 @@ export function RegistrationForm() {
               control={form.control}
               name="comoConheceu"
               render={({ field }) => (
-                <FormItem className="md:col-span-3">
+                <FormItem className="col-span-1 md:col-span-2 lg:col-span-3">
                   <FormLabel>Como conheceu o consultório?</FormLabel>
                   <FormControl>
                     <Input placeholder="Ex: Indicação, Google, etc." {...field} />
@@ -209,12 +210,12 @@ export function RegistrationForm() {
           <CardHeader>
             <CardTitle>Endereço</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <FormField
               control={form.control}
               name="cep"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="sm:col-span-1">
                   <FormLabel>CEP</FormLabel>
                   <FormControl>
                     <Input
@@ -234,7 +235,7 @@ export function RegistrationForm() {
               control={form.control}
               name="logradouro"
               render={({ field }) => (
-                <FormItem className="md:col-span-3">
+                <FormItem className="sm:col-span-2 md:col-span-3 lg:col-span-3">
                   <FormLabel>Logradouro</FormLabel>
                   <FormControl>
                     <Input placeholder="Rua, Avenida, etc." {...field} />
@@ -273,7 +274,7 @@ export function RegistrationForm() {
               control={form.control}
               name="bairro"
               render={({ field }) => (
-                <FormItem className="md:col-span-2">
+                <FormItem className="md:col-span-1 lg:col-span-2">
                   <FormLabel>Bairro</FormLabel>
                   <FormControl>
                     <Input placeholder="Bairro" {...field} />
