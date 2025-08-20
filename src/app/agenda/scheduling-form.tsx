@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, parse, isSameDay, isSunday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -92,13 +92,17 @@ type Patient = (typeof registeredPatients)[0];
 
 export function SchedulingForm() {
   const { toast } = useToast();
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [appointments, setAppointments] = useState(initialAppointments);
   const [cpfInput, setCpfInput] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientNotFound, setPatientNotFound] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState(defaultTimeSlots);
   const [newTimeSlot, setNewTimeSlot] = useState("");
+
+  useEffect(() => {
+    setSelectedDate(new Date());
+  }, []);
 
 
   const form = useForm<AppointmentFormValues>({
