@@ -1,17 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import pool from '../../../lib/db';
+import pool from '@/lib/db';
 import { patientRegistrationSchema } from '@/lib/schemas';
-
-export async function GET() {
-  try {
-    const result = await pool.query('SELECT * FROM Pacientes ORDER BY nome ASC');
-    return NextResponse.json(result.rows);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Erro ao buscar pacientes' }, { status: 500 });
-  }
-}
 
 export async function POST(req: Request) {
   try {
@@ -84,6 +74,7 @@ export async function POST(req: Request) {
     console.error('Erro na API:', error);
     const dbError = error as any;
     if (dbError.code === '23505') {
+      // Código para violação de chave única (ex: CPF duplicado)
       return NextResponse.json(
         { error: `Erro de duplicidade: ${dbError.detail}` },
         { status: 409 }
@@ -93,5 +84,15 @@ export async function POST(req: Request) {
       { error: 'Erro interno do servidor', details: dbError.message },
       { status: 500 }
     );
+  }
+}
+
+export async function GET() {
+  try {
+    const result = await pool.query('SELECT * FROM Pacientes ORDER BY nome ASC');
+    return NextResponse.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: 'Erro ao buscar pacientes' }, { status: 500 });
   }
 }

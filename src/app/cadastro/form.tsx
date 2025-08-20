@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Form as FormProvider,
+  Form,
   FormControl,
   FormField,
   FormItem,
@@ -72,6 +72,17 @@ export function RegistrationForm() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    if (selectedPatientType) {
+      const timestamp = Date.now().toString(36);
+      const randomPart = Math.random().toString(36).substring(2, 9);
+      const uniqueId = `${selectedPatientType}-${timestamp}-${randomPart}`.toUpperCase();
+      form.setValue("cartaoId", uniqueId);
+    }
+  }, [selectedPatientType, form]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     if (cep.replace(/\D/g, "").length === 8) {
       fetch(`https://viacep.com.br/ws/${cep}/json/`)
         .then((res) => res.json())
@@ -103,15 +114,6 @@ export function RegistrationForm() {
     }
   }, [cep, form, toast]);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && selectedPatientType) {
-      const timestamp = Date.now().toString(36);
-      const randomPart = Math.random().toString(36).substring(2, 9);
-      const uniqueId = `${selectedPatientType}-${timestamp}-${randomPart}`.toUpperCase();
-      form.setValue("cartaoId", uniqueId);
-    }
-  }, [selectedPatientType, form]);
-
   async function onSubmit(data: PatientFormValues) {
     try {
       const response = await fetch('/api/pacientes', {
@@ -122,19 +124,19 @@ export function RegistrationForm() {
         body: JSON.stringify(data),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Algo deu errado');
+        throw new Error(result.error || 'Algo deu errado');
       }
-      
-      const responseData = await response.json();
 
       toast({
         title: "Cadastro Realizado!",
-        description: responseData.message || "O paciente foi cadastrado com sucesso.",
+        description: result.message || "O paciente foi cadastrado com sucesso.",
       });
   
       form.reset();
+      setCep("");
     } catch (error) {
       console.error('Erro ao cadastrar paciente:', error);
       const errorMessage = error instanceof Error ? error.message : 'Não foi possível cadastrar o paciente.';
@@ -147,7 +149,7 @@ export function RegistrationForm() {
   }
 
   return (
-    <FormProvider {...form}>
+    <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Card>
           <CardHeader>
@@ -215,7 +217,7 @@ export function RegistrationForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de Paciente</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o tipo de paciente" />
@@ -298,6 +300,7 @@ export function RegistrationForm() {
                     <Input
                       placeholder="00000-000"
                       {...field}
+                      value={cep}
                       onChange={(e) => {
                         field.onChange(e);
                         setCep(e.target.value);
@@ -403,11 +406,11 @@ export function RegistrationForm() {
         </Card>
 
         <div className="flex justify-end pt-4">
-          <Button type="submit" size="lg">
-            Salvar Cadastro
+          <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Salvando...' : 'Salvar Cadastro'}
           </Button>
         </div>
       </form>
-    </FormProvider>
+    </Form>
   );
 }
