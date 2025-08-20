@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { format, parse, isSameDay, isSunday } from "date-fns";
+import { format, parse, isSameDay, isSunday, addMinutes, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
@@ -121,10 +121,19 @@ export function SchedulingForm() {
       .sort((a,b) => a.time.localeCompare(b.time))
     : [];
 
-  const bookedTimeSlots = appointmentsOnSelectedDate.map(app => app.time);
-  const timeSlotsForSelectedDay = availableTimeSlots.filter(
-    (slot) => !bookedTimeSlots.includes(slot)
-  ).sort();
+  const timeSlotsForSelectedDay = availableTimeSlots.filter(slot => {
+    const slotTime = parse(slot, "HH:mm", selectedDate!);
+
+    // Verifica se o slot está dentro de algum agendamento existente
+    return !appointmentsOnSelectedDate.some(app => {
+      const appStartTime = parse(app.time, "HH:mm", selectedDate!);
+      const appEndTime = addMinutes(appStartTime, app.duration);
+      
+      // O slot é considerado indisponível se for igual ao horário de início
+      // ou se estiver entre o horário de início e o de término do agendamento
+      return slotTime >= appStartTime && slotTime < appEndTime;
+    });
+  }).sort();
 
   const handleSearchPatient = () => {
     setPatientNotFound(false);
@@ -537,3 +546,5 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
