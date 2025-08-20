@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -8,7 +9,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Form,
+  Form as FormProvider,
   FormControl,
   FormField,
   FormItem,
@@ -146,7 +147,7 @@ export function RegistrationForm() {
   }
 
   return (
-    <Form {...form}>
+    <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Card>
           <CardHeader>
@@ -285,7 +286,7 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Endereço</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <FormField
               control={form.control}
@@ -407,6 +408,6 @@ export function RegistrationForm() {
           </Button>
         </div>
       </form>
-    </Form>
+    </FormProvider>
   );
 }
