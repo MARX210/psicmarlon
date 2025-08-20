@@ -67,14 +67,6 @@ const holidays = [
     new Date("2024-12-25"),
 ];
 
-
-const priceByPatientType: { [key: string]: number } = {
-  "1": 100, // Cliente já fidelizado antigo
-  "2": 120, // Cliente por indicação
-  "3": 130, // Cliente pela página parceira
-  "4": 150, // Cliente novo
-};
-
 const defaultTimeSlots = [
   "08:00", "09:00", "10:00", "11:00", "12:00",
   "14:00", "15:00", "16:00", "17:00", "18:00",
@@ -86,7 +78,7 @@ const appointmentSchema = z.object({
   time: z.string().nonempty({ message: "O horário é obrigatório." }),
   type: z.enum(["Online", "Presencial"], { required_error: "O tipo é obrigatório."}),
   duration: z.coerce.number().positive({ message: "A duração deve ser um número positivo." }),
-  price: z.coerce.number(),
+  price: z.coerce.number().nonnegative({ message: "O valor não pode ser negativo."}),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -148,13 +140,9 @@ export function SchedulingForm() {
       setSelectedPatient(patient);
       form.setValue("patientId", patient.id);
       
-      const patientType = patient.id.split('-')[0];
-      const price = priceByPatientType[patientType] || 150; // Padrão se não encontrar o tipo
-      form.setValue("price", price);
-
       toast({
           title: "Paciente Encontrado",
-          description: `${patient.name} selecionado. Valor da consulta: R$ ${price.toFixed(2)}`,
+          description: `${patient.name} selecionado.`,
       })
     } else {
       setPatientNotFound(true);
@@ -297,10 +285,6 @@ export function SchedulingForm() {
                         </Button>
                       </div>
                       <p>{selectedPatient.name}</p>
-                       <p className="font-semibold flex items-center gap-2">
-                         <DollarSign className="w-4 h-4" />
-                         Valor da Consulta: R$ {form.getValues("price").toFixed(2)}
-                       </p>
                     </div>
                   )}
 
@@ -315,8 +299,8 @@ export function SchedulingForm() {
                       </div>
                   )}
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
+                  <div className="grid grid-cols-1 gap-4">
+                     <FormField
                       control={form.control}
                       name="time"
                       render={({ field }) => (
@@ -350,6 +334,9 @@ export function SchedulingForm() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                      <FormField
                         control={form.control}
                         name="duration"
@@ -360,6 +347,24 @@ export function SchedulingForm() {
                               <Input
                                 type="number"
                                 placeholder="Ex: 50"
+                                {...field}
+                                disabled={isFormDisabled || isDayUnavailable}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Valor (R$)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 150"
                                 {...field}
                                 disabled={isFormDisabled || isDayUnavailable}
                               />
@@ -532,5 +537,3 @@ export function SchedulingForm() {
     </div>
   );
 }
-
-    
