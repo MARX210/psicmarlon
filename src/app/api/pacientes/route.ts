@@ -48,12 +48,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ message: 'Paciente adicionado com sucesso', patient: result.rows[0] }, { status: 201 });
   } catch (error) {
-    console.error(error);
-    // @ts-ignore
-    if (error.code === '23505') { // Código de erro para violação de chave única (ex: CPF duplicado)
-        // @ts-ignore
-        return NextResponse.json({ error: `Erro de duplicidade: ${error.detail}` }, { status: 409 });
+    console.error("Erro na API ao adicionar paciente:", error);
+    const dbError = error as any;
+    if (dbError.code === '23505') { // Código de erro para violação de chave única (ex: CPF duplicado)
+        return NextResponse.json({ error: `Erro de duplicidade: ${dbError.detail}` }, { status: 409 });
     }
-    return NextResponse.json({ error: 'Erro ao adicionar paciente' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno do servidor ao adicionar paciente.', details: dbError.message }, { status: 500 });
   }
 }
