@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Mock de dados. Em uma aplicação real, isso viria de um banco de dados.
 const registeredPatients = [
@@ -99,8 +100,10 @@ export function SchedulingForm() {
   const [patientNotFound, setPatientNotFound] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState(defaultTimeSlots);
   const [newTimeSlot, setNewTimeSlot] = useState("");
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     setSelectedDate(new Date());
   }, []);
 
@@ -110,7 +113,7 @@ export function SchedulingForm() {
     defaultValues: {
       patientId: "",
       time: "",
-      date: new Date(),
+      // A data padrão será definida no useEffect para evitar problemas de hidratação
       type: "Online",
       duration: 50,
     },
@@ -406,62 +409,78 @@ export function SchedulingForm() {
             </CardHeader>
             <CardContent className="flex flex-col xl:flex-row gap-8">
                  <div className="flex-1 flex flex-col md:flex-row gap-8">
-                    <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => {
-                            if (date) {
-                                handleDayClick(date);
+                    {!isClient ? (
+                        <div className="flex-1 flex justify-center items-center">
+                            <Skeleton className="w-full h-[300px]"/>
+                        </div>
+                    ) : (
+                        <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(date) => {
+                                if (date) {
+                                    handleDayClick(date);
+                                }
+                            }}
+                            onDayClick={handleDayClick}
+                            locale={ptBR}
+                            disabled={
+                                (date) => isSunday(date) || holidays.some(h => isSameDay(h, date))
                             }
-                        }}
-                        onDayClick={handleDayClick}
-                        locale={ptBR}
-                        disabled={
-                            (date) => isSunday(date) || holidays.some(h => isSameDay(h, date))
-                        }
-                        initialFocus
-                        modifiers={{
-                        booked: appointmentDates,
-                        unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
-                        }}
-                        modifiersClassNames={{
-                        booked: "bg-primary/20 text-primary-foreground",
-                        unavailable: "bg-destructive/80 text-destructive-foreground line-through",
-                        }}
-                        className="mx-auto border rounded-lg"
-                    />
+                            initialFocus
+                            modifiers={{
+                            booked: appointmentDates,
+                            unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
+                            }}
+                            modifiersClassNames={{
+                            booked: "bg-primary/20 text-primary-foreground",
+                            unavailable: "bg-destructive/80 text-destructive-foreground line-through",
+                            }}
+                            className="mx-auto border rounded-lg"
+                        />
+                    )}
                     <div className="flex-1">
-                        <h3 className="font-bold text-lg mb-4">
-                            Agenda de {selectedDate ? format(selectedDate, 'PPP', { locale: ptBR }) : '...'}
-                        </h3>
-                        {isDayUnavailable ? (
-                            <div className="text-sm p-3 bg-destructive/10 text-destructive rounded-lg flex items-center gap-2">
-                            <XCircle className="h-5 w-5" />
-                            <span>Este dia não está disponível para agendamento.</span>
+                        {!isClient ? (
+                            <div className="space-y-4">
+                                <Skeleton className="h-6 w-1/2" />
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
                             </div>
-                        ) : appointmentsOnSelectedDate.length > 0 ? (
-                                <ul className="space-y-3">
-                                    {appointmentsOnSelectedDate.map(app => (
-                                        <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                                            <div>
-                                                <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span className="font-bold">{app.time}</span> - {app.patientName}</p>
-                                                <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min</p>
-                                            </div>
-                                            <div className="flex gap-2 self-end sm:self-center">
-                                                <Button variant="ghost" size="icon" onClick={() => {}}>
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleCancelAppointment(app.id)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">Nenhuma consulta agendada para este dia.</p>
-                            )
-                        }
+                        ) : (
+                            <>
+                                <h3 className="font-bold text-lg mb-4">
+                                    Agenda de {selectedDate ? format(selectedDate, 'PPP', { locale: ptBR }) : '...'}
+                                </h3>
+                                {isDayUnavailable ? (
+                                    <div className="text-sm p-3 bg-destructive/10 text-destructive rounded-lg flex items-center gap-2">
+                                    <XCircle className="h-5 w-5" />
+                                    <span>Este dia não está disponível para agendamento.</span>
+                                    </div>
+                                ) : appointmentsOnSelectedDate.length > 0 ? (
+                                        <ul className="space-y-3">
+                                            {appointmentsOnSelectedDate.map(app => (
+                                                <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                                    <div>
+                                                        <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span className="font-bold">{app.time}</span> - {app.patientName}</p>
+                                                        <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min</p>
+                                                    </div>
+                                                    <div className="flex gap-2 self-end sm:self-center">
+                                                        <Button variant="ghost" size="icon" onClick={() => {}}>
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleCancelAppointment(app.id)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">Nenhuma consulta agendada para este dia.</p>
+                                    )
+                                }
+                            </>
+                        )}
                     </div>
                  </div>
             </CardContent>
@@ -502,5 +521,3 @@ export function SchedulingForm() {
     </div>
   );
 }
-
-    
