@@ -24,9 +24,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { patientRegistrationSchema } from "@/lib/schemas";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
+
+const patientTypes = {
+  "1": "Cliente já fidelizado antigo",
+  "2": "Cliente por indicação",
+  "3": "Cliente pela página parceira",
+  "4": "Cliente novo",
+};
 
 export function RegistrationForm() {
   const { toast } = useToast();
@@ -39,6 +53,7 @@ export function RegistrationForm() {
       nascimento: "",
       email: "",
       comoConheceu: "",
+      tipoPaciente: undefined,
       cartaoId: "",
       cep: "",
       logradouro: "",
@@ -51,6 +66,7 @@ export function RegistrationForm() {
     },
   });
   const [cep, setCep] = useState("");
+  const selectedPatientType = form.watch("tipoPaciente");
 
   useEffect(() => {
     // Garante que o fetch só aconteça no lado do cliente
@@ -86,6 +102,17 @@ export function RegistrationForm() {
         });
     }
   }, [cep, form, toast]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && selectedPatientType) {
+        // Gera um ID único no lado do cliente para evitar hydration mismatch
+        const timestamp = Date.now().toString(36);
+        const randomPart = Math.random().toString(36).substring(2, 9);
+        const uniqueId = `${selectedPatientType}-${timestamp}-${randomPart}`.toUpperCase();
+        form.setValue("cartaoId", uniqueId);
+    }
+  }, [selectedPatientType, form]);
+
 
   function onSubmit(data: PatientFormValues) {
     console.log("Dados do formulário:", data);
@@ -160,13 +187,37 @@ export function RegistrationForm() {
               )}
             />
              <FormField
+                control={form.control}
+                name="tipoPaciente"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Paciente</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo de paciente" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(patientTypes).map(([key, value]) => (
+                            <SelectItem key={key} value={key}>
+                                {value}
+                            </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            <FormField
               control={form.control}
               name="cartaoId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nº Cartão/ID</FormLabel>
+                  <FormLabel>Nº Cartão/ID Gerado</FormLabel>
                   <FormControl>
-                    <Input placeholder="ID do paciente" {...field} />
+                    <Input placeholder="Selecione o tipo para gerar" {...field} readOnly />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

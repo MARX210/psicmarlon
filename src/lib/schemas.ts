@@ -7,6 +7,7 @@ export const patientRegistrationSchema = z.object({
   nascimento: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data de nascimento inválida." }),
   email: z.string().email({ message: "Por favor, insira um email válido." }).optional().or(z.literal('')),
   comoConheceu: z.string().optional(),
+  tipoPaciente: z.string({ required_error: "Selecione o tipo de paciente."}),
   cartaoId: z.string().optional(),
   cep: z.string().optional(),
   logradouro: z.string().optional(),
