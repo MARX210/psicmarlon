@@ -98,7 +98,7 @@ export default function Home() {
           </div>
           <div className="flex-shrink-0">
             <Image 
-                src={"/images/imgmarlon.jpg"}
+                src={"/psicmarlon/images/imgmarlon.jpg"}
                 alt="Pessoa em uma sessão de terapia online"
                 width={400}
                 height={300}

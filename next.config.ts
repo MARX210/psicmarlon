@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // O basePath deve ser apenas o nome do repositório, não a URL completa
-  basePath: process.env.NODE_ENV === 'production' ? '/psicmarlon' : '',
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -9,7 +7,6 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
