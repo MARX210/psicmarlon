@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const patientRegistrationSchema = z.object({
   nome: z.string().min(3, { message: "O nome completo é obrigatório." }),
-  cpf: z.string().min(11, { message: "O CPF é obrigatório." }),
+  cpf: z.string().length(11, { message: "O CPF deve ter 11 dígitos." }),
   sexo: z.string().optional(),
   nascimento: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data de nascimento inválida." }),
   email: z.string().email({ message: "Por favor, insira um email válido." }).optional().or(z.literal('')),

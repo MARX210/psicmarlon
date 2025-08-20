@@ -114,13 +114,36 @@ export function RegistrationForm() {
   }, [selectedPatientType, form]);
 
 
-  function onSubmit(data: PatientFormValues) {
-    console.log("Dados do formulário:", data);
-    toast({
-      title: "Cadastro Realizado!",
-      description: "O paciente foi cadastrado com sucesso.",
-    });
-    form.reset();
+  async function onSubmit(data: PatientFormValues) {
+    try {
+      const response = await fetch('/api/pacientes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Algo deu errado');
+      }
+
+      toast({
+        title: "Cadastro Realizado!",
+        description: "O paciente foi cadastrado com sucesso.",
+      });
+      form.reset();
+
+    } catch (error) {
+      console.error("Erro ao cadastrar paciente:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro no Cadastro",
+        // @ts-ignore
+        description: error.message || "Não foi possível cadastrar o paciente.",
+      });
+    }
   }
 
   return (
