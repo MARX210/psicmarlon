@@ -52,6 +52,9 @@ export function RegistrationForm() {
   const [cep, setCep] = useState("");
 
   useEffect(() => {
+    // Garante que o fetch só aconteça no lado do cliente
+    if (typeof window === 'undefined') return;
+
     if (cep.replace(/\D/g, "").length === 8) {
       fetch(`https://viacep.com.br/ws/${cep}/json/`)
         .then((res) => res.json())
