@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -65,11 +64,11 @@ export function RegistrationForm() {
       pais: "Brasil",
     },
   });
+
   const [cep, setCep] = useState("");
   const selectedPatientType = form.watch("tipoPaciente");
 
   useEffect(() => {
-    // Garante que o fetch só aconteça no lado do cliente
     if (typeof window === 'undefined') return;
 
     if (cep.replace(/\D/g, "").length === 8) {
@@ -105,14 +104,12 @@ export function RegistrationForm() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && selectedPatientType) {
-        // Gera um ID único no lado do cliente para evitar hydration mismatch
-        const timestamp = Date.now().toString(36);
-        const randomPart = Math.random().toString(36).substring(2, 9);
-        const uniqueId = `${selectedPatientType}-${timestamp}-${randomPart}`.toUpperCase();
-        form.setValue("cartaoId", uniqueId);
+      const timestamp = Date.now().toString(36);
+      const randomPart = Math.random().toString(36).substring(2, 9);
+      const uniqueId = `${selectedPatientType}-${timestamp}-${randomPart}`.toUpperCase();
+      form.setValue("cartaoId", uniqueId);
     }
   }, [selectedPatientType, form]);
-
 
   async function onSubmit(data: PatientFormValues) {
     try {
@@ -128,20 +125,22 @@ export function RegistrationForm() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Algo deu errado');
       }
+      
+      const responseData = await response.json();
 
       toast({
         title: "Cadastro Realizado!",
-        description: "O paciente foi cadastrado com sucesso.",
+        description: responseData.message || "O paciente foi cadastrado com sucesso.",
       });
+  
       form.reset();
-
     } catch (error) {
-      console.error("Erro ao cadastrar paciente:", error);
+      console.error('Erro ao cadastrar paciente:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Não foi possível cadastrar o paciente.';
       toast({
-        variant: "destructive",
-        title: "Erro no Cadastro",
-        // @ts-ignore
-        description: error.message || "Não foi possível cadastrar o paciente.",
+        variant: 'destructive',
+        title: 'Erro no Cadastro',
+        description: errorMessage,
       });
     }
   }
@@ -252,7 +251,7 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Contato</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField
               control={form.control}
@@ -286,7 +285,7 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Endereço</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <FormField
               control={form.control}
