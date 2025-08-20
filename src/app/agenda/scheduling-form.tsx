@@ -102,22 +102,23 @@ export function SchedulingForm() {
   const [newTimeSlot, setNewTimeSlot] = useState("");
   const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-    setSelectedDate(new Date());
-  }, []);
-
-
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
       patientId: "",
       time: "",
-      // A data padrão será definida no useEffect para evitar problemas de hidratação
       type: "Online",
       duration: 50,
     },
   });
+
+  useEffect(() => {
+    setIsClient(true);
+    const today = new Date();
+    setSelectedDate(today);
+    form.setValue("date", today);
+  }, [form]);
+
 
   const appointmentsOnSelectedDate = selectedDate
     ? appointments
@@ -160,7 +161,7 @@ export function SchedulingForm() {
       form.reset({
         patientId: "",
         time: "",
-        date: selectedDate,
+        date: selectedDate, // Manter a data selecionada
         type: 'Online',
         duration: 50,
       });
@@ -521,3 +522,5 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
