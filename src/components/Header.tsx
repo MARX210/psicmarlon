@@ -34,6 +34,7 @@ export function Header() {
     { href: "/", label: "Início" },
     { href: "/cadastro", label: "Cadastro" },
     { href: "/agenda", label: "Agenda" },
+    { href: "/relatorios", label: "Relatórios" },
   ];
 
   return (

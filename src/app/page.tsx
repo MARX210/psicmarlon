@@ -98,7 +98,7 @@ export default function Home() {
           </div>
           <div className="flex-shrink-0">
             <Image 
-                src={"https://placehold.co/400x300.png"}
+                src={"/images/imgmarlon.jpg"}
                 alt="Psicólogo em um ambiente de consultório"
                 width={400}
                 height={300}
