@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, PlusCircle } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, PlusCircle, DollarSign } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -42,17 +42,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Mock de dados. Em uma aplicação real, isso viria de um banco de dados.
 const registeredPatients = [
-  { id: "1", name: "Ana Silva", cpf: "111.222.333-44" },
-  { id: "2", name: "Bruno Costa", cpf: "222.333.444-55" },
-  { id: "3", name: "Carla Mendes", cpf: "333.444.555-66" },
-  { id: "4", name: "Daniel Oliveira", cpf: "444.555.666-77" },
+  { id: "1-1", name: "Ana Silva (Fidelizado)", cpf: "111.222.333-44" },
+  { id: "2-2", name: "Bruno Costa (Indicação)", cpf: "222.333.444-55" },
+  { id: "3-3", name: "Carla Mendes (Página Parceira)", cpf: "333.444.555-66" },
+  { id: "4-4", name: "Daniel Oliveira (Novo)", cpf: "444.555.666-77" },
   { id: "5", name: "Eduarda Lima", cpf: "555.666.777-88" },
 ];
 
 const initialAppointments = [
-  { id: 1, patientId: "1", patientName: "Ana Silva", date: "2024-08-05", time: "10:00", type: "Online", duration: 50, price: 150 },
-  { id: 2, patientId: "2", patientName: "Bruno Costa", date: "2024-08-05", time: "11:00", type: "Presencial", duration: 50, price: 150 },
-  { id: 3, patientId: "3", patientName: "Carla Mendes", date: "2024-08-06", time: "14:00", type: "Online", duration: 80, price: 220 },
+  { id: 1, patientId: "1-1", patientName: "Ana Silva (Fidelizado)", date: "2024-08-05", time: "10:00", type: "Online", duration: 50, price: 100 },
+  { id: 2, patientId: "2-2", patientName: "Bruno Costa (Indicação)", date: "2024-08-05", time: "11:00", type: "Presencial", duration: 50, price: 120 },
+  { id: 3, patientId: "3-3", patientName: "Carla Mendes (Página Parceira)", date: "2024-08-06", time: "14:00", type: "Online", duration: 80, price: 130 },
 ];
 
 // Mock de feriados
@@ -68,10 +68,11 @@ const holidays = [
 ];
 
 
-const durationPriceMap: { [key: number]: number } = {
-  30: 100,
-  50: 150,
-  80: 220,
+const priceByPatientType: { [key: string]: number } = {
+  "1": 100, // Cliente já fidelizado antigo
+  "2": 120, // Cliente por indicação
+  "3": 130, // Cliente pela página parceira
+  "4": 150, // Cliente novo
 };
 
 const defaultTimeSlots = [
@@ -84,7 +85,8 @@ const appointmentSchema = z.object({
   date: z.date({ required_error: "A data é obrigatória." }),
   time: z.string().nonempty({ message: "O horário é obrigatório." }),
   type: z.enum(["Online", "Presencial"], { required_error: "O tipo é obrigatório."}),
-  duration: z.coerce.number({ required_error: "A duração é obrigatória." }),
+  duration: z.coerce.number().positive({ message: "A duração deve ser um número positivo." }),
+  price: z.coerce.number(),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -93,7 +95,7 @@ type Patient = (typeof registeredPatients)[0];
 
 export function SchedulingForm() {
   const { toast } = useToast();
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [appointments, setAppointments] = useState(initialAppointments);
   const [cpfInput, setCpfInput] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -109,6 +111,7 @@ export function SchedulingForm() {
       time: "",
       type: "Online",
       duration: 50,
+      price: 0,
     },
   });
 
@@ -134,15 +137,24 @@ export function SchedulingForm() {
   const handleSearchPatient = () => {
     setPatientNotFound(false);
     setSelectedPatient(null);
-    form.setValue("patientId", "");
+    form.reset({
+      ...form.getValues(),
+      patientId: "",
+      price: 0
+    });
 
     const patient = registeredPatients.find(p => p.cpf === cpfInput);
     if (patient) {
       setSelectedPatient(patient);
       form.setValue("patientId", patient.id);
+      
+      const patientType = patient.id.split('-')[0];
+      const price = priceByPatientType[patientType] || 150; // Padrão se não encontrar o tipo
+      form.setValue("price", price);
+
       toast({
           title: "Paciente Encontrado",
-          description: `Paciente ${patient.name} selecionado.`,
+          description: `${patient.name} selecionado. Valor da consulta: R$ ${price.toFixed(2)}`,
       })
     } else {
       setPatientNotFound(true);
@@ -164,6 +176,7 @@ export function SchedulingForm() {
         date: selectedDate, // Manter a data selecionada
         type: 'Online',
         duration: 50,
+        price: 0,
       });
   }
 
@@ -196,7 +209,7 @@ export function SchedulingForm() {
       time: data.time,
       type: data.type,
       duration: data.duration,
-      price: durationPriceMap[data.duration as keyof typeof durationPriceMap],
+      price: data.price,
     };
 
     setAppointments([...appointments, newAppointment]);
@@ -220,7 +233,6 @@ export function SchedulingForm() {
   );
 
   const isFormDisabled = !selectedPatient;
-
   const isDayUnavailable = selectedDate && (isSunday(selectedDate) || holidays.some(holiday => isSameDay(holiday, selectedDate)));
 
 
@@ -285,6 +297,10 @@ export function SchedulingForm() {
                         </Button>
                       </div>
                       <p>{selectedPatient.name}</p>
+                       <p className="font-semibold flex items-center gap-2">
+                         <DollarSign className="w-4 h-4" />
+                         Valor da Consulta: R$ {form.getValues("price").toFixed(2)}
+                       </p>
                     </div>
                   )}
 
@@ -298,41 +314,61 @@ export function SchedulingForm() {
                         </Button>
                       </div>
                   )}
-
-                  <FormField
-                    control={form.control}
-                    name="time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Horário</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          disabled={isFormDisabled || timeSlotsForSelectedDay.length === 0 || isDayUnavailable}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um horário disponível" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {timeSlotsForSelectedDay.map((slot) => (
-                              <SelectItem key={slot} value={slot}>
-                                {slot}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && (
-                          <p className="text-xs text-muted-foreground pt-1">Não há horários disponíveis para este dia.</p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Horário</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={isFormDisabled || timeSlotsForSelectedDay.length === 0 || isDayUnavailable}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {timeSlotsForSelectedDay.map((slot) => (
+                                <SelectItem key={slot} value={slot}>
+                                  {slot}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && (
+                            <p className="text-xs text-muted-foreground pt-1">Não há horários.</p>
+                          )}
+                          {isDayUnavailable && (
+                            <p className="text-xs text-destructive pt-1">Dia indisponível.</p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="duration"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Duração (min)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 50"
+                                {...field}
+                                disabled={isFormDisabled || isDayUnavailable}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                         {isDayUnavailable && (
-                           <p className="text-xs text-destructive pt-1">Domingos e feriados não estão disponíveis para agendamento.</p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      />
+                  </div>
 
 
                   <FormField
@@ -362,32 +398,6 @@ export function SchedulingForm() {
                       </FormItem>
                     )}
                   />
-
-                  <FormField
-                    control={form.control}
-                    name="duration"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Duração e Valor</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(parseInt(value, 10))} value={String(field.value)} disabled={isFormDisabled || isDayUnavailable}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a duração" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {Object.entries(durationPriceMap).map(([duration, price]) => (
-                                <SelectItem key={duration} value={duration}>
-                                    {`${duration} min - R$ ${price.toFixed(2)}`}
-                                </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
 
                   <div className="flex justify-end pt-4">
                     <Button type="submit" size="lg" disabled={isFormDisabled || isDayUnavailable}>
@@ -463,7 +473,7 @@ export function SchedulingForm() {
                                                 <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                                     <div>
                                                         <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span className="font-bold">{app.time}</span> - {app.patientName}</p>
-                                                        <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min</p>
+                                                        <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min - R$ {app.price.toFixed(2)}</p>
                                                     </div>
                                                     <div className="flex gap-2 self-end sm:self-center">
                                                         <Button variant="ghost" size="icon" onClick={() => {}}>
