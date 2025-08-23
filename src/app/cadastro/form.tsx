@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -62,7 +61,7 @@ export function RegistrationForm() {
       bairro: "",
       cidade: "",
       estado: "",
-      pais: "Brasil",
+      pais: "",
     },
   });
 
@@ -112,15 +111,18 @@ export function RegistrationForm() {
 
   async function onSubmit(data: PatientFormValues) {
     try {
-      const response = await fetch('/api/pacientes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      const response = await fetch(
+        'https://3000-firebase-studio-1755558837183.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev/api/pacientes',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        }
+      );
 
-      const result = await response.json();
+      const result = await response.text();
 
       if (!response.ok) {
         throw new Error(result.error || 'Algo deu errado');
@@ -130,12 +132,13 @@ export function RegistrationForm() {
         title: "Cadastro Realizado!",
         description: result.message || "O paciente foi cadastrado com sucesso.",
       });
-  
+
       form.reset();
       setCep("");
     } catch (error) {
       console.error('Erro ao cadastrar paciente:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Não foi possível cadastrar o paciente.';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Não foi possível cadastrar o paciente.';
       toast({
         variant: 'destructive',
         title: 'Erro no Cadastro',
@@ -147,6 +150,7 @@ export function RegistrationForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Dados Pessoais */}
         <Card>
           <CardHeader>
             <CardTitle>Dados Pessoais</CardTitle>
@@ -181,7 +185,7 @@ export function RegistrationForm() {
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="sexo"
               render={({ field }) => (
@@ -207,30 +211,30 @@ export function RegistrationForm() {
                 </FormItem>
               )}
             />
-             <FormField
-                control={form.control}
-                name="tipoPaciente"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Paciente</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o tipo de paciente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(patientTypes).map(([key, value]) => (
-                            <SelectItem key={key} value={key}>
-                                {value}
-                            </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="tipoPaciente"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Paciente</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo de paciente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(patientTypes).map(([key, value]) => (
+                        <SelectItem key={key} value={key}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="cartaoId"
@@ -247,6 +251,7 @@ export function RegistrationForm() {
           </CardContent>
         </Card>
 
+        {/* Contato */}
         <Card>
           <CardHeader>
             <CardTitle>Contato</CardTitle>
@@ -265,7 +270,7 @@ export function RegistrationForm() {
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="comoConheceu"
               render={({ field }) => (
@@ -281,6 +286,7 @@ export function RegistrationForm() {
           </CardContent>
         </Card>
 
+        {/* Endereço */}
         <Card>
           <CardHeader>
             <CardTitle>Endereço</CardTitle>
@@ -320,7 +326,7 @@ export function RegistrationForm() {
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="numero"
               render={({ field }) => (
