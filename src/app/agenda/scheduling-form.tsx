@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -61,8 +62,8 @@ const appointmentSchema = z.object({
   date: z.date(),
   time: z.string().nonempty("O horário é obrigatório."),
   type: z.enum(["Online", "Presencial"]),
-  duration: z.number().positive("A duração deve ser um número positivo."),
-  price: z.number().nonnegative("O valor não pode ser negativo."),
+  duration: z.coerce.number().positive("A duração deve ser um número positivo."),
+  price: z.coerce.number().nonnegative("O valor não pode ser negativo."),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -385,7 +386,7 @@ export function SchedulingForm() {
                       <FormItem>
                         <FormLabel>Duração (min)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Ex: 50" {...field} disabled={isFormDisabled || isDayUnavailable} />
+                          <Input type="number" placeholder="Ex: 50" {...field} disabled={isFormDisabled || isDayUnavailable} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -398,7 +399,7 @@ export function SchedulingForm() {
                       <FormItem>
                         <FormLabel>Valor (R$)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Ex: 150" {...field} disabled={isFormDisabled || isDayUnavailable} />
+                          <Input type="number" placeholder="Ex: 150" {...field} disabled={isFormDisabled || isDayUnavailable} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -525,3 +526,5 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
