@@ -23,7 +23,7 @@ export default function Home() {
           <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
             <Link href="/agenda">
               <Calendar className="mr-2 h-5 w-5" />
-              Ver Agenda
+              <span className="font-bold">Ver Agenda</span>
             </Link>
           </Button>
            <Button asChild size="lg" variant="outline">
