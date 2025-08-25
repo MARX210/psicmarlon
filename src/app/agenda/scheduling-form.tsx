@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { format, parse, isSameDay, isSunday, addMinutes } from "date-fns";
+import { format, parse, isSameDay, isSunday, addMinutes, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -59,7 +59,7 @@ const defaultTimeSlots = [
 
 const appointmentSchema = z.object({
   patientId: z.string().nonempty("Selecione um paciente."),
-  date: z.date(),
+  date: z.date({ required_error: "A data é obrigatória."}),
   time: z.string().nonempty("O horário é obrigatório."),
   type: z.enum(["Online", "Presencial"]),
   duration: z.coerce.number().positive("A duração deve ser um número positivo."),
@@ -72,25 +72,24 @@ type Appointment = {
   id: number;
   patientId: string;
   patientName: string;
-  date: string;
-  time: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
   type: string;
   duration: number;
   price: number;
 };
 
-const initialAppointments: Appointment[] = [];
-
 export function SchedulingForm() {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [cpfInput, setCpfInput] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientNotFound, setPatientNotFound] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState(defaultTimeSlots);
-  const [newTimeSlot, setNewTimeSlot] = useState("");
   const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -100,20 +99,39 @@ export function SchedulingForm() {
       type: "Online",
       duration: 50,
       price: 0,
-      date: new Date(),
     },
   });
 
+  const fetchAppointments = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/agendamentos');
+      if (!res.ok) throw new Error('Erro ao buscar agendamentos');
+      const data: Appointment[] = await res.json();
+      setAppointments(data);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar agenda",
+        description: "Não foi possível buscar os dados de agendamento.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     setIsClient(true);
+    fetchAppointments();
     const today = new Date();
     setSelectedDate(today);
     form.setValue("date", today);
-  }, [form]);
+  }, []); // form removido das dependências para evitar re-execução
 
   const appointmentsOnSelectedDate = selectedDate
     ? appointments
-        .filter(app => isSameDay(parse(app.date, "yyyy-MM-dd", new Date()), selectedDate))
+        .filter(app => isSameDay(parseISO(app.date), selectedDate))
         .sort((a, b) => a.time.localeCompare(b.time))
     : [];
 
@@ -127,6 +145,7 @@ export function SchedulingForm() {
   }).sort();
 
   const handleSearchPatient = async () => {
+    if (!cpfInput) return;
     setPatientNotFound(false);
     setSelectedPatient(null);
     form.reset({
@@ -136,51 +155,23 @@ export function SchedulingForm() {
     });
 
     try {
-      const normalizedCpf = cpfInput.replace(/\D/g, ""); // Remove pontos e traços
+      const normalizedCpf = cpfInput.replace(/\D/g, "");
       const res = await fetch(`/api/pacientes?cpf=${normalizedCpf}`);
-
       if (!res.ok) throw new Error("Erro na resposta do servidor");
-
-      const text = await res.text();
-      if (!text) {
-        setPatientNotFound(true);
-        toast({
-          variant: "destructive",
-          title: "Paciente não encontrado",
-          description: "Verifique o CPF digitado ou cadastre um novo paciente.",
-        });
-        return;
-      }
-
-      let data: Patient[] = [];
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error("Erro ao parsear JSON:", e);
-        setPatientNotFound(true);
-        toast({
-          variant: "destructive",
-          title: "Paciente não encontrado",
-          description: "Não foi possível interpretar os dados do paciente.",
-        });
-        return;
-      }
+      
+      const data: Patient[] = await res.json();
 
       if (data && data.length > 0) {
         const patient = data[0];
         setSelectedPatient(patient);
         form.setValue("patientId", patient.id);
-
-        toast({
-          title: "Paciente Encontrado",
-          description: `${patient.name} selecionado.`,
-        });
+        toast({ title: "Paciente Encontrado", description: `${patient.name} selecionado.` });
       } else {
         setPatientNotFound(true);
         toast({
           variant: "destructive",
           title: "Paciente não encontrado",
-          description: "Verifique o CPF digitado ou cadastre um novo paciente.",
+          description: "Verifique o CPF ou cadastre um novo paciente.",
         });
       }
     } catch (error) {
@@ -188,7 +179,7 @@ export function SchedulingForm() {
       toast({
         variant: "destructive",
         title: "Erro na busca",
-        description: "Não foi possível buscar o paciente. Tente novamente mais tarde.",
+        description: "Não foi possível buscar o paciente. Tente novamente.",
       });
     }
   };
@@ -207,46 +198,57 @@ export function SchedulingForm() {
     });
   };
 
-  const handleCancelAppointment = (appointmentId: number) => {
-    setAppointments(appointments.filter(app => app.id !== appointmentId));
-    toast({
-      variant: "destructive",
-      title: "Agendamento Cancelado",
-      description: "A consulta foi removida da sua agenda.",
-    });
-  };
-
-  const onSubmit = (data: AppointmentFormValues) => {
+  const onSubmit = async (data: AppointmentFormValues) => {
     if (!selectedPatient) {
       toast({
         variant: "destructive",
         title: "Nenhum paciente selecionado",
-        description: "Por favor, busque e selecione um paciente antes de agendar.",
+        description: "Por favor, busque e selecione um paciente.",
       });
       return;
     }
+    
+    setIsSubmitting(true);
 
-    const dateString = format(data.date, "yyyy-MM-dd");
-
-    const newAppointment: Appointment = {
-      id: appointments.length + 1,
-      patientId: selectedPatient.id,
-      patientName: selectedPatient.name,
-      date: dateString,
-      time: data.time,
-      type: data.type,
-      duration: data.duration,
-      price: data.price,
+    const submissionData = {
+      ...data,
+      date: format(data.date, "yyyy-MM-dd"), // formata a data para a API
+      patientName: selectedPatient.name, // envia o nome para a API
     };
 
-    setAppointments([...appointments, newAppointment]);
+    try {
+      const response = await fetch('/api/agendamentos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionData),
+      });
 
-    toast({
-      title: "Agendamento Realizado!",
-      description: `Consulta para ${selectedPatient.name} marcada com sucesso.`,
-    });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erro ao salvar agendamento");
+      }
 
-    handleClearPatient();
+      const result = await response.json();
+      const newAppointment: Appointment = result.appointment;
+
+      setAppointments(prev => [...prev, newAppointment]);
+
+      toast({
+        title: "Agendamento Realizado!",
+        description: `Consulta para ${selectedPatient.name} marcada com sucesso.`,
+      });
+
+      handleClearPatient();
+    } catch (error) {
+       const errorMessage = error instanceof Error ? error.message : 'Não foi possível agendar.';
+       toast({
+        variant: "destructive",
+        title: "Erro no Agendamento",
+        description: errorMessage,
+      });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const handleDayClick = (day: Date) => {
@@ -255,30 +257,10 @@ export function SchedulingForm() {
     form.setValue("time", "");
   };
 
-  const appointmentDates = appointments.map(app =>
-    parse(app.date, "yyyy-MM-dd", new Date())
-  );
+  const appointmentDates = appointments.map(app => parseISO(app.date));
 
-  const isFormDisabled = !selectedPatient;
+  const isFormDisabled = !selectedPatient || isSubmitting;
   const isDayUnavailable = selectedDate && (isSunday(selectedDate) || holidays.some(holiday => isSameDay(holiday, selectedDate)));
-
-  const handleAddTimeSlot = () => {
-    const timeRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (newTimeSlot && timeRegex.test(newTimeSlot) && !availableTimeSlots.includes(newTimeSlot)) {
-      setAvailableTimeSlots([...availableTimeSlots, newTimeSlot].sort());
-      setNewTimeSlot("");
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Horário Inválido",
-        description: "Por favor, insira um horário válido no formato HH:MM ou um que ainda não exista na lista.",
-      });
-    }
-  };
-
-  const handleRemoveTimeSlot = (slotToRemove: string) => {
-    setAvailableTimeSlots(availableTimeSlots.filter(slot => slot !== slotToRemove));
-  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -305,7 +287,7 @@ export function SchedulingForm() {
                       onChange={(e) => setCpfInput(e.target.value)}
                       disabled={!!selectedPatient}
                     />
-                    <Button type="button" onClick={handleSearchPatient} disabled={!!selectedPatient}>
+                    <Button type="button" onClick={handleSearchPatient} disabled={!!selectedPatient || !cpfInput}>
                       <Search className="h-4 w-4" />
                     </Button>
                   </div>
@@ -366,7 +348,7 @@ export function SchedulingForm() {
                           </SelectContent>
                         </Select>
                         {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && (
-                          <p className="text-xs text-muted-foreground pt-1">Não há horários.</p>
+                          <p className="text-xs text-muted-foreground pt-1">Não há horários disponíveis.</p>
                         )}
                         {isDayUnavailable && (
                           <p className="text-xs text-destructive pt-1">Dia indisponível.</p>
@@ -386,7 +368,7 @@ export function SchedulingForm() {
                       <FormItem>
                         <FormLabel>Duração (min)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Ex: 50" {...field} disabled={isFormDisabled || isDayUnavailable} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                          <Input type="number" placeholder="Ex: 50" {...field} disabled={isFormDisabled || isDayUnavailable} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -399,7 +381,7 @@ export function SchedulingForm() {
                       <FormItem>
                         <FormLabel>Valor (R$)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Ex: 150" {...field} disabled={isFormDisabled || isDayUnavailable} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                          <Input type="number" placeholder="Ex: 150" {...field} disabled={isFormDisabled || isDayUnavailable} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -433,7 +415,8 @@ export function SchedulingForm() {
 
                 <div className="flex justify-end pt-4">
                   <Button type="submit" size="lg" disabled={isFormDisabled || isDayUnavailable}>
-                    Agendar Consulta
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSubmitting ? 'Agendando...' : 'Agendar Consulta'}
                   </Button>
                 </div>
               </form>
@@ -448,7 +431,7 @@ export function SchedulingForm() {
           <CardHeader>
             <CardTitle>Calendário e Agenda</CardTitle>
             <CardDescription>
-              Selecione um dia para ver os agendamentos ou gerencie seus horários de trabalho.
+              Selecione um dia para ver os agendamentos.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col xl:flex-row gap-8">
@@ -464,23 +447,24 @@ export function SchedulingForm() {
                   onSelect={handleDayClick}
                   onDayClick={handleDayClick}
                   locale={ptBR}
-                  disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
+                  disabled={(date) => date < new Date() || isSunday(date) || holidays.some(h => isSameDay(h, date))}
                   modifiers={{
                     booked: appointmentDates,
                     unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
                   }}
                   modifiersClassNames={{
-                    booked: "bg-primary/20 text-primary-foreground",
-                    unavailable: "bg-destructive/80 text-destructive-foreground line-through",
+                    booked: "bg-primary/20 text-primary-foreground font-bold",
+                    unavailable: "text-muted-foreground opacity-50",
                   }}
                   className="mx-auto border rounded-lg"
                 />
               )}
 
               <div className="flex-1">
-                {!isClient ? (
+                {!isClient || isLoading ? (
                   <div className="space-y-4">
                     <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                   </div>
@@ -503,10 +487,10 @@ export function SchedulingForm() {
                               <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min - R$ {app.price.toFixed(2)}</p>
                             </div>
                             <div className="flex gap-2 self-end sm:self-center">
-                              <Button variant="ghost" size="icon" onClick={() => {}}>
+                              <Button variant="ghost" size="icon" disabled>
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleCancelAppointment(app.id)}>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" disabled>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -514,7 +498,7 @@ export function SchedulingForm() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Não há agendamentos neste dia.</p>
+                      <p className="text-sm text-muted-foreground">Não há agendamentos para este dia.</p>
                     )}
                   </>
                 )}
@@ -526,5 +510,3 @@ export function SchedulingForm() {
     </div>
   );
 }
-
-    
