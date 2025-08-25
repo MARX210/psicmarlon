@@ -196,6 +196,7 @@ export function SchedulingForm() {
       duration: 50,
       price: 0,
     });
+    form.setValue("time", ""); // Garante que o campo de tempo seja limpo.
   };
 
   const onSubmit = async (data: AppointmentFormValues) => {
@@ -510,3 +511,5 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
