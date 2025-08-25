@@ -112,7 +112,7 @@ export function RegistrationForm() {
   async function onSubmit(data: PatientFormValues) {
     try {
       const response = await fetch(
-        'https://3000-firebase-studio-1755558837183.cluster-lr6dwlc2lzbcctqhqorax5zmro.cloudworkstations.dev/api/pacientes',
+        "/api/pacientes",
         {
           method: 'POST',
           headers: {
@@ -122,7 +122,7 @@ export function RegistrationForm() {
         }
       );
 
-      const result = await response.text();
+      const result = await response.json();
 
       if (!response.ok) {
         throw new Error(result.error || 'Algo deu errado');

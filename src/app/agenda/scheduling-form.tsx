@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -62,8 +61,8 @@ const appointmentSchema = z.object({
   date: z.date({ required_error: "A data é obrigatória."}),
   time: z.string().nonempty("O horário é obrigatório."),
   type: z.enum(["Online", "Presencial"]),
-  duration: z.coerce.number().positive("A duração deve ser um número positivo."),
-  price: z.coerce.number().nonnegative("O valor não pode ser negativo."),
+  duration: z.string().nonempty("A duração é obrigatória."),
+  price: z.string().nonempty("O valor é obrigatório."),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -97,28 +96,18 @@ export function SchedulingForm() {
       patientId: "",
       time: "",
       type: "Online",
-      duration: 50,
-      price: 0,
+      duration: "50",
+      price: "0",
     },
   });
 
   const fetchAppointments = async () => {
     setIsLoading(true);
-    try {
-      const res = await fetch('/api/agendamentos');
-      if (!res.ok) throw new Error('Erro ao buscar agendamentos');
-      const data: Appointment[] = await res.json();
-      setAppointments(data);
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar agenda",
-        description: "Não foi possível buscar os dados de agendamento.",
-      });
-    } finally {
+    // Simulação de busca, pode ser substituído por API real
+    setTimeout(() => {
+      setAppointments([]); // Começa vazio
       setIsLoading(false);
-    }
+    }, 500);
   };
 
   useEffect(() => {
@@ -151,7 +140,7 @@ export function SchedulingForm() {
     form.reset({
       ...form.getValues(),
       patientId: "",
-      price: 0,
+      price: "0",
     });
 
     try {
@@ -193,13 +182,12 @@ export function SchedulingForm() {
       time: "",
       date: selectedDate,
       type: "Online",
-      duration: 50,
-      price: 0,
+      duration: "50",
+      price: "0",
     });
-    form.setValue("time", ""); // Garante que o campo de tempo seja limpo.
   };
 
-  const onSubmit = async (data: AppointmentFormValues) => {
+  const onSubmit = (data: AppointmentFormValues) => {
     if (!selectedPatient) {
       toast({
         variant: "destructive",
@@ -211,45 +199,26 @@ export function SchedulingForm() {
     
     setIsSubmitting(true);
 
-    const submissionData = {
-      ...data,
-      date: format(data.date, "yyyy-MM-dd"), // formata a data para a API
-      patientName: selectedPatient.name, // envia o nome para a API
+    const newAppointment: Appointment = {
+      id: Date.now(), // ID temporário
+      patientId: selectedPatient.id,
+      patientName: selectedPatient.name,
+      date: format(data.date, "yyyy-MM-dd"),
+      time: data.time,
+      type: data.type,
+      duration: parseInt(data.duration, 10),
+      price: parseFloat(data.price),
     };
 
-    try {
-      const response = await fetch('/api/agendamentos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submissionData),
-      });
+    setAppointments(prev => [...prev, newAppointment]);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Erro ao salvar agendamento");
-      }
+    toast({
+      title: "Agendamento Realizado!",
+      description: `Consulta para ${selectedPatient.name} marcada com sucesso (localmente).`,
+    });
 
-      const result = await response.json();
-      const newAppointment: Appointment = result.appointment;
-
-      setAppointments(prev => [...prev, newAppointment]);
-
-      toast({
-        title: "Agendamento Realizado!",
-        description: `Consulta para ${selectedPatient.name} marcada com sucesso.`,
-      });
-
-      handleClearPatient();
-    } catch (error) {
-       const errorMessage = error instanceof Error ? error.message : 'Não foi possível agendar.';
-       toast({
-        variant: "destructive",
-        title: "Erro no Agendamento",
-        description: errorMessage,
-      });
-    } finally {
-        setIsSubmitting(false);
-    }
+    handleClearPatient();
+    setIsSubmitting(false);
   };
 
   const handleDayClick = (day: Date) => {
@@ -511,5 +480,3 @@ export function SchedulingForm() {
     </div>
   );
 }
-
-    
