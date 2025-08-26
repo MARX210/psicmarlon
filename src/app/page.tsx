@@ -17,7 +17,7 @@ export default function Home() {
           Bem-vindo ao seu Consultório Digital
         </h1>
         <p className="mt-4 text-lg md:text-xl max-w-2xl mx-auto text-muted-foreground">
-          Organize seus pacientes e sua agenda de forma simples, rápida e inteligente.
+          Organize seus pacientes e sua agenda de forma simples, rápida e de forma inteligente.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
