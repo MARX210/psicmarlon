@@ -125,7 +125,8 @@ export function RegistrationForm() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Algo deu errado');
+        // Agora, usamos a mensagem de erro específica vinda da API
+        throw new Error(result.error || 'Algo deu errado ao cadastrar o paciente.');
       }
 
       toast({
