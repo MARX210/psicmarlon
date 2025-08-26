@@ -45,7 +45,7 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                   <p className="text-muted-foreground">
-                      Visualize e gerencie todos os seus compromissos em um só lugar.
+                      Visualize e gerencie todos os seus compromissos em apenas um local.
                   </p>
               </CardContent>
           </Card>
