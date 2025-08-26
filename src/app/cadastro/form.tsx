@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import { patientRegistrationSchema } from "@/lib/schemas";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
@@ -109,24 +110,29 @@ export function RegistrationForm() {
     }
   }, [cep, form, toast]);
 
+  // Função para formatar nascimento como dd/mm/aaaa
+  const handleNascimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 8) value = value.slice(0, 8);
+    if (value.length > 4) value = value.replace(/(\d{2})(\d{2})(\d{1,4})/, "$1/$2/$3");
+    else if (value.length > 2) value = value.replace(/(\d{2})(\d{1,2})/, "$1/$2");
+    form.setValue("nascimento", value);
+  };
+
   async function onSubmit(data: PatientFormValues) {
     try {
-      const response = await fetch(
-        "/api/pacientes",
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        }
-      );
+      const response = await fetch("/api/pacientes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
       const result = await response.json();
 
       if (!response.ok) {
-        // Agora, usamos a mensagem de erro específica vinda da API
-        throw new Error(result.error || 'Algo deu errado ao cadastrar o paciente.');
+        throw new Error(result.error || "Algo deu errado");
       }
 
       toast({
@@ -137,12 +143,12 @@ export function RegistrationForm() {
       form.reset();
       setCep("");
     } catch (error) {
-      console.error('Erro ao cadastrar paciente:', error);
+      console.error("Erro ao cadastrar paciente:", error);
       const errorMessage =
-        error instanceof Error ? error.message : 'Não foi possível cadastrar o paciente.';
+        error instanceof Error ? error.message : "Não foi possível cadastrar o paciente.";
       toast({
-        variant: 'destructive',
-        title: 'Erro no Cadastro',
+        variant: "destructive",
+        title: "Erro no Cadastro",
         description: errorMessage,
       });
     }
@@ -155,9 +161,7 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Dados Pessoais</CardTitle>
-            <CardDescription>
-              Informações básicas do paciente.
-            </CardDescription>
+            <CardDescription>Informações básicas do paciente.</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField
@@ -206,7 +210,13 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>Data de Nascimento</FormLabel>
                   <FormControl>
-                    <Input type="text" placeholder="DD/MM/AAAA" {...field} />
+                    <Input
+                      type="text"
+                      placeholder="dd/mm/aaaa"
+                      value={field.value}
+                      onChange={handleNascimentoChange}
+                      maxLength={10}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -218,7 +228,10 @@ export function RegistrationForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo de Paciente</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={String(field.value)}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={String(field.value)}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo de paciente" />
@@ -410,7 +423,7 @@ export function RegistrationForm() {
 
         <div className="flex justify-end pt-4">
           <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? 'Salvando...' : 'Salvar Cadastro'}
+            {form.formState.isSubmitting ? "Salvando..." : "Salvar Cadastro"}
           </Button>
         </div>
       </form>
