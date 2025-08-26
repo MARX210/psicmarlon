@@ -205,7 +205,7 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>Data de Nascimento</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input type="text" placeholder="DD/MM/AAAA" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
