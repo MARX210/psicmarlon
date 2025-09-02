@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,15 +11,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patientRegistrationSchema } from "@/lib/schemas";
 import type { z } from "zod";
-import InputMask from "react-input-mask";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
 
 const patientTypes = {
-  "1": "Cliente já fidelizado antigo",
-  "2": "Cliente por indicação",
-  "3": "Cliente pela página parceira",
-  "4": "Cliente novo",
+  1: "Cliente já fidelizado antigo",
+  2: "Cliente por indicação",
+  3: "Cliente pela página parceira",
+  4: "Cliente novo",
 };
 
 export function RegistrationForm() {
@@ -30,7 +28,7 @@ export function RegistrationForm() {
     defaultValues: {
       nome: "",
       cpf: "",
-      sexo: undefined,
+      sexo: "",
       nascimento: "",
       email: "",
       celular: "",
@@ -97,6 +95,21 @@ export function RegistrationForm() {
       const result = await response.json();
 
       if (!response.ok) {
+        // Se a API retornar um erro de validação, exiba os detalhes
+        if (response.status === 400 && result.details) {
+            const fieldErrors = result.details.fieldErrors;
+            Object.keys(fieldErrors).forEach((field) => {
+                const messages = fieldErrors[field];
+                if (messages) {
+                    form.setError(field as keyof PatientFormValues, {
+                        type: "manual",
+                        message: messages.join(", "),
+                    });
+                }
+            });
+            toast({ variant: "destructive", title: "Erro de Validação", description: "Por favor, corrija os campos indicados." });
+            return;
+        }
         throw new Error(result.error || "Algo deu errado no servidor.");
       }
 
@@ -131,16 +144,14 @@ export function RegistrationForm() {
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField
+             <FormField
               control={form.control}
               name="cpf"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>CPF*</FormLabel>
                   <FormControl>
-                    <InputMask mask="999.999.999-99" value={field.value} onChange={field.onChange}>
-                      {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
-                    </InputMask>
+                    <Input placeholder="000.000.000-00" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -169,9 +180,7 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                   <InputMask mask="99/99/9999" value={field.value} onChange={field.onChange}>
-                      {(inputProps: any) => <Input {...inputProps} placeholder="dd/mm/aaaa" />}
-                    </InputMask>
+                   <Input placeholder="dd/mm/aaaa" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -213,7 +222,7 @@ export function RegistrationForm() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField control={form.control} name="email" render={({ field }) => (
-              <FormItem className="lg:col-span-2">
+              <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
                   <Input type="email" placeholder="email@exemplo.com" {...field} />
@@ -225,9 +234,7 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Celular</FormLabel>
                 <FormControl>
-                  <InputMask mask="(99) 99999-9999" value={field.value} onChange={field.onChange}>
-                    {(inputProps: any) => <Input {...inputProps} placeholder="(99) 99999-9999" />}
-                  </InputMask>
+                  <Input placeholder="(99) 99999-9999" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -254,9 +261,7 @@ export function RegistrationForm() {
               <FormItem className="sm:col-span-1">
                 <FormLabel>CEP</FormLabel>
                 <FormControl>
-                   <InputMask mask="99999-999" value={field.value} onChange={field.onChange}>
-                      {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
-                    </InputMask>
+                   <Input placeholder="00000-000" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
