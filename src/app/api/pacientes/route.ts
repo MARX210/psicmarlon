@@ -15,7 +15,7 @@ export async function GET(req: Request) {
       // Busca paciente específico pelo CPF
       const normalizedCpf = cpf.replace(/\D/g, ""); // Remove pontos e traços
       const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento FROM Pacientes WHERE cpf = $1";
-      const result = await pool.query(query, [normalizedCpf]);
+      const result = await pool.query(query, [normalizedCof]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
       // Busca todos os pacientes
