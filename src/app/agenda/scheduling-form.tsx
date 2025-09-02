@@ -280,41 +280,36 @@ export function SchedulingForm() {
   };
   
   const handleDeleteClick = (appointment: Appointment) => {
-    toast({
-        variant: "destructive",
-        title: "Função indisponível",
-        description: "A exclusão de agendamentos ainda não foi implementada.",
-    });
-    // setAppointmentToDelete(appointment);
-    // setShowDeleteAlert(true);
+    setAppointmentToDelete(appointment);
+    setShowDeleteAlert(true);
   };
   
   const handleDeleteConfirm = async () => {
     if (!appointmentToDelete) return;
     
-    // try {
-    //   const response = await fetch(`/api/agendamentos/${appointmentToDelete.id}`, {
-    //     method: 'DELETE',
-    //   });
-    //   if (!response.ok) {
-    //     const result = await response.json();
-    //     throw new Error(result.error || 'Erro ao excluir agendamento');
-    //   }
-    //   toast({
-    //     title: "Agendamento Excluído!",
-    //     description: "A consulta foi removida da sua agenda.",
-    //   });
-    //   fetchAppointments();
-    // } catch (error) {
-    //   toast({
-    //     variant: "destructive",
-    //     title: "Erro ao Excluir",
-    //     description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
-    //   });
-    // } finally {
-    //   setShowDeleteAlert(false);
-    //   setAppointmentToDelete(null);
-    // }
+    try {
+      const response = await fetch(`/api/agendamentos/${appointmentToDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Erro ao excluir agendamento');
+      }
+      toast({
+        title: "Agendamento Excluído!",
+        description: "A consulta foi removida da sua agenda.",
+      });
+      fetchAppointments();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao Excluir",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
+      });
+    } finally {
+      setShowDeleteAlert(false);
+      setAppointmentToDelete(null);
+    }
   };
 
 
@@ -682,3 +677,5 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
