@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
-import InputMask from "react-input-mask";
+import InputMask from "react-input-mask-next";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -190,13 +190,9 @@ export function RegistrationForm() {
                       value={field.value}
                       onChange={field.onChange}
                     >
-                      {(inputProps: any) => (
-                        <Input
-                          {...inputProps}
-                          placeholder="000.000.000-00"
-                          ref={field.ref}
-                        />
-                      )}
+                      <Input
+                        placeholder="000.000.000-00"
+                      />
                     </InputMask>
                   </FormControl>
                   <FormMessage />
@@ -334,13 +330,9 @@ export function RegistrationForm() {
                         setCep(e.target.value);
                       }}
                     >
-                      {(inputProps: any) => (
-                        <Input
-                          {...inputProps}
-                          placeholder="00000-000"
-                          ref={field.ref}
-                        />
-                      )}
+                     <Input
+                        placeholder="00000-000"
+                      />
                     </InputMask>
                   </FormControl>
                   <FormMessage />
