@@ -71,10 +71,10 @@ const appointmentSchema = z.object({
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
-type Patient = { 
-  id: string; 
-  name: string; 
-  cpf: string; 
+type Patient = {
+  id: string;
+  name: string;
+  cpf: string;
   nascimento: string; // YYYY-MM-DD
 };
 type Appointment = {
@@ -110,6 +110,8 @@ export function SchedulingForm() {
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [newTimeSlot, setNewTimeSlot] = useState("");
+  const [allPatients, setAllPatients] = useState<Patient[]>([]);
+
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -121,6 +123,17 @@ export function SchedulingForm() {
       price: "0",
     },
   });
+  
+  const fetchAllPatients = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/pacientes`);
+      if (!res.ok) throw new Error("Erro ao buscar todos os pacientes");
+      const data: Patient[] = await res.json();
+      setAllPatients(data);
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
 
   const fetchAppointments = useCallback(async () => {
     setIsLoading(true);
@@ -159,8 +172,9 @@ export function SchedulingForm() {
     }
 
     fetchAppointments();
+    fetchAllPatients();
 
-  }, [form, fetchAppointments]);
+  }, [form, fetchAppointments, fetchAllPatients]);
 
   const appointmentsOnSelectedDate = selectedDate
     ? appointments
@@ -263,20 +277,35 @@ export function SchedulingForm() {
 
   const handleDayClick = (day: Date | undefined) => {
     if (!day) return;
+    handleClearPatient();
     setSelectedDate(day);
     form.setValue("date", day);
     form.setValue("time", "");
   };
 
   const handleEditClick = (appointment: Appointment) => {
-    toast({
-        variant: "destructive",
-        title: "Função indisponível",
-        description: "A edição de agendamentos ainda não foi implementada.",
+    const patientToEdit = allPatients.find(p => p.id === appointment.patientId);
+    if (!patientToEdit) {
+        toast({ variant: "destructive", title: "Erro", description: "Paciente do agendamento não encontrado." });
+        return;
+    }
+    
+    setIsEditing(appointment.id);
+    setSelectedPatient(patientToEdit);
+    setCpfInput(patientToEdit.cpf);
+    const appointmentDate = parseISO(appointment.date);
+    setSelectedDate(appointmentDate);
+
+    form.reset({
+        patientId: appointment.patientId,
+        date: appointmentDate,
+        time: appointment.time,
+        type: appointment.type as "Online" | "Presencial",
+        duration: String(appointment.duration),
+        price: String(appointment.price),
     });
-    // Lógica de edição a ser implementada
-    // setIsEditing(appointment.id);
-    // ... preencher formulário ...
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   
   const handleDeleteClick = (appointment: Appointment) => {

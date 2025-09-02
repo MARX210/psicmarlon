@@ -1,27 +1,32 @@
+
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { patientRegistrationSchema } from "@/lib/schemas";
 
-// GET - Buscar paciente pelo CPF
+// GET - Buscar pacientes
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const cpf = searchParams.get("cpf");
 
-  if (!cpf) {
-    return NextResponse.json({ error: "CPF não fornecido" }, { status: 400 });
-  }
-
   try {
     const pool = getPool();
-    const normalizedCpf = cpf.replace(/\D/g, ""); // Remove pontos e traços
-    const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento FROM Pacientes WHERE cpf = $1";
-    const result = await pool.query(query, [normalizedCpf]);
+    
+    if (cpf) {
+      // Busca paciente específico pelo CPF
+      const normalizedCpf = cpf.replace(/\D/g, ""); // Remove pontos e traços
+      const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento FROM Pacientes WHERE cpf = $1";
+      const result = await pool.query(query, [normalizedCpf]);
+      return NextResponse.json(result.rows, { status: 200 });
+    } else {
+      // Busca todos os pacientes
+      const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento FROM Pacientes ORDER BY nome";
+      const result = await pool.query(query);
+      return NextResponse.json(result.rows, { status: 200 });
+    }
 
-    // Retorna array vazio se não encontrar paciente
-    return NextResponse.json(result.rows, { status: 200 });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Erro ao buscar paciente" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar paciente(s)" }, { status: 500 });
   }
 }
 
@@ -70,3 +75,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
   }
 }
+
+    
