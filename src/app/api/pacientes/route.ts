@@ -50,12 +50,10 @@ export async function POST(req: Request) {
     
     const pool = getPool();
 
-    // Converte a data de DD/MM/YYYY para YYYY-MM-DD
+    // Converte a data de DD/MM/YYYY para YYYY-MM-DD para o banco de dados
     const [day, month, year] = nascimento.split("/");
     const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     
-    // Os dados de cpf, celular e cep já foram limpos pelo Zod schema
-
     const query = `
       INSERT INTO Pacientes (
         id, nome, cpf, sexo, nascimento, email, celular,
@@ -77,7 +75,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error(error);
      // Trata erro de CPF duplicado (unique constraint)
-    if (error.code === '23505') {
+    if (error.code === '23505' && error.constraint === 'pacientes_cpf_key') {
        return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
     }
     return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
