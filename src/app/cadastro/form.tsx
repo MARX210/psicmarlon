@@ -98,7 +98,6 @@ export function RegistrationForm() {
       const result = await response.json();
 
       if (!response.ok) {
-        // Exibe o erro vindo da API ou uma mensagem genérica
         throw new Error(result.error || "Algo deu errado no servidor.");
       }
 
@@ -141,11 +140,7 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>CPF*</FormLabel>
                   <FormControl>
-                     <InputMask
-                        mask="999.999.999-99"
-                        value={field.value}
-                        onChange={field.onChange}
-                      >
+                     <InputMask mask="999.999.999-99" {...field}>
                        {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
                       </InputMask>
                   </FormControl>
@@ -176,11 +171,7 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                   <InputMask
-                        mask="99/99/9999"
-                        value={field.value}
-                        onChange={field.onChange}
-                      >
+                   <InputMask mask="99/99/9999" {...field}>
                        {(inputProps: any) => <Input {...inputProps} placeholder="dd/mm/aaaa" />}
                       </InputMask>
                 </FormControl>
@@ -221,7 +212,7 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Contato</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField control={form.control} name="email" render={({ field }) => (
               <FormItem className="lg:col-span-2">
@@ -236,11 +227,7 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Celular</FormLabel>
                 <FormControl>
-                   <InputMask
-                        mask="(99) 99999-9999"
-                        value={field.value || ""}
-                        onChange={field.onChange}
-                      >
+                   <InputMask mask="(99) 99999-9999" {...field}>
                        {(inputProps: any) => <Input {...inputProps} placeholder="(99) 99999-9999" />}
                     </InputMask>
                 </FormControl>
