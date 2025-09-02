@@ -1,5 +1,4 @@
 
-
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { patientRegistrationSchema } from "@/lib/schemas";
@@ -53,6 +52,8 @@ export async function POST(req: Request) {
     // Converte a data de DD/MM/YYYY para YYYY-MM-DD para o banco de dados
     const [day, month, year] = nascimento.split("/");
     const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    
+    // Os dados já são limpos pelo Zod, mas garantimos aqui por segurança
     const normalizedCpf = cpf.replace(/\D/g, "");
     const normalizedCelular = celular ? celular.replace(/\D/g, "") : null;
     const normalizedCep = cep ? cep.replace(/\D/g, "") : null;

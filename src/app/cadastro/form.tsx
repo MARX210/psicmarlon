@@ -4,7 +4,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patientRegistrationSchema } from "@/lib/schemas";
 import type { z } from "zod";
-import InputMask from "react-input-mask";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
 
@@ -138,13 +137,7 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>CPF*</FormLabel>
                   <FormControl>
-                    <InputMask
-                      mask="999.999.999-99"
-                      value={field.value}
-                      onChange={field.onChange}
-                    >
-                      {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" ref={field.ref} />}
-                    </InputMask>
+                    <Input {...field} placeholder="000.000.000-00" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -173,13 +166,7 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                  <InputMask
-                    mask="99/99/9999"
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    {(inputProps: any) => <Input {...inputProps} placeholder="dd/mm/aaaa" ref={field.ref}/>}
-                  </InputMask>
+                  <Input {...field} placeholder="dd/mm/aaaa" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -233,13 +220,7 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Celular</FormLabel>
                 <FormControl>
-                  <InputMask
-                    mask="(99) 99999-9999"
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    {(inputProps: any) => <Input {...inputProps} placeholder="(99) 99999-9999" ref={field.ref}/>}
-                  </InputMask>
+                  <Input {...field} placeholder="(99) 99999-9999" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -266,13 +247,7 @@ export function RegistrationForm() {
               <FormItem className="sm:col-span-1">
                 <FormLabel>CEP</FormLabel>
                 <FormControl>
-                  <InputMask
-                    mask="99999-999"
-                    value={field.value}
-                    onChange={field.onChange}
-                  >
-                    {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" ref={field.ref}/>}
-                  </InputMask>
+                  <Input {...field} placeholder="00000-000" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -352,5 +327,3 @@ export function RegistrationForm() {
     </Form>
   );
 }
-
-    
