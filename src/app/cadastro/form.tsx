@@ -140,9 +140,9 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>CPF*</FormLabel>
                   <FormControl>
-                     <InputMask mask="999.999.999-99" {...field}>
-                       {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
-                      </InputMask>
+                    <InputMask mask="999.999.999-99" {...field}>
+                      {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
+                    </InputMask>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -171,9 +171,9 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                   <InputMask mask="99/99/9999" {...field}>
-                       {(inputProps: any) => <Input {...inputProps} placeholder="dd/mm/aaaa" />}
-                      </InputMask>
+                  <InputMask mask="99/99/9999" {...field}>
+                    {(inputProps: any) => <Input {...inputProps} placeholder="dd/mm/aaaa" />}
+                  </InputMask>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -227,9 +227,9 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Celular</FormLabel>
                 <FormControl>
-                   <InputMask mask="(99) 99999-9999" {...field}>
-                       {(inputProps: any) => <Input {...inputProps} placeholder="(99) 99999-9999" />}
-                    </InputMask>
+                  <InputMask mask="(99) 99999-9999" {...field}>
+                    {(inputProps: any) => <Input {...inputProps} placeholder="(99) 99999-9999" />}
+                  </InputMask>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -256,16 +256,16 @@ export function RegistrationForm() {
               <FormItem className="sm:col-span-1">
                 <FormLabel>CEP</FormLabel>
                 <FormControl>
-                    <InputMask
-                        mask="99999-999"
-                        value={field.value || ""}
-                        onChange={(e) => {
-                            field.onChange(e);
-                            setCep(e.target.value);
-                        }}
-                        >
-                        {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
-                    </InputMask>
+                  <InputMask
+                    mask="99999-999"
+                    value={field.value || ""}
+                    onChange={(e) => {
+                        field.onChange(e);
+                        setCep(e.target.value);
+                    }}
+                  >
+                    {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
+                  </InputMask>
                 </FormControl>
                 <FormMessage />
               </FormItem>
