@@ -20,7 +20,7 @@ const isValidDate = (dateString: string) => {
 export const patientRegistrationSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   cpf: z.string()
-    .min(14, "CPF é obrigatório e deve estar completo")
+    .min(1, "CPF é obrigatório")
     .transform((cpf) => cpf.replace(/\D/g, "")),
   sexo: z.enum(["Masculino", "Feminino", "Outro", "Prefiro não informar"], { required_error: "Sexo é obrigatório" }),
   nascimento: z.string()

@@ -84,57 +84,53 @@ export function RegistrationForm() {
     }
   }, [cepValue, form, toast]);
 
-  // Máscaras manuais
-  const applyMask = (value: string, pattern: (string | RegExp)[]) => {
-    let i = 0;
-    const v = value.toString().replace(/\D/g, "");
-    return pattern.map((mask) => {
-        if (i >= v.length) return "";
-        switch (mask) {
-            case "9":
-                return v[i++];
-            default:
-                return mask;
-        }
-    }).join("");
-  };
-  
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     fieldName: keyof PatientFormValues,
-    mask: string
+    mask: "cpf" | "nascimento" | "cep" | "celular"
   ) => {
     let value = e.target.value;
     const cleanValue = value.replace(/\D/g, "");
-    
-    if (mask === "cpf") {
-        value = cleanValue
+    let maskedValue = cleanValue;
+
+    switch (mask) {
+      case "cpf":
+        maskedValue = cleanValue
           .replace(/(\d{3})(\d)/, "$1.$2")
           .replace(/(\d{3})(\d)/, "$1.$2")
           .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-    } else if (mask === "nascimento") {
-        value = cleanValue
+        break;
+      case "nascimento":
+        maskedValue = cleanValue
           .replace(/(\d{2})(\d)/, "$1/$2")
           .replace(/(\d{2})(\d)/, "$1/$2");
-    } else if (mask === "cep") {
-        value = cleanValue.replace(/(\d{5})(\d)/, "$1-$2");
-    } else if (mask === "celular") {
-        if(cleanValue.length > 10) {
-            value = cleanValue
+        break;
+      case "cep":
+        maskedValue = cleanValue.replace(/(\d{5})(\d)/, "$1-$2");
+        break;
+      case "celular":
+        if (cleanValue.length > 10) {
+          maskedValue = cleanValue
             .replace(/(\d{2})(\d)/, "($1) $2")
             .replace(/(\d{5})(\d)/, "$1-$2");
         } else {
-            value = cleanValue
+          maskedValue = cleanValue
             .replace(/(\d{2})(\d)/, "($1) $2")
             .replace(/(\d{4})(\d)/, "$1-$2");
         }
+        break;
     }
     
-    form.setValue(fieldName, value.slice(0, mask === "cpf" ? 14 : mask === "nascimento" ? 10 : mask === "cep" ? 9 : 15));
+    const maxLength = {
+        cpf: 14,
+        nascimento: 10,
+        cep: 9,
+        celular: 15
+    };
+
+    form.setValue(fieldName, maskedValue.slice(0, maxLength[mask]));
   };
   
-
-  // Submit
   async function onSubmit(data: PatientFormValues) {
     try {
       const response = await fetch("/api/pacientes", {
