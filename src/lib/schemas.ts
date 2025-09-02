@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 // Função para validar datas no formato dd/mm/yyyy e não futuras
@@ -17,19 +18,27 @@ const isValidDate = (dateString: string) => {
   );
 };
 
+// Transforma uma string vazia em nulo, útil para campos opcionais
+const emptyStringToNull = z.literal("").transform(() => null);
+
 export const patientRegistrationSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   cpf: z.string()
-    .min(14, "CPF incompleto")
-    .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, "CPF inválido"),
+    .min(1, "CPF é obrigatório")
+    .transform((cpf) => cpf.replace(/\D/g, "")), // Remove máscara
   sexo: z.enum(["Masculino", "Feminino", "Outro", "Prefiro não informar"], { required_error: "Sexo é obrigatório" }),
   nascimento: z.string()
+    .min(1, "Data de nascimento é obrigatória")
     .refine(isValidDate, { message: "Data de nascimento inválida ou futura" }),
   email: z.string().email("Email inválido"),
+  celular: z.string().optional().or(emptyStringToNull).nullable(),
   comoConheceu: z.string().optional(),
-  tipoPaciente: z.enum(["1", "2", "3", "4"], { required_error: "Tipo de paciente é obrigatório" }),
+  tipoPaciente: z.preprocess(
+    (val) => (typeof val === 'string' && val.length > 0 ? parseInt(val, 10) : undefined),
+    z.number({ required_error: "Tipo de paciente é obrigatório" }).int().min(1).max(4)
+  ),
   cartaoId: z.string().optional(),
-  cep: z.string().optional(),
+  cep: z.string().optional().or(emptyStringToNull).nullable(),
   logradouro: z.string().min(1, "Logradouro é obrigatório"),
   numero: z.string().min(1, "Número é obrigatório"),
   complemento: z.string().optional(),

@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { patientRegistrationSchema } from "@/lib/schemas";
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     }
 
     const {
-      cartaoId, nome, cpf, sexo, nascimento, email,
+      cartaoId, nome, cpf, sexo, nascimento, email, celular,
       tipoPaciente, comoConheceu, cep, logradouro,
       numero, complemento, bairro, cidade, estado, pais
     } = validation.data;
@@ -52,19 +53,24 @@ export async function POST(req: Request) {
     // Converte a data de DD/MM/YYYY para YYYY-MM-DD
     const [day, month, year] = nascimento.split("/");
     const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    
+    // Remove máscara do celular e CEP antes de salvar
+    const cleanCelular = celular ? celular.replace(/\D/g, "") : null;
+    const cleanCep = cep ? cep.replace(/\D/g, "") : null;
+
 
     const query = `
       INSERT INTO Pacientes (
-        id, nome, cpf, sexo, nascimento, email,
+        id, nome, cpf, sexo, nascimento, email, celular,
         tipo_paciente, como_conheceu, cep, logradouro,
         numero, complemento, bairro, cidade, estado, pais
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *;
     `;
     const values = [
-      cartaoId, nome, cpf.replace(/\D/g, ""), sexo, nascimentoISO, email,
-      tipoPaciente, comoConheceu, cep, logradouro,
+      cartaoId, nome, cpf, sexo, nascimentoISO, email, cleanCelular,
+      tipoPaciente, comoConheceu, cleanCep, logradouro,
       numero, complemento, bairro, cidade, estado, pais
     ];
 

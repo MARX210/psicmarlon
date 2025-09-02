@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patientRegistrationSchema } from "@/lib/schemas";
 import type { z } from "zod";
+import InputMask from "react-input-mask-next";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
 
@@ -21,23 +23,6 @@ const patientTypes = {
   4: "Cliente novo",
 };
 
-// Função para validar datas no formato dd/mm/yyyy
-const isValidDate = (dateString: string) => {
-  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) return false;
-  const [day, month, year] = dateString.split("/").map(Number);
-  if (!day || !month || !year) return false;
-
-  const date = new Date(year, month - 1, day);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // ignora hora
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day &&
-    date <= today // permite hoje ou datas passadas
-  );
-};
-
 export function RegistrationForm() {
   const { toast } = useToast();
   const form = useForm<PatientFormValues>({
@@ -45,9 +30,10 @@ export function RegistrationForm() {
     defaultValues: {
       nome: "",
       cpf: "",
-      sexo: "",
+      sexo: undefined,
       nascimento: "",
       email: "",
+      celular: "",
       comoConheceu: "",
       tipoPaciente: undefined,
       cartaoId: "",
@@ -77,8 +63,9 @@ export function RegistrationForm() {
 
   // Busca CEP
   useEffect(() => {
-    if (cep.replace(/\D/g, "").length === 8) {
-      fetch(`https://viacep.com.br/ws/${cep}/json/`)
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length === 8) {
+      fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
         .then((res) => res.json())
         .then((data) => {
           if (!data.erro) {
@@ -98,43 +85,10 @@ export function RegistrationForm() {
     }
   }, [cep, form, toast]);
 
-  // Máscaras
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.length > 11) value = value.slice(0, 11);
-    if (value.length > 9) value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
-    else if (value.length > 6) value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
-    else if (value.length > 3) value = value.replace(/(\d{3})(\d{1,3})/, "$1.$2");
-    form.setValue("cpf", value);
-  };
-
-  const handleNascimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.length > 8) value = value.slice(0, 8);
-    if (value.length > 4) value = value.replace(/(\d{2})(\d{2})(\d{1,4})/, "$1/$2/$3");
-    else if (value.length > 2) value = value.replace(/(\d{2})(\d{1,2})/, "$1/$2");
-    form.setValue("nascimento", value);
-  };
-
-  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.length > 8) value = value.slice(0, 8);
-    if (value.length > 5) value = value.replace(/(\d{5})(\d{1,3})/, "$1-$2");
-    setCep(value);
-    form.setValue("cep", value);
-  };
 
   // Submit
   async function onSubmit(data: PatientFormValues) {
     try {
-      const validationResult = patientRegistrationSchema.safeParse(data);
-      if (!validationResult.success) {
-        validationResult.error.issues.forEach((issue) => {
-          toast({ variant: "destructive", title: `Erro no campo ${issue.path.join(".")}`, description: issue.message });
-        });
-        return;
-      }
-
       const response = await fetch("/api/pacientes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -142,13 +96,22 @@ export function RegistrationForm() {
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || result.message || "Algo deu errado");
+
+      if (!response.ok) {
+        // Exibe o erro vindo da API ou uma mensagem genérica
+        throw new Error(result.error || "Algo deu errado no servidor.");
+      }
 
       toast({ title: "Cadastro realizado", description: "Paciente cadastrado com sucesso." });
       form.reset();
       setCep("");
+
     } catch (error) {
-      toast({ variant: "destructive", title: "Erro no Cadastro", description: error instanceof Error ? error.message : "Não foi possível cadastrar." });
+      toast({
+        variant: "destructive",
+        title: "Erro no Cadastro",
+        description: error instanceof Error ? error.message : "Não foi possível cadastrar o paciente."
+      });
     }
   }
 
@@ -170,23 +133,39 @@ export function RegistrationForm() {
                 </FormControl>
                 <FormMessage />
               </FormItem>
-            )}/>
-            <FormField control={form.control} name="cpf" render={({ field }) => (
-              <FormItem>
-                <FormLabel>CPF*</FormLabel>
-                <FormControl>
-                  <Input placeholder="000.000.000-00" value={field.value} onChange={handleCpfChange} maxLength={14}/>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}/>
+            )} />
+             <FormField
+              control={form.control}
+              name="cpf"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CPF*</FormLabel>
+                  <FormControl>
+                     <InputMask
+                        mask="999.999.999-99"
+                        value={field.value}
+                        onChange={field.onChange}
+                      >
+                       {(inputProps: any) => (
+                          <Input
+                            {...inputProps}
+                            placeholder="000.000.000-00"
+                            ref={field.ref}
+                          />
+                        )}
+                      </InputMask>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField control={form.control} name="sexo" render={({ field }) => (
               <FormItem>
                 <FormLabel>Sexo*</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o sexo"/>
+                      <SelectValue placeholder="Selecione o sexo" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -196,25 +175,37 @@ export function RegistrationForm() {
                     <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="nascimento" render={({ field }) => (
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                  <Input type="text" placeholder="dd/mm/aaaa" value={field.value} onChange={handleNascimentoChange} maxLength={10}/>
+                  <InputMask
+                    mask="99/99/9999"
+                    value={field.value}
+                    onChange={field.onChange}
+                  >
+                    {(inputProps: any) => (
+                      <Input
+                        {...inputProps}
+                        placeholder="dd/mm/aaaa"
+                        ref={field.ref}
+                      />
+                    )}
+                  </InputMask>
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="tipoPaciente" render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo de Paciente*</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value ? String(field.value) : undefined}>
+                <Select onValueChange={field.onChange} value={field.value ? String(field.value) : ""}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo"/>
+                      <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -223,18 +214,18 @@ export function RegistrationForm() {
                     ))}
                   </SelectContent>
                 </Select>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="cartaoId" render={({ field }) => (
               <FormItem>
                 <FormLabel>Nº Cartão/ID Gerado</FormLabel>
                 <FormControl>
-                  <Input placeholder="Selecione o tipo para gerar" {...field} readOnly/>
+                  <Input placeholder="Selecione o tipo para gerar" {...field} readOnly />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
           </CardContent>
         </Card>
 
@@ -250,18 +241,39 @@ export function RegistrationForm() {
                 <FormControl>
                   <Input type="email" placeholder="email@exemplo.com" {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
+            <FormField control={form.control} name="celular" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Celular</FormLabel>
+                <FormControl>
+                   <InputMask
+                    mask="(99) 99999-9999"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                  >
+                    {(inputProps: any) => (
+                      <Input
+                        {...inputProps}
+                        placeholder="(99) 99999-9999"
+                         ref={field.ref}
+                      />
+                    )}
+                  </InputMask>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
             <FormField control={form.control} name="comoConheceu" render={({ field }) => (
               <FormItem className="col-span-1 md:col-span-2 lg:col-span-3">
                 <FormLabel>Como conheceu o consultório?</FormLabel>
                 <FormControl>
                   <Input placeholder="Ex: Indicação, Google, etc." {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
           </CardContent>
         </Card>
 
@@ -275,74 +287,89 @@ export function RegistrationForm() {
               <FormItem className="sm:col-span-1">
                 <FormLabel>CEP</FormLabel>
                 <FormControl>
-                  <Input placeholder="00000-000" value={cep} onChange={handleCepChange} maxLength={9}/>
+                   <InputMask
+                    mask="99999-999"
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setCep(e.target.value);
+                    }}
+                  >
+                   {(inputProps: any) => (
+                      <Input
+                        {...inputProps}
+                        placeholder="00000-000"
+                        ref={field.ref}
+                      />
+                    )}
+                  </InputMask>
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="logradouro" render={({ field }) => (
               <FormItem className="sm:col-span-2 md:col-span-3 lg:col-span-3">
                 <FormLabel>Logradouro*</FormLabel>
                 <FormControl>
-                  <Input placeholder="Rua, Avenida, etc." {...field}/>
+                  <Input placeholder="Rua, Avenida, etc." {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="numero" render={({ field }) => (
               <FormItem>
                 <FormLabel>Número*</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: 123" {...field}/>
+                  <Input placeholder="Ex: 123" {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="complemento" render={({ field }) => (
               <FormItem>
                 <FormLabel>Complemento</FormLabel>
                 <FormControl>
-                  <Input placeholder="Apto, Bloco, etc." {...field}/>
+                  <Input placeholder="Apto, Bloco, etc." {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="bairro" render={({ field }) => (
               <FormItem className="md:col-span-1 lg:col-span-2">
                 <FormLabel>Bairro*</FormLabel>
                 <FormControl>
-                  <Input placeholder="Bairro" {...field}/>
+                  <Input placeholder="Bairro" {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="cidade" render={({ field }) => (
               <FormItem>
                 <FormLabel>Cidade*</FormLabel>
                 <FormControl>
-                  <Input placeholder="Cidade" {...field}/>
+                  <Input placeholder="Cidade" {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="estado" render={({ field }) => (
               <FormItem>
                 <FormLabel>Estado*</FormLabel>
                 <FormControl>
-                  <Input placeholder="UF" {...field}/>
+                  <Input placeholder="UF" {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
             <FormField control={form.control} name="pais" render={({ field }) => (
               <FormItem>
                 <FormLabel>País*</FormLabel>
                 <FormControl>
-                  <Input {...field}/>
+                  <Input {...field} />
                 </FormControl>
-                <FormMessage/>
+                <FormMessage />
               </FormItem>
-            )}/>
+            )} />
           </CardContent>
         </Card>
 
