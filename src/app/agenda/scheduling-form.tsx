@@ -38,6 +38,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Feriados
 const holidays = [
@@ -89,6 +99,9 @@ export function SchedulingForm() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState<number | null>(null);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -101,21 +114,16 @@ export function SchedulingForm() {
     },
   });
 
-  // ===============================================
-  // FETCH AGENDAMENTOS COM DEBUG COMPLETO
-  // ===============================================
   const fetchAppointments = async () => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/agendamentos");
-
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Erro ao buscar agendamentos: ${text}`);
       }
-
-      const raw = await res.json();
-      setAppointments(raw);
+      const data: Appointment[] = await res.json();
+      setAppointments(data);
     } catch (error) {
       console.error("Erro no fetchAppointments:", error);
     } finally {
@@ -137,9 +145,16 @@ export function SchedulingForm() {
         .sort((a, b) => a.time.localeCompare(b.time))
     : [];
 
-  const timeSlotsForSelectedDay = availableTimeSlots.filter(slot => {
+  const timeSlotsForSelectedDay = defaultTimeSlots.filter(slot => {
     const slotTime = parse(slot, "HH:mm", selectedDate!);
+    // Se estiver editando, o horário atual do agendamento deve estar disponível
+    const currentAppointment = isEditing ? appointments.find(a => a.id === isEditing) : null;
+    if (currentAppointment && slot === currentAppointment.time && isSameDay(parseISO(currentAppointment.date), selectedDate!)) {
+      return true;
+    }
     return !appointmentsOnSelectedDate.some(app => {
+      // Ignora o próprio agendamento que está sendo editado
+      if (app.id === isEditing) return false;
       const appStartTime = parse(app.time, "HH:mm", selectedDate!);
       const appEndTime = addMinutes(appStartTime, app.duration);
       return slotTime >= appStartTime && slotTime < appEndTime;
@@ -190,6 +205,7 @@ export function SchedulingForm() {
     setSelectedPatient(null);
     setCpfInput("");
     setPatientNotFound(false);
+    setIsEditing(null);
     form.reset({
       patientId: "",
       time: "",
@@ -206,6 +222,51 @@ export function SchedulingForm() {
     form.setValue("date", day);
     form.setValue("time", "");
   };
+
+  const handleEditClick = (appointment: Appointment) => {
+    setIsEditing(appointment.id);
+    setSelectedPatient({ id: appointment.patientId, name: appointment.patientName, cpf: ''});
+    form.setValue("patientId", appointment.patientId);
+    form.setValue("date", parseISO(appointment.date));
+    form.setValue("time", appointment.time);
+    form.setValue("type", appointment.type as "Online" | "Presencial");
+    form.setValue("duration", String(appointment.duration));
+    form.setValue("price", String(appointment.price));
+  };
+  
+  const handleDeleteClick = (appointment: Appointment) => {
+    setAppointmentToDelete(appointment);
+    setShowDeleteAlert(true);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (!appointmentToDelete) return;
+    
+    try {
+      const response = await fetch(`/api/agendamentos/${appointmentToDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Erro ao excluir agendamento');
+      }
+      toast({
+        title: "Agendamento Excluído!",
+        description: "A consulta foi removida da sua agenda.",
+      });
+      fetchAppointments(); // Re-fetch
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao Excluir",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
+      });
+    } finally {
+      setShowDeleteAlert(false);
+      setAppointmentToDelete(null);
+    }
+  };
+
 
   const appointmentDates = appointments.map(app => parseISO(app.date));
   const isFormDisabled = !selectedPatient || isSubmitting;
@@ -232,9 +293,12 @@ export function SchedulingForm() {
       price: parseFloat(data.price),
     };
 
+    const url = isEditing ? `/api/agendamentos/${isEditing}` : '/api/agendamentos';
+    const method = isEditing ? 'PUT' : 'POST';
+
     try {
-        const response = await fetch('/api/agendamentos', {
-            method: 'POST',
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(submissionData),
         });
@@ -242,21 +306,21 @@ export function SchedulingForm() {
         const result = await response.json();
 
         if (!response.ok) {
-            throw new Error(result.error || 'Erro ao criar agendamento');
+            throw new Error(result.error || `Erro ao ${isEditing ? 'atualizar' : 'criar'} agendamento`);
         }
 
         toast({
-            title: "Agendamento Realizado!",
-            description: `Consulta para ${selectedPatient.name} marcada com sucesso.`,
+            title: `Agendamento ${isEditing ? 'Atualizado' : 'Realizado'}!`,
+            description: `Consulta para ${selectedPatient.name} foi ${isEditing ? 'atualizada' : 'marcada'} com sucesso.`,
         });
         
-        fetchAppointments(); // Re-fetch appointments to update the view
+        fetchAppointments();
         handleClearPatient();
 
     } catch (error) {
          toast({
             variant: "destructive",
-            title: "Erro no Agendamento",
+            title: `Erro no Agendamento`,
             description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
         });
     } finally {
@@ -270,9 +334,9 @@ export function SchedulingForm() {
       <div className="lg:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle>Nova Consulta</CardTitle>
+            <CardTitle>{isEditing ? 'Editar Consulta' : 'Nova Consulta'}</CardTitle>
             <CardDescription>
-              Busque o paciente por CPF e preencha os dados.
+              {isEditing ? 'Altere os dados do agendamento abaixo.' : 'Busque o paciente por CPF e preencha os dados.'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -418,7 +482,7 @@ export function SchedulingForm() {
                 <div className="flex justify-end pt-4">
                   <Button type="submit" size="lg" disabled={isFormDisabled || isDayUnavailable}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isSubmitting ? 'Agendando...' : 'Agendar Consulta'}
+                    {isSubmitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Agendar Consulta'}
                   </Button>
                 </div>
               </form>
@@ -489,10 +553,10 @@ export function SchedulingForm() {
                               <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min - R$ {app.price.toFixed(2)}</p>
                             </div>
                             <div className="flex gap-2 self-end sm:self-center">
-                              <Button variant="ghost" size="icon" disabled>
+                              <Button variant="ghost" size="icon" onClick={() => handleEditClick(app)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" disabled>
+                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(app)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -509,6 +573,25 @@ export function SchedulingForm() {
           </CardContent>
         </Card>
       </div>
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o agendamento de
+              <span className="font-bold"> {appointmentToDelete?.patientName} </span>
+              às
+              <span className="font-bold"> {appointmentToDelete?.time} </span>
+              do dia
+              <span className="font-bold"> {appointmentToDelete ? format(parseISO(appointmentToDelete.date), 'dd/MM/yyyy') : ''}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAppointmentToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Confirmar Exclusão</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
