@@ -404,5 +404,3 @@ export function RegistrationForm() {
     </Form>
   );
 }
-
-    
