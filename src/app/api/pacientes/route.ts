@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     const [day, month, year] = nascimento.split("/");
     const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 
-    // Query corrigida com base na análise do usuário
+    // A query INSERT correta com 17 colunas
     const query = `
       INSERT INTO Pacientes (
         id, nome, cpf, sexo, nascimento, email, celular,
@@ -66,25 +66,25 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
     
-    // Valores corrigidos para corresponder à query
+    // O array de valores correto com 17 valores, na ordem correta
     const values = [
-      cartaoId, 
-      nome, 
-      normalizedCpf, 
-      sexo, 
-      nascimentoISO, 
-      email || null, 
-      normalizedCelular,
-      tipoPaciente, 
-      comoConheceu || null, 
-      normalizedCep, 
-      logradouro,
-      numero, 
-      complemento || null, 
-      bairro, 
-      cidade, 
-      estado, 
-      pais
+      cartaoId,                  // $1: id
+      nome,                      // $2: nome
+      normalizedCpf,             // $3: cpf
+      sexo,                      // $4: sexo
+      nascimentoISO,             // $5: nascimento
+      email || null,             // $6: email
+      normalizedCelular,         // $7: celular
+      tipoPaciente,              // $8: tipo_paciente
+      comoConheceu || null,      // $9: como_conheceu
+      normalizedCep,             // $10: cep
+      logradouro,                // $11: logradouro
+      numero,                    // $12: numero
+      complemento || null,       // $13: complemento
+      bairro,                    // $14: bairro
+      cidade,                    // $15: cidade
+      estado,                    // $16: estado
+      pais                       // $17: pais
     ];
 
     const result = await pool.query(query, values);
