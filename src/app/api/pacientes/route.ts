@@ -1,5 +1,4 @@
 
-
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { patientRegistrationSchema } from "@/lib/schemas";
@@ -86,3 +85,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
   }
 }
+
+    

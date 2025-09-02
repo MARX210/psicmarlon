@@ -40,3 +40,5 @@ export const patientRegistrationSchema = z.object({
   estado: z.string().min(1, "Estado é obrigatório"),
   pais: z.string().min(1, "País é obrigatório"),
 });
+
+    
