@@ -285,19 +285,18 @@ export function RegistrationForm() {
               </FormItem>
             )} />
             <FormField control={form.control} name="celular" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Celular</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="(99) 99999-9999"
-                      {...field}
-                      onChange={(e) => handleInputChange(e, "celular", "celular")}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormItem>
+                <FormLabel>Celular</FormLabel>
+                <FormControl>
+                   <Input
+                     placeholder="(99) 99999-9999"
+                     {...field}
+                     onChange={(e) => handleInputChange(e, "celular", "celular")}
+                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
             <FormField control={form.control} name="comoConheceu" render={({ field }) => (
               <FormItem className="col-span-1 md:col-span-2 lg:col-span-3">
                 <FormLabel>Como conheceu o consultório?</FormLabel>

@@ -27,7 +27,7 @@ export const patientRegistrationSchema = z.object({
     .min(10, "Data de nascimento é obrigatória")
     .refine(isValidDate, { message: "Data de nascimento inválida ou futura" }),
   email: z.string().email("Email inválido").optional().or(z.literal('')),
-  celular: z.string().optional(),
+  celular: z.string().min(10, "Celular incompleto").optional().or(z.literal('')),
   tipoPaciente: z.number({ required_error: "Tipo de paciente é obrigatório" }),
   comoConheceu: z.string().optional(),
   cartaoId: z.string().min(1, "ID do cartão é obrigatório"),
