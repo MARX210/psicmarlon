@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -47,7 +48,7 @@ export function RegistrationForm() {
     },
   });
 
-  const [cep, setCep] = useState("");
+  const cepValue = form.watch("cep");
   const selectedPatientType = form.watch("tipoPaciente");
 
   // Geração de cartaoId
@@ -62,7 +63,7 @@ export function RegistrationForm() {
 
   // Busca CEP
   useEffect(() => {
-    const cleanCep = cep.replace(/\D/g, "");
+    const cleanCep = cepValue?.replace(/\D/g, "") || "";
     if (cleanCep.length === 8) {
       fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
         .then((res) => res.json())
@@ -82,7 +83,7 @@ export function RegistrationForm() {
           toast({ variant: "destructive", title: "Erro na busca", description: "Não foi possível buscar o CEP." });
         });
     }
-  }, [cep, form, toast]);
+  }, [cepValue, form, toast]);
 
   // Submit
   async function onSubmit(data: PatientFormValues) {
@@ -101,7 +102,6 @@ export function RegistrationForm() {
 
       toast({ title: "Cadastro realizado", description: "Paciente cadastrado com sucesso." });
       form.reset();
-      setCep("");
 
     } catch (error) {
       toast({
@@ -138,8 +138,12 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>CPF*</FormLabel>
                   <FormControl>
-                    <InputMask mask="999.999.999-99" {...field}>
-                      {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
+                    <InputMask
+                      mask="999.999.999-99"
+                      value={field.value}
+                      onChange={field.onChange}
+                    >
+                      {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" ref={field.ref} />}
                     </InputMask>
                   </FormControl>
                   <FormMessage />
@@ -169,8 +173,12 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                  <InputMask mask="99/99/9999" {...field}>
-                    {(inputProps: any) => <Input {...inputProps} placeholder="dd/mm/aaaa" />}
+                  <InputMask
+                    mask="99/99/9999"
+                    value={field.value}
+                    onChange={field.onChange}
+                  >
+                    {(inputProps: any) => <Input {...inputProps} placeholder="dd/mm/aaaa" ref={field.ref}/>}
                   </InputMask>
                 </FormControl>
                 <FormMessage />
@@ -225,8 +233,12 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Celular</FormLabel>
                 <FormControl>
-                  <InputMask mask="(99) 99999-9999" {...field}>
-                    {(inputProps: any) => <Input {...inputProps} placeholder="(99) 99999-9999" />}
+                  <InputMask
+                    mask="(99) 99999-9999"
+                    value={field.value}
+                    onChange={field.onChange}
+                  >
+                    {(inputProps: any) => <Input {...inputProps} placeholder="(99) 99999-9999" ref={field.ref}/>}
                   </InputMask>
                 </FormControl>
                 <FormMessage />
@@ -256,13 +268,10 @@ export function RegistrationForm() {
                 <FormControl>
                   <InputMask
                     mask="99999-999"
-                    value={cep}
-                    onChange={(e) => {
-                      field.onChange(e.target.value.replace(/\D/g, ''));
-                      setCep(e.target.value);
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   >
-                    {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
+                    {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" ref={field.ref}/>}
                   </InputMask>
                 </FormControl>
                 <FormMessage />
@@ -343,3 +352,5 @@ export function RegistrationForm() {
     </Form>
   );
 }
+
+    
