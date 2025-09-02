@@ -68,7 +68,8 @@ export function RegistrationForm() {
     },
   });
 
-  const [cep, setCep] = useState("");
+  const cepValue = form.watch("cep");
+
   const selectedPatientType = form.watch("tipoPaciente");
 
   useEffect(() => {
@@ -81,7 +82,8 @@ export function RegistrationForm() {
   }, [selectedPatientType, form]);
 
   useEffect(() => {
-    if (cep.replace(/\D/g, "").length === 8) {
+    const cep = (cepValue || "").replace(/\D/g, "");
+    if (cep.length === 8) {
       fetch(`https://viacep.com.br/ws/${cep}/json/`)
         .then((res) => res.json())
         .then((data) => {
@@ -110,7 +112,7 @@ export function RegistrationForm() {
           });
         });
     }
-  }, [cep, form, toast]);
+  }, [cepValue, form, toast]);
 
   // Função para formatar nascimento como dd/mm/aaaa
   const handleNascimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,7 +145,6 @@ export function RegistrationForm() {
       });
 
       form.reset();
-      setCep("");
     } catch (error) {
       console.error("Erro ao cadastrar paciente:", error);
       const errorMessage =
@@ -186,12 +187,15 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>CPF</FormLabel>
                   <FormControl>
-                    <Input
-                      as={InputMask}
+                    <InputMask
                       mask="999.999.999-99"
                       placeholder="000.000.000-00"
-                      {...field}
-                    />
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                    >
+                      {(inputProps: any) => <Input {...inputProps} ref={field.ref} />}
+                    </InputMask>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -237,7 +241,7 @@ export function RegistrationForm() {
                   <FormLabel>Tipo de Paciente</FormLabel>
                   <Select
                     onValueChange={(value) => field.onChange(Number(value))}
-                    defaultValue={String(field.value)}
+                    defaultValue={field.value ? String(field.value) : ""}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -320,16 +324,15 @@ export function RegistrationForm() {
                 <FormItem className="sm:col-span-1">
                   <FormLabel>CEP</FormLabel>
                   <FormControl>
-                    <Input
-                      as={InputMask}
-                      mask="99999-999"
-                      placeholder="00000-000"
-                      value={cep}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        setCep(e.target.value);
-                      }}
-                    />
+                    <InputMask
+                        mask="99999-999"
+                        placeholder="00000-000"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                    >
+                      {(inputProps: any) => <Input {...inputProps} ref={field.ref} />}
+                    </InputMask>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -438,3 +441,5 @@ export function RegistrationForm() {
     </Form>
   );
 }
+
+    
