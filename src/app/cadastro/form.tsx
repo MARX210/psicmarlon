@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -63,7 +64,7 @@ export function RegistrationForm() {
       bairro: "",
       cidade: "",
       estado: "",
-      pais: "",
+      pais: "Brasil",
     },
   });
 
@@ -80,8 +81,9 @@ export function RegistrationForm() {
   }, [selectedPatientType, form]);
 
   useEffect(() => {
-    if (cep.replace(/\D/g, "").length === 8) {
-      fetch(`https://viacep.com.br/ws/${cep}/json/`)
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length === 8) {
+      fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
         .then((res) => res.json())
         .then((data) => {
           if (!data.erro) {
@@ -89,6 +91,7 @@ export function RegistrationForm() {
             form.setValue("bairro", data.bairro);
             form.setValue("cidade", data.localidade);
             form.setValue("estado", data.uf);
+            form.setValue("pais", "Brasil");
             toast({
               title: "Endereço Encontrado!",
               description: "Os campos de endereço foram preenchidos.",
@@ -111,14 +114,6 @@ export function RegistrationForm() {
     }
   }, [cep, form, toast]);
 
-  // Função para formatar nascimento como dd/mm/aaaa
-  const handleNascimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "");
-    if (value.length > 8) value = value.slice(0, 8);
-    if (value.length > 4) value = value.replace(/(\d{2})(\d{2})(\d{1,4})/, "$1/$2/$3");
-    else if (value.length > 2) value = value.replace(/(\d{2})(\d{1,2})/, "$1/$2");
-    form.setValue("nascimento", value);
-  };
 
   async function onSubmit(data: PatientFormValues) {
     try {
@@ -178,21 +173,25 @@ export function RegistrationForm() {
                 </FormItem>
               )}
             />
-            <FormField
+             <FormField
               control={form.control}
               name="cpf"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>CPF</FormLabel>
                   <FormControl>
-                    <InputMask
+                     <InputMask
                       mask="999.999.999-99"
                       value={field.value}
                       onChange={field.onChange}
                     >
-                      <Input
-                        placeholder="000.000.000-00"
-                      />
+                      {(inputProps: any) => (
+                        <Input
+                          {...inputProps}
+                          placeholder="000.000.000-00"
+                          type="text"
+                        />
+                      )}
                     </InputMask>
                   </FormControl>
                   <FormMessage />
@@ -219,13 +218,19 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>Data de Nascimento</FormLabel>
                   <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="dd/mm/aaaa"
+                     <InputMask
+                      mask="99/99/9999"
                       value={field.value}
-                      onChange={handleNascimentoChange}
-                      maxLength={10}
-                    />
+                      onChange={field.onChange}
+                    >
+                      {(inputProps: any) => (
+                        <Input
+                          {...inputProps}
+                          placeholder="dd/mm/aaaa"
+                          type="text"
+                        />
+                      )}
+                    </InputMask>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -240,6 +245,7 @@ export function RegistrationForm() {
                   <Select
                     onValueChange={field.onChange}
                     value={field.value?.toString()}
+                    defaultValue={field.value?.toString()}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -324,15 +330,19 @@ export function RegistrationForm() {
                   <FormControl>
                     <InputMask
                       mask="99999-999"
-                      value={cep}
+                      value={field.value}
                       onChange={(e) => {
                         field.onChange(e);
                         setCep(e.target.value);
                       }}
                     >
-                     <Input
-                        placeholder="00000-000"
-                      />
+                     {(inputProps: any) => (
+                        <Input
+                          {...inputProps}
+                          placeholder="00000-000"
+                          type="text"
+                        />
+                      )}
                     </InputMask>
                   </FormControl>
                   <FormMessage />
