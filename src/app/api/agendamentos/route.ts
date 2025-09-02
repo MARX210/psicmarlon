@@ -25,7 +25,7 @@ export async function GET() {
         a.time,
         a.type,
         a.duration,
-        a.price
+        a.price::float
       FROM agendamentos a
       JOIN pacientes p ON a.patient_id = p.id
       ORDER BY a.date, a.time

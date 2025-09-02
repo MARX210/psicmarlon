@@ -108,15 +108,13 @@ export function SchedulingForm() {
     setIsLoading(true);
     try {
       const res = await fetch("/api/agendamentos");
-      const text = await res.text(); // pega a resposta bruta
-      console.log("Resposta bruta do backend:", text);
 
       if (!res.ok) {
+        const text = await res.text();
         throw new Error(`Erro ao buscar agendamentos: ${text}`);
       }
 
-      const raw = JSON.parse(text);
-      console.log("Agendamentos recebidos:", raw);
+      const raw = await res.json();
       setAppointments(raw);
     } catch (error) {
       console.error("Erro no fetchAppointments:", error);
