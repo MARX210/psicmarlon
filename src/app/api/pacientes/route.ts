@@ -48,6 +48,11 @@ export async function POST(req: Request) {
     } = validation.data;
     
     const pool = getPool();
+
+    // Converte a data de DD/MM/YYYY para YYYY-MM-DD
+    const [day, month, year] = nascimento.split("/");
+    const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+
     const query = `
       INSERT INTO Pacientes (
         id, nome, cpf, sexo, nascimento, email,
@@ -58,7 +63,7 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
     const values = [
-      cartaoId, nome, cpf.replace(/\D/g, ""), sexo, nascimento, email,
+      cartaoId, nome, cpf.replace(/\D/g, ""), sexo, nascimentoISO, email,
       tipoPaciente, comoConheceu, cep, logradouro,
       numero, complemento, bairro, cidade, estado, pais
     ];
@@ -75,5 +80,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
   }
 }
-
-    
