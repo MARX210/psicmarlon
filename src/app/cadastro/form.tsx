@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patientRegistrationSchema } from "@/lib/schemas";
 import type { z } from "zod";
-import { InputMask } from "react-input-mask-next";
+import InputMask from "react-input-mask";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
 
@@ -145,11 +145,8 @@ export function RegistrationForm() {
                         mask="999.999.999-99"
                         value={field.value}
                         onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        disabled={field.disabled}
-                        name={field.name}
                       >
-                       {(inputProps: any) => <Input {...inputProps} ref={field.ref} placeholder="000.000.000-00" />}
+                       {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
                       </InputMask>
                   </FormControl>
                   <FormMessage />
@@ -183,11 +180,8 @@ export function RegistrationForm() {
                         mask="99/99/9999"
                         value={field.value}
                         onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        disabled={field.disabled}
-                        name={field.name}
                       >
-                       {(inputProps: any) => <Input {...inputProps} ref={field.ref} placeholder="dd/mm/aaaa" />}
+                       {(inputProps: any) => <Input {...inputProps} placeholder="dd/mm/aaaa" />}
                       </InputMask>
                 </FormControl>
                 <FormMessage />
@@ -228,7 +222,7 @@ export function RegistrationForm() {
           <CardHeader>
             <CardTitle>Contato</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:_cols-2 lg:grid-cols-3 gap-6">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField control={form.control} name="email" render={({ field }) => (
               <FormItem className="lg:col-span-2">
                 <FormLabel>Email</FormLabel>
@@ -246,11 +240,8 @@ export function RegistrationForm() {
                         mask="(99) 99999-9999"
                         value={field.value || ""}
                         onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        disabled={field.disabled}
-                        name={field.name}
                       >
-                       {(inputProps: any) => <Input {...inputProps} ref={field.ref} placeholder="(99) 99999-9999" />}
+                       {(inputProps: any) => <Input {...inputProps} placeholder="(99) 99999-9999" />}
                     </InputMask>
                 </FormControl>
                 <FormMessage />
@@ -285,11 +276,8 @@ export function RegistrationForm() {
                             field.onChange(e);
                             setCep(e.target.value);
                         }}
-                        onBlur={field.onBlur}
-                        disabled={field.disabled}
-                        name={field.name}
                         >
-                        {(inputProps: any) => <Input {...inputProps} ref={field.ref} placeholder="00000-000" />}
+                        {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
                     </InputMask>
                 </FormControl>
                 <FormMessage />
