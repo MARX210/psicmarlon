@@ -27,12 +27,9 @@ export const patientRegistrationSchema = z.object({
     .min(1, "Data de nascimento é obrigatória")
     .refine(isValidDate, { message: "Data de nascimento inválida ou futura" }),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
-  celular: z.string().optional().transform(val => val ? val.replace(/\D/g, "") : ""),
+  celular: z.string().optional(),
   comoConheceu: z.string().optional(),
-  tipoPaciente: z.preprocess(
-    (val) => (typeof val === 'string' && val.length > 0 ? parseInt(val, 10) : undefined),
-    z.number({ required_error: "Tipo de paciente é obrigatório" }).int().min(1).max(4)
-  ),
+  tipoPaciente: z.string({ required_error: "Tipo de paciente é obrigatório" }).transform((val) => parseInt(val, 10)),
   cartaoId: z.string().optional(),
   cep: z.string().optional().transform(val => val ? val.replace(/\D/g, "") : ""),
   logradouro: z.string().min(1, "Logradouro é obrigatório"),
