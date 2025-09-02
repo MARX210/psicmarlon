@@ -21,19 +21,17 @@ const isValidDate = (dateString: string) => {
 
 export const patientRegistrationSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
-  cpf: z.string()
-    .min(1, "CPF é obrigatório")
-    .transform((val) => val.replace(/\D/g, "")),
+  cpf: z.string().min(1, "CPF é obrigatório"),
   sexo: z.enum(["Masculino", "Feminino", "Outro", "Prefiro não informar"], { required_error: "Sexo é obrigatório" }),
   nascimento: z.string()
-    .min(10, "Data de nascimento é obrigatória")
+    .min(1, "Data de nascimento é obrigatória")
     .refine(isValidDate, { message: "Data de nascimento inválida ou futura" }),
-  email: z.string().email("Email inválido").optional().or(z.literal("")),
-  celular: z.string().optional().transform(val => val ? val.replace(/\D/g, "") : ""),
+  email: z.string().email("Email inválido").optional().or(z.literal('')),
+  celular: z.string().optional(),
   comoConheceu: z.string().optional(),
   tipoPaciente: z.number({ required_error: "Tipo de paciente é obrigatório" }),
   cartaoId: z.string().optional(),
-  cep: z.string().optional().transform(val => val ? val.replace(/\D/g, "") : ""),
+  cep: z.string().optional(),
   logradouro: z.string().min(1, "Logradouro é obrigatório"),
   numero: z.string().min(1, "Número é obrigatório"),
   complemento: z.string().optional(),
