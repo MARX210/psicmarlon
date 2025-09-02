@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   try {
     const pool = getPool();
     const normalizedCpf = cpf.replace(/\D/g, ""); // Remove pontos e traços
-    const query = "SELECT id, nome as name, cpf FROM Pacientes WHERE cpf = $1";
+    const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento FROM Pacientes WHERE cpf = $1";
     const result = await pool.query(query, [normalizedCpf]);
 
     // Retorna array vazio se não encontrar paciente

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
-import { format, parse, isSameDay, isSunday, addMinutes, parseISO } from "date-fns";
+import { format, parse, isSameDay, isSunday, addMinutes, parseISO, differenceInYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -71,7 +71,12 @@ const appointmentSchema = z.object({
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
-type Patient = { id: string; name: string; cpf: string; };
+type Patient = { 
+  id: string; 
+  name: string; 
+  cpf: string; 
+  nascimento: string; // YYYY-MM-DD
+};
 type Appointment = {
   id: number;
   patientId: string;
@@ -81,6 +86,13 @@ type Appointment = {
   type: string;
   duration: number;
   price: number;
+};
+
+const calculateAge = (birthDate: string) => {
+  if (!birthDate) return null;
+  const birth = parseISO(birthDate);
+  const age = differenceInYears(new Date(), birth);
+  return age;
 };
 
 export function SchedulingForm() {
@@ -257,50 +269,52 @@ export function SchedulingForm() {
   };
 
   const handleEditClick = (appointment: Appointment) => {
-    setIsEditing(appointment.id);
-    setSelectedPatient({ id: appointment.patientId, name: appointment.patientName, cpf: ''});
-    form.setValue("patientId", appointment.patientId);
-    const appointmentDate = parseISO(appointment.date);
-    setSelectedDate(appointmentDate);
-    form.setValue("date", appointmentDate);
-    form.setValue("time", appointment.time);
-    form.setValue("type", appointment.type as "Online" | "Presencial");
-    form.setValue("duration", String(appointment.duration));
-    form.setValue("price", String(appointment.price));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast({
+        variant: "destructive",
+        title: "Função indisponível",
+        description: "A edição de agendamentos ainda não foi implementada.",
+    });
+    // Lógica de edição a ser implementada
+    // setIsEditing(appointment.id);
+    // ... preencher formulário ...
   };
   
   const handleDeleteClick = (appointment: Appointment) => {
-    setAppointmentToDelete(appointment);
-    setShowDeleteAlert(true);
+    toast({
+        variant: "destructive",
+        title: "Função indisponível",
+        description: "A exclusão de agendamentos ainda não foi implementada.",
+    });
+    // setAppointmentToDelete(appointment);
+    // setShowDeleteAlert(true);
   };
   
   const handleDeleteConfirm = async () => {
     if (!appointmentToDelete) return;
     
-    try {
-      const response = await fetch(`/api/agendamentos/${appointmentToDelete.id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Erro ao excluir agendamento');
-      }
-      toast({
-        title: "Agendamento Excluído!",
-        description: "A consulta foi removida da sua agenda.",
-      });
-      fetchAppointments();
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro ao Excluir",
-        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
-      });
-    } finally {
-      setShowDeleteAlert(false);
-      setAppointmentToDelete(null);
-    }
+    // try {
+    //   const response = await fetch(`/api/agendamentos/${appointmentToDelete.id}`, {
+    //     method: 'DELETE',
+    //   });
+    //   if (!response.ok) {
+    //     const result = await response.json();
+    //     throw new Error(result.error || 'Erro ao excluir agendamento');
+    //   }
+    //   toast({
+    //     title: "Agendamento Excluído!",
+    //     description: "A consulta foi removida da sua agenda.",
+    //   });
+    //   fetchAppointments();
+    // } catch (error) {
+    //   toast({
+    //     variant: "destructive",
+    //     title: "Erro ao Excluir",
+    //     description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
+    //   });
+    // } finally {
+    //   setShowDeleteAlert(false);
+    //   setAppointmentToDelete(null);
+    // }
   };
 
 
@@ -398,17 +412,21 @@ export function SchedulingForm() {
 
                 {/* Paciente selecionado */}
                 {selectedPatient && (
-                  <div className="p-3 bg-muted rounded-lg text-sm space-y-2">
-                    <div className="flex justify-between items-center">
-                      <p className="font-bold flex items-center gap-2">
-                        <User className="w-4 h-4" />
-                        Paciente Selecionado:
-                      </p>
+                  <div className="p-3 bg-muted rounded-lg text-sm space-y-3">
+                    <div className="flex justify-between items-start">
+                       <div className="flex items-center gap-2 font-bold">
+                         <User className="w-4 h-4 mt-0.5" />
+                         <span>Paciente Selecionado</span>
+                       </div>
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearPatient}>
                         <XCircle className="w-4 h-4" />
                       </Button>
                     </div>
-                    <p>{selectedPatient.name}</p>
+                    <div className="pl-6 space-y-1">
+                      <p><span className="font-semibold">Nome:</span> {selectedPatient.name}</p>
+                      <p><span className="font-semibold">Idade:</span> {calculateAge(selectedPatient.nascimento) ?? 'N/A'} anos</p>
+                      <p><span className="font-semibold">Nº ID:</span> {selectedPatient.id}</p>
+                    </div>
                   </div>
                 )}
 
