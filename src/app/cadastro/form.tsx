@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -48,7 +49,6 @@ export function RegistrationForm() {
 
   const selectedPatientType = form.watch("tipoPaciente");
   const cepValue = form.watch("cep");
-
 
   // Geração de cartaoId
   useEffect(() => {
@@ -239,7 +239,10 @@ export function RegistrationForm() {
             <FormField control={form.control} name="tipoPaciente" render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo de Paciente*</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value ? String(field.value) : ""}>
+                <Select
+                  onValueChange={(v) => field.onChange(Number(v))}
+                  value={field.value ? String(field.value) : ""}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
@@ -401,3 +404,5 @@ export function RegistrationForm() {
     </Form>
   );
 }
+
+    
