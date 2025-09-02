@@ -38,7 +38,7 @@ export const patientRegistrationSchema = z.object({
   logradouro: z.string().min(1, "Logradouro é obrigatório"),
   numero: z.string().min(1, "Número é obrigatório"),
   complemento: z.string().optional(),
-  bairro: zstring().min(1, "Bairro é obrigatório"),
+  bairro: z.string().min(1, "Bairro é obrigatório"),
   cidade: z.string().min(1, "Cidade é obrigatória"),
   estado: z.string().min(1, "Estado é obrigatório"),
   pais: z.string().min(1, "País é obrigatório"),
