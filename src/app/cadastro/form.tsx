@@ -143,14 +143,12 @@ export function RegistrationForm() {
                   <FormControl>
                      <InputMask
                         mask="999.999.999-99"
-                        value={field.value}
-                        onChange={field.onChange}
+                        {...field}
                       >
                        {(inputProps: any) => (
                           <Input
                             {...inputProps}
                             placeholder="000.000.000-00"
-                            ref={field.ref}
                           />
                         )}
                       </InputMask>
@@ -184,14 +182,12 @@ export function RegistrationForm() {
                 <FormControl>
                   <InputMask
                     mask="99/99/9999"
-                    value={field.value}
-                    onChange={field.onChange}
+                    {...field}
                   >
                     {(inputProps: any) => (
                       <Input
                         {...inputProps}
                         placeholder="dd/mm/aaaa"
-                        ref={field.ref}
                       />
                     )}
                   </InputMask>
@@ -250,14 +246,12 @@ export function RegistrationForm() {
                 <FormControl>
                    <InputMask
                     mask="(99) 99999-9999"
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
+                    {...field}
                   >
                     {(inputProps: any) => (
                       <Input
                         {...inputProps}
                         placeholder="(99) 99999-9999"
-                         ref={field.ref}
                       />
                     )}
                   </InputMask>
