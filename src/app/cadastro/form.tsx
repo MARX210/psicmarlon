@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -5,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
+import InputMask from "react-input-mask";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +64,7 @@ export function RegistrationForm() {
       bairro: "",
       cidade: "",
       estado: "",
-      pais: "",
+      pais: "Brasil",
     },
   });
 
@@ -184,7 +186,13 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>CPF</FormLabel>
                   <FormControl>
-                    <Input placeholder="000.000.000-00" {...field} />
+                    <InputMask
+                      mask="999.999.999-99"
+                      value={field.value}
+                      onChange={field.onChange}
+                    >
+                      {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
+                    </InputMask>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -229,7 +237,7 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>Tipo de Paciente</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => field.onChange(Number(value))}
                     defaultValue={String(field.value)}
                   >
                     <FormControl>
@@ -313,15 +321,16 @@ export function RegistrationForm() {
                 <FormItem className="sm:col-span-1">
                   <FormLabel>CEP</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="00000-000"
-                      {...field}
+                     <InputMask
+                      mask="99999-999"
                       value={cep}
                       onChange={(e) => {
                         field.onChange(e);
                         setCep(e.target.value);
                       }}
-                    />
+                    >
+                      {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
+                    </InputMask>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

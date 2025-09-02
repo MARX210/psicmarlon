@@ -1,14 +1,29 @@
 
 import { z } from "zod";
 
+const isValidDate = (dateString: string) => {
+  const [day, month, year] = dateString.split("/").map(Number);
+  if (!day || !month || !year) return false;
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+};
+
 export const patientRegistrationSchema = z.object({
   nome: z.string().min(3, { message: "O nome completo é obrigatório e deve ter no mínimo 3 caracteres." }),
-  cpf: z.string().min(11, { message: "O CPF deve ter no mínimo 11 dígitos." }),
+  cpf: z.string()
+    .transform((cpf) => cpf.replace(/\D/g, ''))
+    .refine((cpf) => cpf.length === 11, { message: "O CPF deve conter 11 dígitos." }),
   sexo: z.string().optional().or(z.literal('')),
-  nascimento: z.string().min(1, { message: "Data de nascimento é obrigatória." }),
+  nascimento: z.string()
+    .min(1, { message: "Data de nascimento é obrigatória." })
+    .refine(isValidDate, { message: "Data de nascimento inválida." })
+    .transform((dateStr) => {
+        const [day, month, year] = dateStr.split("/");
+        return `${year}-${month}-${day}`;
+    }),
   email: z.string().email({ message: "Por favor, insira um email válido." }).optional().or(z.literal('')),
   comoConheceu: z.string().optional().or(z.literal('')),
-  tipoPaciente: z.coerce.number({ required_error: "Selecione o tipo de paciente."}).positive(),
+  tipoPaciente: z.number({ required_error: "Selecione o tipo de paciente."}).positive(),
   cartaoId: z.string().min(1, { message: "ID do cartão não foi gerado." }),
   cep: z.string().optional().or(z.literal('')),
   logradouro: z.string().optional().or(z.literal('')),
