@@ -53,7 +53,10 @@ export async function POST(req: Request) {
     // Converte a data de DD/MM/YYYY para YYYY-MM-DD para o banco de dados
     const [day, month, year] = nascimento.split("/");
     const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-    
+    const normalizedCpf = cpf.replace(/\D/g, "");
+    const normalizedCelular = celular ? celular.replace(/\D/g, "") : null;
+    const normalizedCep = cep ? cep.replace(/\D/g, "") : null;
+
     const query = `
       INSERT INTO Pacientes (
         id, nome, cpf, sexo, nascimento, email, celular,
@@ -64,8 +67,8 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
     const values = [
-      cartaoId, nome, cpf, sexo, nascimentoISO, email, celular,
-      tipoPaciente, comoConheceu, cep, logradouro,
+      cartaoId, nome, normalizedCpf, sexo, nascimentoISO, email || null, normalizedCelular,
+      tipoPaciente, comoConheceu, normalizedCep, logradouro,
       numero, complemento, bairro, cidade, estado, pais
     ];
 

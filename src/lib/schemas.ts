@@ -8,7 +8,7 @@ const isValidDate = (dateString: string) => {
 
   const date = new Date(year, month - 1, day);
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas a data
   return (
     date.getFullYear() === year &&
     date.getMonth() === month - 1 &&
@@ -27,18 +27,18 @@ export const patientRegistrationSchema = z.object({
     .min(1, "Data de nascimento é obrigatória")
     .refine(isValidDate, { message: "Data de nascimento inválida ou futura" }),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
-  celular: z.string().optional().transform(val => val ? val.replace(/\D/g, "") : null),
+  celular: z.string().optional().transform(val => val ? val.replace(/\D/g, "") : ""),
   comoConheceu: z.string().optional(),
   tipoPaciente: z.preprocess(
     (val) => (typeof val === 'string' && val.length > 0 ? parseInt(val, 10) : undefined),
     z.number({ required_error: "Tipo de paciente é obrigatório" }).int().min(1).max(4)
   ),
   cartaoId: z.string().optional(),
-  cep: z.string().optional().transform(val => val ? val.replace(/\D/g, "") : null),
+  cep: z.string().optional().transform(val => val ? val.replace(/\D/g, "") : ""),
   logradouro: z.string().min(1, "Logradouro é obrigatório"),
   numero: z.string().min(1, "Número é obrigatório"),
   complemento: z.string().optional(),
-  bairro: z.string().min(1, "Bairro é obrigatório"),
+  bairro: zstring().min(1, "Bairro é obrigatório"),
   cidade: z.string().min(1, "Cidade é obrigatória"),
   estado: z.string().min(1, "Estado é obrigatório"),
   pais: z.string().min(1, "País é obrigatório"),

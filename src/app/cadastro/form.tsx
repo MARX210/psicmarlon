@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -85,7 +84,6 @@ export function RegistrationForm() {
     }
   }, [cep, form, toast]);
 
-
   // Submit
   async function onSubmit(data: PatientFormValues) {
     try {
@@ -133,7 +131,7 @@ export function RegistrationForm() {
                 <FormMessage />
               </FormItem>
             )} />
-             <FormField
+            <FormField
               control={form.control}
               name="cpf"
               render={({ field }) => (
@@ -212,7 +210,7 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Contato</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField control={form.control} name="email" render={({ field }) => (
               <FormItem className="lg:col-span-2">
@@ -250,7 +248,7 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Endereço</CardTitle>
-          </Header>
+          </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <FormField control={form.control} name="cep" render={({ field }) => (
               <FormItem className="sm:col-span-1">
@@ -260,8 +258,8 @@ export function RegistrationForm() {
                     mask="99999-999"
                     value={cep}
                     onChange={(e) => {
-                        field.onChange(e);
-                        setCep(e.target.value);
+                      field.onChange(e.target.value.replace(/\D/g, ''));
+                      setCep(e.target.value);
                     }}
                   >
                     {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
@@ -345,5 +343,3 @@ export function RegistrationForm() {
     </Form>
   );
 }
-
-    
