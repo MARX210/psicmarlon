@@ -30,7 +30,7 @@ export const patientRegistrationSchema = z.object({
   nascimento: z.string()
     .min(1, "Data de nascimento é obrigatória")
     .refine(isValidDate, { message: "Data de nascimento inválida ou futura" }),
-  email: z.string().email("Email inválido"),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
   celular: z.string().optional().or(emptyStringToNull).nullable().transform(val => val ? val.replace(/\D/g, "") : null),
   comoConheceu: z.string().optional(),
   tipoPaciente: z.preprocess(
