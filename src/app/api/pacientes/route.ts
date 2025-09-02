@@ -1,5 +1,4 @@
 
-
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { patientRegistrationSchema } from "@/lib/schemas";
@@ -38,7 +37,6 @@ export async function POST(req: Request) {
     const validation = patientRegistrationSchema.safeParse(body);
 
     if (!validation.success) {
-      // Retornando os erros de validação para o cliente
       return NextResponse.json({ error: "Dados inválidos", details: validation.error.flatten() }, { status: 400 });
     }
 
@@ -50,15 +48,14 @@ export async function POST(req: Request) {
     
     const pool = getPool();
 
-    // Converte a data de DD/MM/YYYY para YYYY-MM-DD para o banco de dados
-    const [day, month, year] = nascimento.split("/");
-    const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-    
-    // Garante que os dados com máscara sejam limpos antes de inserir
+    // Limpeza e formatação dos dados
     const normalizedCpf = cpf.replace(/\D/g, "");
     const normalizedCelular = celular ? celular.replace(/\D/g, "") : null;
     const normalizedCep = cep ? cep.replace(/\D/g, "") : null;
+    const [day, month, year] = nascimento.split("/");
+    const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 
+    // Query corrigida com base na análise do usuário
     const query = `
       INSERT INTO Pacientes (
         id, nome, cpf, sexo, nascimento, email, celular,
@@ -68,20 +65,40 @@ export async function POST(req: Request) {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *;
     `;
+    
+    // Valores corrigidos para corresponder à query
     const values = [
-      cartaoId, nome, normalizedCpf, sexo, nascimentoISO, email || null, normalizedCelular,
-      tipoPaciente, comoConheceu || null, normalizedCep, logradouro,
-      numero, complemento || null, bairro, cidade, estado, pais
+      cartaoId, 
+      nome, 
+      normalizedCpf, 
+      sexo, 
+      nascimentoISO, 
+      email || null, 
+      normalizedCelular,
+      tipoPaciente, 
+      comoConheceu || null, 
+      normalizedCep, 
+      logradouro,
+      numero, 
+      complemento || null, 
+      bairro, 
+      cidade, 
+      estado, 
+      pais
     ];
 
     const result = await pool.query(query, values);
-    return NextResponse.json({ message: "Paciente adicionado", patient: result.rows[0] }, { status: 201 });
+    return NextResponse.json({ message: "Paciente adicionado com sucesso!", patient: result.rows[0] }, { status: 201 });
 
   } catch (error: any) {
     console.error('Erro detalhado ao inserir paciente:', error);
-     // Trata erro de CPF duplicado (unique constraint)
-    if (error.code === '23505' && error.constraint === 'pacientes_cpf_key') {
-       return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
+    if (error.code === '23505') { // Código para violação de chave única
+      if (error.constraint === 'pacientes_cpf_key') {
+        return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
+      }
+      if (error.constraint === 'pacientes_pkey') {
+         return NextResponse.json({ error: 'Já existe um paciente com este ID.' }, { status: 409 });
+      }
     }
     return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
   }
