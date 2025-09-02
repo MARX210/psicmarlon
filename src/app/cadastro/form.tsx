@@ -46,8 +46,9 @@ export function RegistrationForm() {
     },
   });
 
-  const cepValue = form.watch("cep");
   const selectedPatientType = form.watch("tipoPaciente");
+  const cepValue = form.watch("cep");
+
 
   // Geração de cartaoId
   useEffect(() => {
@@ -83,6 +84,56 @@ export function RegistrationForm() {
     }
   }, [cepValue, form, toast]);
 
+  // Máscaras manuais
+  const applyMask = (value: string, pattern: (string | RegExp)[]) => {
+    let i = 0;
+    const v = value.toString().replace(/\D/g, "");
+    return pattern.map((mask) => {
+        if (i >= v.length) return "";
+        switch (mask) {
+            case "9":
+                return v[i++];
+            default:
+                return mask;
+        }
+    }).join("");
+  };
+  
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    fieldName: keyof PatientFormValues,
+    mask: string
+  ) => {
+    let value = e.target.value;
+    const cleanValue = value.replace(/\D/g, "");
+    
+    if (mask === "cpf") {
+        value = cleanValue
+          .replace(/(\d{3})(\d)/, "$1.$2")
+          .replace(/(\d{3})(\d)/, "$1.$2")
+          .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    } else if (mask === "nascimento") {
+        value = cleanValue
+          .replace(/(\d{2})(\d)/, "$1/$2")
+          .replace(/(\d{2})(\d)/, "$1/$2");
+    } else if (mask === "cep") {
+        value = cleanValue.replace(/(\d{5})(\d)/, "$1-$2");
+    } else if (mask === "celular") {
+        if(cleanValue.length > 10) {
+            value = cleanValue
+            .replace(/(\d{2})(\d)/, "($1) $2")
+            .replace(/(\d{5})(\d)/, "$1-$2");
+        } else {
+            value = cleanValue
+            .replace(/(\d{2})(\d)/, "($1) $2")
+            .replace(/(\d{4})(\d)/, "$1-$2");
+        }
+    }
+    
+    form.setValue(fieldName, value.slice(0, mask === "cpf" ? 14 : mask === "nascimento" ? 10 : mask === "cep" ? 9 : 15));
+  };
+  
+
   // Submit
   async function onSubmit(data: PatientFormValues) {
     try {
@@ -95,7 +146,6 @@ export function RegistrationForm() {
       const result = await response.json();
 
       if (!response.ok) {
-        // Se a API retornar um erro de validação, exiba os detalhes
         if (response.status === 400 && result.details) {
             const fieldErrors = result.details.fieldErrors;
             Object.keys(fieldErrors).forEach((field) => {
@@ -144,14 +194,15 @@ export function RegistrationForm() {
                 <FormMessage />
               </FormItem>
             )} />
-             <FormField
-              control={form.control}
-              name="cpf"
-              render={({ field }) => (
+             <FormField control={form.control} name="cpf" render={({ field }) => (
                 <FormItem>
                   <FormLabel>CPF*</FormLabel>
                   <FormControl>
-                    <Input placeholder="000.000.000-00" {...field} />
+                    <Input
+                      placeholder="000.000.000-00"
+                      {...field}
+                      onChange={(e) => handleInputChange(e, "cpf", "cpf")}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -180,7 +231,11 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                   <Input placeholder="dd/mm/aaaa" {...field} />
+                   <Input
+                     placeholder="dd/mm/aaaa"
+                     {...field}
+                     onChange={(e) => handleInputChange(e, "nascimento", "nascimento")}
+                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -231,14 +286,19 @@ export function RegistrationForm() {
               </FormItem>
             )} />
             <FormField control={form.control} name="celular" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Celular</FormLabel>
-                <FormControl>
-                  <Input placeholder="(99) 99999-9999" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+                <FormItem>
+                  <FormLabel>Celular</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="(99) 99999-9999"
+                      {...field}
+                      onChange={(e) => handleInputChange(e, "celular", "celular")}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField control={form.control} name="comoConheceu" render={({ field }) => (
               <FormItem className="col-span-1 md:col-span-2 lg:col-span-3">
                 <FormLabel>Como conheceu o consultório?</FormLabel>
@@ -261,7 +321,11 @@ export function RegistrationForm() {
               <FormItem className="sm:col-span-1">
                 <FormLabel>CEP</FormLabel>
                 <FormControl>
-                   <Input placeholder="00000-000" {...field} />
+                   <Input
+                     placeholder="00000-000"
+                     {...field}
+                     onChange={(e) => handleInputChange(e, "cep", "cep")}
+                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
