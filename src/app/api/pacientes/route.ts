@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     const [day, month, year] = nascimento.split("/");
     const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     
-    // Os dados já são limpos pelo Zod, mas garantimos aqui por segurança
+    // Garante que os dados com máscara sejam limpos antes de inserir
     const normalizedCpf = cpf.replace(/\D/g, "");
     const normalizedCelular = celular ? celular.replace(/\D/g, "") : null;
     const normalizedCep = cep ? cep.replace(/\D/g, "") : null;
@@ -70,15 +70,15 @@ export async function POST(req: Request) {
     `;
     const values = [
       cartaoId, nome, normalizedCpf, sexo, nascimentoISO, email || null, normalizedCelular,
-      tipoPaciente, comoConheceu, normalizedCep, logradouro,
-      numero, complemento, bairro, cidade, estado, pais
+      tipoPaciente, comoConheceu || null, normalizedCep, logradouro,
+      numero, complemento || null, bairro, cidade, estado, pais
     ];
 
     const result = await pool.query(query, values);
     return NextResponse.json({ message: "Paciente adicionado", patient: result.rows[0] }, { status: 201 });
 
   } catch (error: any) {
-    console.error(error);
+    console.error('Erro detalhado ao inserir paciente:', error);
      // Trata erro de CPF duplicado (unique constraint)
     if (error.code === '23505' && error.constraint === 'pacientes_cpf_key') {
        return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
