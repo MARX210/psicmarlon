@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
     const values = [
-      cartaoId, nome, cpf.replace(/\D/g, ''), sexo, nascimentoISO, email, celular,
+      cartaoId, nome, cpf, sexo, nascimentoISO, email || null, celular,
       tipoPaciente, comoConheceu, cep, logradouro,
       numero, complemento, bairro, cidade, estado, pais
     ];

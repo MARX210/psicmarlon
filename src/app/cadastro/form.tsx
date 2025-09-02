@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patientRegistrationSchema } from "@/lib/schemas";
 import type { z } from "zod";
+import { InputMask } from "react-input-mask-next";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
 
@@ -140,7 +141,16 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>CPF*</FormLabel>
                   <FormControl>
-                    <Input placeholder="000.000.000-00" {...field} />
+                     <InputMask
+                        mask="999.999.999-99"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={field.disabled}
+                        name={field.name}
+                      >
+                       {(inputProps: any) => <Input {...inputProps} ref={field.ref} placeholder="000.000.000-00" />}
+                      </InputMask>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -169,7 +179,16 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                  <Input placeholder="dd/mm/aaaa" {...field} />
+                   <InputMask
+                        mask="99/99/9999"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={field.disabled}
+                        name={field.name}
+                      >
+                       {(inputProps: any) => <Input {...inputProps} ref={field.ref} placeholder="dd/mm/aaaa" />}
+                      </InputMask>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -212,7 +231,7 @@ export function RegistrationForm() {
           <CardContent className="grid grid-cols-1 md:_cols-2 lg:grid-cols-3 gap-6">
             <FormField control={form.control} name="email" render={({ field }) => (
               <FormItem className="lg:col-span-2">
-                <FormLabel>Email*</FormLabel>
+                <FormLabel>Email</FormLabel>
                 <FormControl>
                   <Input type="email" placeholder="email@exemplo.com" {...field} />
                 </FormControl>
@@ -223,7 +242,16 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Celular</FormLabel>
                 <FormControl>
-                  <Input placeholder="(99) 99999-9999" {...field} />
+                   <InputMask
+                        mask="(99) 99999-9999"
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={field.disabled}
+                        name={field.name}
+                      >
+                       {(inputProps: any) => <Input {...inputProps} ref={field.ref} placeholder="(99) 99999-9999" />}
+                    </InputMask>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -244,20 +272,25 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Endereço</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <FormField control={form.control} name="cep" render={({ field }) => (
               <FormItem className="sm:col-span-1">
                 <FormLabel>CEP</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="00000-000"
-                    {...field}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      setCep(e.target.value);
-                    }}
-                  />
+                    <InputMask
+                        mask="99999-999"
+                        value={field.value || ""}
+                        onChange={(e) => {
+                            field.onChange(e);
+                            setCep(e.target.value);
+                        }}
+                        onBlur={field.onBlur}
+                        disabled={field.disabled}
+                        name={field.name}
+                        >
+                        {(inputProps: any) => <Input {...inputProps} ref={field.ref} placeholder="00000-000" />}
+                    </InputMask>
                 </FormControl>
                 <FormMessage />
               </FormItem>
