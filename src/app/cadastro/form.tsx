@@ -17,10 +17,10 @@ import InputMask from "react-input-mask";
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
 
 const patientTypes = {
-  1: "Cliente já fidelizado antigo",
-  2: "Cliente por indicação",
-  3: "Cliente pela página parceira",
-  4: "Cliente novo",
+  "1": "Cliente já fidelizado antigo",
+  "2": "Cliente por indicação",
+  "3": "Cliente pela página parceira",
+  "4": "Cliente novo",
 };
 
 export function RegistrationForm() {
@@ -345,3 +345,5 @@ export function RegistrationForm() {
     </Form>
   );
 }
+
+    

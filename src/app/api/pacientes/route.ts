@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
     const values = [
-      cartaoId, nome, cpf, sexo, nascimentoISO, email || null, celular,
+      cartaoId, nome, cpf, sexo, nascimentoISO, email, celular,
       tipoPaciente, comoConheceu, cep, logradouro,
       numero, complemento, bairro, cidade, estado, pais
     ];
@@ -81,3 +81,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
   }
 }
+
+    
