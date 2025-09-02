@@ -23,7 +23,10 @@ export const patientRegistrationSchema = z.object({
     }),
   email: z.string().email({ message: "Por favor, insira um email válido." }).optional().or(z.literal('')),
   comoConheceu: z.string().optional().or(z.literal('')),
-  tipoPaciente: z.number({ required_error: "Selecione o tipo de paciente."}).positive(),
+  tipoPaciente: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val, 10) : val),
+    z.number({ required_error: "Selecione o tipo de paciente."}).positive()
+  ),
   cartaoId: z.string().min(1, { message: "ID do cartão não foi gerado." }),
   cep: z.string().optional().or(z.literal('')),
   logradouro: z.string().optional().or(z.literal('')),
