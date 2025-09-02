@@ -186,13 +186,12 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>CPF</FormLabel>
                   <FormControl>
-                    <InputMask
+                    <Input
+                      as={InputMask}
                       mask="999.999.999-99"
-                      value={field.value}
-                      onChange={field.onChange}
-                    >
-                      {(inputProps: any) => <Input {...inputProps} placeholder="000.000.000-00" />}
-                    </InputMask>
+                      placeholder="000.000.000-00"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -321,16 +320,16 @@ export function RegistrationForm() {
                 <FormItem className="sm:col-span-1">
                   <FormLabel>CEP</FormLabel>
                   <FormControl>
-                     <InputMask
+                    <Input
+                      as={InputMask}
                       mask="99999-999"
+                      placeholder="00000-000"
                       value={cep}
                       onChange={(e) => {
                         field.onChange(e);
                         setCep(e.target.value);
                       }}
-                    >
-                      {(inputProps: any) => <Input {...inputProps} placeholder="00000-000" />}
-                    </InputMask>
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
