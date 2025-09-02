@@ -258,7 +258,7 @@ export function RegistrationForm() {
                 <FormControl>
                   <InputMask
                     mask="99999-999"
-                    value={field.value || ""}
+                    value={cep}
                     onChange={(e) => {
                         field.onChange(e);
                         setCep(e.target.value);
@@ -345,3 +345,5 @@ export function RegistrationForm() {
     </Form>
   );
 }
+
+    
