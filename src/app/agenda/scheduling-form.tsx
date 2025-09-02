@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { format, parse, isSameDay, isSunday, addMinutes, parseISO, differenceInYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import InputMask from "react-input-mask-next";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -51,10 +52,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 
-// Feriados
-const holidays: Date[] = [
-  // new Date("2024-01-01"), // Ano novo - Exemplo
-];
+const holidays: Date[] = [];
 
 const defaultTimeSlots = [
   "08:00", "09:00", "10:00", "11:00", "12:00",
@@ -66,23 +64,25 @@ const appointmentSchema = z.object({
   date: z.date({ required_error: "A data é obrigatória."}),
   time: z.string().nonempty("O horário é obrigatório."),
   type: z.enum(["Online", "Presencial"]),
-  duration: z.string().nonempty("A duração é obrigatória."),
-  price: z.string().nonempty("O valor é obrigatório."),
+  duration: z.string().nonempty("A duração é obrigatória.").refine(val => !isNaN(parseInt(val, 10)) && parseInt(val, 10) > 0, { message: "Deve ser um número positivo."}),
+  price: z.string().nonempty("O valor é obrigatório.").refine(val => !isNaN(parseFloat(val)), { message: "Deve ser um número."}),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
+
 type Patient = {
   id: string;
   name: string;
   cpf: string;
-  nascimento: string; // YYYY-MM-DD
+  nascimento: string; 
 };
+
 type Appointment = {
   id: number;
   patientId: string;
   patientName: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:mm
+  date: string; 
+  time: string; 
   type: string;
   duration: number;
   price: number;
@@ -90,9 +90,14 @@ type Appointment = {
 
 const calculateAge = (birthDate: string) => {
   if (!birthDate) return null;
-  const birth = parseISO(birthDate);
-  const age = differenceInYears(new Date(), birth);
-  return age;
+  try {
+    const birth = parseISO(birthDate);
+    const age = differenceInYears(new Date(), birth);
+    return age;
+  } catch (error) {
+    console.error("Invalid date for age calculation:", birthDate);
+    return null;
+  }
 };
 
 export function SchedulingForm() {
@@ -112,7 +117,6 @@ export function SchedulingForm() {
   const [newTimeSlot, setNewTimeSlot] = useState("");
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
 
-
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
@@ -123,7 +127,7 @@ export function SchedulingForm() {
       price: "0",
     },
   });
-  
+
   const fetchAllPatients = useCallback(async () => {
     try {
       const res = await fetch(`/api/pacientes`);
@@ -147,10 +151,15 @@ export function SchedulingForm() {
       setAppointments(data);
     } catch (error) {
       console.error("Erro no fetchAppointments:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro de Rede",
+        description: "Não foi possível carregar os agendamentos.",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     setIsClient(true);
@@ -158,7 +167,6 @@ export function SchedulingForm() {
     setSelectedDate(today);
     form.setValue("date", today);
     
-    // Carregar horários do localStorage ou usar padrão
     try {
       const storedSlots = localStorage.getItem("timeSlots");
       if (storedSlots) {
@@ -173,7 +181,6 @@ export function SchedulingForm() {
 
     fetchAppointments();
     fetchAllPatients();
-
   }, [form, fetchAppointments, fetchAllPatients]);
 
   const appointmentsOnSelectedDate = selectedDate
@@ -185,18 +192,16 @@ export function SchedulingForm() {
   const timeSlotsForSelectedDay = timeSlots.filter(slot => {
     if (!selectedDate) return false;
     const slotTime = parse(slot, "HH:mm", selectedDate);
-    const currentAppointment = isEditing ? appointments.find(a => a.id === isEditing) : null;
-    if (currentAppointment && slot === currentAppointment.time && isSameDay(parseISO(currentAppointment.date), selectedDate)) {
-      return true;
-    }
-    return !appointmentsOnSelectedDate.some(app => {
-      if (app.id === isEditing) return false;
-      const appStartTime = parse(app.time, "HH:mm", selectedDate);
+    return !appointments.some(app => {
+      if (app.id === isEditing) return false; 
+      if (!isSameDay(parseISO(app.date), selectedDate)) return false;
+      
+      const appStartTime = parse(app.time, "HH:mm", new Date(app.date));
       const appEndTime = addMinutes(appStartTime, app.duration);
       return slotTime >= appStartTime && slotTime < appEndTime;
     });
   }).sort();
-  
+
   const handleAddTimeSlot = () => {
     const trimmedTime = newTimeSlot.trim();
     if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(trimmedTime) && !timeSlots.includes(trimmedTime)) {
@@ -219,7 +224,6 @@ export function SchedulingForm() {
     localStorage.setItem("timeSlots", JSON.stringify(updatedSlots));
   };
 
-
   const handleSearchPatient = async () => {
     if (!cpfInput) return;
     setPatientNotFound(false);
@@ -232,6 +236,10 @@ export function SchedulingForm() {
 
     try {
       const normalizedCpf = cpfInput.replace(/\D/g, "");
+       if (normalizedCpf.length !== 11) {
+        toast({ variant: "destructive", title: "CPF Inválido", description: "O CPF deve ter 11 dígitos." });
+        return;
+      }
       const res = await fetch(`/api/pacientes?cpf=${normalizedCpf}`);
       if (!res.ok) throw new Error("Erro na resposta do servidor");
       
@@ -277,7 +285,7 @@ export function SchedulingForm() {
 
   const handleDayClick = (day: Date | undefined) => {
     if (!day) return;
-    handleClearPatient();
+    setIsEditing(null);
     setSelectedDate(day);
     form.setValue("date", day);
     form.setValue("time", "");
@@ -341,11 +349,6 @@ export function SchedulingForm() {
     }
   };
 
-
-  const appointmentDates = appointments.map(app => parseISO(app.date));
-  const isFormDisabled = !selectedPatient || isSubmitting;
-  const isDayUnavailable = selectedDate && (isSunday(selectedDate) || holidays.some(holiday => isSameDay(holiday, selectedDate)));
-
   async function onSubmit(data: AppointmentFormValues) {
     if (!selectedPatient) {
       toast({
@@ -390,6 +393,7 @@ export function SchedulingForm() {
         
         fetchAppointments();
         handleClearPatient();
+        setIsEditing(null);
 
     } catch (error) {
          toast({
@@ -402,11 +406,13 @@ export function SchedulingForm() {
     }
   }
 
+  const appointmentDates = appointments.map(app => parseISO(app.date));
+  const isFormDisabled = !selectedPatient || isSubmitting;
+  const isDayUnavailable = selectedDate && (isSunday(selectedDate) || holidays.some(holiday => isSameDay(holiday, selectedDate)));
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-      {/* Coluna Esquerda: Formulários */}
       <div className="lg:col-span-2 space-y-8">
-         {/* Formulário de agendamento */}
         <Card>
           <CardHeader>
             <CardTitle>{isEditing ? 'Editar Consulta' : 'Nova Consulta'}</CardTitle>
@@ -417,24 +423,29 @@ export function SchedulingForm() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Busca de paciente */}
                 <div className="space-y-2">
                   <FormLabel htmlFor="cpf">Buscar Paciente por CPF</FormLabel>
                   <div className="flex gap-2">
-                    <Input
-                      id="cpf"
-                      placeholder="000.000.000-00"
+                    <InputMask
+                      mask="999.999.999-99"
                       value={cpfInput}
                       onChange={(e) => setCpfInput(e.target.value)}
                       disabled={!!selectedPatient}
-                    />
+                    >
+                      {(inputProps: any) => (
+                        <Input
+                          {...inputProps}
+                          id="cpf"
+                          placeholder="000.000.000-00"
+                        />
+                      )}
+                    </InputMask>
                     <Button type="button" onClick={handleSearchPatient} disabled={!!selectedPatient || !cpfInput}>
                       <Search className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
 
-                {/* Paciente selecionado */}
                 {selectedPatient && (
                   <div className="p-3 bg-muted rounded-lg text-sm space-y-3">
                     <div className="flex justify-between items-start">
@@ -454,7 +465,6 @@ export function SchedulingForm() {
                   </div>
                 )}
 
-                {/* Paciente não encontrado */}
                 {patientNotFound && (
                   <div className="text-sm text-center my-4 text-muted-foreground">
                     <span>Paciente não encontrado. </span>
@@ -466,7 +476,6 @@ export function SchedulingForm() {
                   </div>
                 )}
 
-                {/* Horário */}
                 <div className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
@@ -477,14 +486,19 @@ export function SchedulingForm() {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
-                          disabled={isFormDisabled || timeSlotsForSelectedDay.length === 0 || isDayUnavailable}
+                          disabled={isFormDisabled || isDayUnavailable}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
+                              <SelectValue placeholder={timeSlotsForSelectedDay.length > 0 ? "Selecione" : "Sem horários"} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                             {isEditing && !timeSlotsForSelectedDay.includes(form.getValues("time")) && (
+                                <SelectItem key={form.getValues("time")} value={form.getValues("time")}>
+                                    {form.getValues("time")} (Ocupado)
+                                </SelectItem>
+                            )}
                             {timeSlotsForSelectedDay.map((slot) => (
                               <SelectItem key={slot} value={slot}>
                                 {slot}
@@ -492,7 +506,7 @@ export function SchedulingForm() {
                             ))}
                           </SelectContent>
                         </Select>
-                        {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && (
+                        {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && !isEditing && (
                           <p className="text-xs text-muted-foreground pt-1">Não há horários disponíveis.</p>
                         )}
                         {isDayUnavailable && (
@@ -504,7 +518,6 @@ export function SchedulingForm() {
                   />
                 </div>
 
-                {/* Duração e preço */}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -526,7 +539,7 @@ export function SchedulingForm() {
                       <FormItem>
                         <FormLabel>Valor (R$)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Ex: 150" {...field} disabled={isFormDisabled || isDayUnavailable} />
+                          <Input type="number" step="0.01" placeholder="Ex: 150.00" {...field} disabled={isFormDisabled || isDayUnavailable} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -534,7 +547,6 @@ export function SchedulingForm() {
                   />
                 </div>
 
-                {/* Tipo de consulta */}
                 <FormField
                   control={form.control}
                   name="type"
@@ -569,7 +581,6 @@ export function SchedulingForm() {
           </CardContent>
         </Card>
 
-        {/* Gerenciador de Horários */}
         {isClient && (
           <Card>
             <CardHeader>
@@ -603,7 +614,6 @@ export function SchedulingForm() {
         )}
       </div>
 
-      {/* Calendário e agenda */}
       <div className="lg:col-span-3">
         <Card>
           <CardHeader>
@@ -624,7 +634,7 @@ export function SchedulingForm() {
                   selected={selectedDate}
                   onSelect={handleDayClick}
                   locale={ptBR}
-                  disabled={(date) => date < new Date() || isSunday(date) || holidays.some(h => isSameDay(h, date))}
+                  disabled={(date) => date < new Date(new Date().toDateString()) || isSunday(date) || holidays.some(h => isSameDay(h, date))}
                   modifiers={{
                     booked: appointmentDates,
                     unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
@@ -706,5 +716,3 @@ export function SchedulingForm() {
     </div>
   );
 }
-
-    

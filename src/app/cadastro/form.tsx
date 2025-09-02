@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 
 import { patientRegistrationSchema } from "@/lib/schemas";
+import { Loader2 } from "lucide-react";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
 
@@ -77,6 +78,8 @@ export function RegistrationForm() {
       const randomPart = Math.random().toString(36).substring(2, 9);
       const uniqueId = `${selectedPatientType}-${timestamp}-${randomPart}`.toUpperCase();
       form.setValue("cartaoId", uniqueId);
+    } else {
+        form.setValue("cartaoId", "");
     }
   }, [selectedPatientType, form]);
 
@@ -153,7 +156,6 @@ export function RegistrationForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {/* Dados Pessoais */}
         <Card>
           <CardHeader>
             <CardTitle>Dados Pessoais</CardTitle>
@@ -245,7 +247,6 @@ export function RegistrationForm() {
                   <Select
                     onValueChange={field.onChange}
                     value={field.value?.toString()}
-                    defaultValue={field.value?.toString()}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -280,7 +281,6 @@ export function RegistrationForm() {
           </CardContent>
         </Card>
 
-        {/* Contato */}
         <Card>
           <CardHeader>
             <CardTitle>Contato</CardTitle>
@@ -315,7 +315,6 @@ export function RegistrationForm() {
           </CardContent>
         </Card>
 
-        {/* Endereço */}
         <Card>
           <CardHeader>
             <CardTitle>Endereço</CardTitle>
@@ -445,6 +444,7 @@ export function RegistrationForm() {
 
         <div className="flex justify-end pt-4">
           <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {form.formState.isSubmitting ? "Salvando..." : "Salvar Cadastro"}
           </Button>
         </div>
