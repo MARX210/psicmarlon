@@ -54,10 +54,7 @@ export async function POST(req: Request) {
     const [day, month, year] = nascimento.split("/");
     const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     
-    // Remove máscara do celular e CEP antes de salvar
-    const cleanCelular = celular ? celular.replace(/\D/g, "") : null;
-    const cleanCep = cep ? cep.replace(/\D/g, "") : null;
-
+    // Os dados de cpf, celular e cep já foram limpos pelo Zod schema
 
     const query = `
       INSERT INTO Pacientes (
@@ -69,8 +66,8 @@ export async function POST(req: Request) {
       RETURNING *;
     `;
     const values = [
-      cartaoId, nome, cpf, sexo, nascimentoISO, email, cleanCelular,
-      tipoPaciente, comoConheceu, cleanCep, logradouro,
+      cartaoId, nome, cpf, sexo, nascimentoISO, email, celular,
+      tipoPaciente, comoConheceu, cep, logradouro,
       numero, complemento, bairro, cidade, estado, pais
     ];
 
