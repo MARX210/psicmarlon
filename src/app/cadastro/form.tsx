@@ -230,7 +230,7 @@ export function RegistrationForm() {
           <CardHeader>
             <CardTitle>Contato</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <CardContent className="grid grid-cols-1 md:_cols-2 lg:grid-cols-3 gap-6">
             <FormField control={form.control} name="email" render={({ field }) => (
               <FormItem className="lg:col-span-2">
                 <FormLabel>Email*</FormLabel>
