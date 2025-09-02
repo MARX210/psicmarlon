@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { patientRegistrationSchema } from "@/lib/schemas";
@@ -30,6 +29,7 @@ export async function GET(req: Request) {
   }
 }
 
+
 // POST - Cadastrar novo paciente
 export async function POST(req: Request) {
   try {
@@ -37,15 +37,32 @@ export async function POST(req: Request) {
     const validation = patientRegistrationSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ error: "Dados inválidos", details: validation.error.flatten() }, { status: 400 });
+      return NextResponse.json(
+        { error: "Dados inválidos", details: validation.error.flatten() },
+        { status: 400 }
+      );
     }
 
     const {
-      cartaoId, nome, cpf, sexo, nascimento, email, celular,
-      tipoPaciente, comoConheceu, cep, logradouro,
-      numero, complemento, bairro, cidade, estado, pais
+      cartaoId,
+      nome,
+      cpf,
+      sexo,
+      nascimento,
+      email,
+      celular,
+      tipoPaciente,
+      comoConheceu,
+      cep,
+      logradouro,
+      numero,
+      complemento,
+      bairro,
+      cidade,
+      estado,
+      pais
     } = validation.data;
-    
+
     const pool = getPool();
 
     // Limpeza e formatação dos dados
@@ -55,51 +72,67 @@ export async function POST(req: Request) {
     const [day, month, year] = nascimento.split("/");
     const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 
-    // A query INSERT correta com 17 colunas
+    // Query INSERT com todas as colunas corretas (18)
     const query = `
       INSERT INTO Pacientes (
         id, nome, cpf, sexo, nascimento, email, celular,
-        tipo_paciente, como_conheceu, cep, logradouro,
+        tipo_paciente, como_conheceu, cartao_id, cep, logradouro,
         numero, complemento, bairro, cidade, estado, pais
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
       RETURNING *;
     `;
-    
-    // O array de valores correto com 17 valores, na ordem correta
+
     const values = [
-      cartaoId,                  // $1: id
-      nome,                      // $2: nome
-      normalizedCpf,             // $3: cpf
-      sexo,                      // $4: sexo
-      nascimentoISO,             // $5: nascimento
-      email || null,             // $6: email
-      normalizedCelular,         // $7: celular
-      tipoPaciente,              // $8: tipo_paciente
-      comoConheceu || null,      // $9: como_conheceu
-      normalizedCep,             // $10: cep
-      logradouro,                // $11: logradouro
-      numero,                    // $12: numero
-      complemento || null,       // $13: complemento
-      bairro,                    // $14: bairro
-      cidade,                    // $15: cidade
-      estado,                    // $16: estado
-      pais                       // $17: pais
+      cartaoId,          // $1: id
+      nome,              // $2: nome
+      normalizedCpf,     // $3: cpf
+      sexo,              // $4: sexo
+      nascimentoISO,     // $5: nascimento
+      email || null,     // $6: email
+      normalizedCelular, // $7: celular
+      tipoPaciente,      // $8: tipo_paciente
+      comoConheceu || null, // $9: como_conheceu
+      cartaoId,          // $10: cartao_id
+      normalizedCep,     // $11: cep
+      logradouro,        // $12: logradouro
+      numero,            // $13: numero
+      complemento || null, // $14: complemento
+      bairro,            // $15: bairro
+      cidade,            // $16: cidade
+      estado,            // $17: estado
+      pais               // $18: pais
     ];
 
     const result = await pool.query(query, values);
-    return NextResponse.json({ message: "Paciente adicionado com sucesso!", patient: result.rows[0] }, { status: 201 });
+
+    return NextResponse.json(
+      { message: "Paciente adicionado com sucesso!", patient: result.rows[0] },
+      { status: 201 }
+    );
 
   } catch (error: any) {
-    console.error('Erro detalhado ao inserir paciente:', error);
-    if (error.code === '23505') { // Código para violação de chave única
-      if (error.constraint === 'pacientes_cpf_key') {
-        return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
+    console.error("Erro detalhado ao inserir paciente:", {
+      message: error.message,
+      code: error.code,
+      constraint: error.constraint,
+      detail: error.detail,
+      stack: error.stack
+    });
+
+    // Tratamento de chave duplicada
+    if (error.code === "23505") {
+      if (error.constraint === "pacientes_cpf_key") {
+        return NextResponse.json({ error: "Já existe um paciente com este CPF." }, { status: 409 });
       }
-      if (error.constraint === 'pacientes_pkey') {
-         return NextResponse.json({ error: 'Já existe um paciente com este ID.' }, { status: 409 });
+      if (error.constraint === "pacientes_pkey") {
+        return NextResponse.json({ error: "Já existe um paciente com este ID." }, { status: 409 });
       }
     }
-    return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Erro interno no servidor ao adicionar paciente." },
+      { status: 500 }
+    );
   }
 }
