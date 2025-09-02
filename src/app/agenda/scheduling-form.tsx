@@ -101,13 +101,28 @@ export function SchedulingForm() {
     },
   });
 
+  // ===============================================
+  // FETCH AGENDAMENTOS COM DEBUG COMPLETO
+  // ===============================================
   const fetchAppointments = async () => {
     setIsLoading(true);
-    // Simulação de busca, pode ser substituído por API real
-    setTimeout(() => {
-      setAppointments([]); // Começa vazio
+    try {
+      const res = await fetch("/api/agendamentos");
+      const text = await res.text(); // pega a resposta bruta
+      console.log("Resposta bruta do backend:", text);
+
+      if (!res.ok) {
+        throw new Error(`Erro ao buscar agendamentos: ${text}`);
+      }
+
+      const raw = JSON.parse(text);
+      console.log("Agendamentos recebidos:", raw);
+      setAppointments(raw);
+    } catch (error) {
+      console.error("Erro no fetchAppointments:", error);
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   useEffect(() => {
@@ -116,7 +131,7 @@ export function SchedulingForm() {
     const today = new Date();
     setSelectedDate(today);
     form.setValue("date", today);
-  }, []); // form removido das dependências para evitar re-execução
+  }, []);
 
   const appointmentsOnSelectedDate = selectedDate
     ? appointments
@@ -187,7 +202,18 @@ export function SchedulingForm() {
     });
   };
 
-  const onSubmit = (data: AppointmentFormValues) => {
+  const handleDayClick = (day: Date | undefined) => {
+    if (!day) return;
+    setSelectedDate(day);
+    form.setValue("date", day);
+    form.setValue("time", "");
+  };
+
+  const appointmentDates = appointments.map(app => parseISO(app.date));
+  const isFormDisabled = !selectedPatient || isSubmitting;
+  const isDayUnavailable = selectedDate && (isSunday(selectedDate) || holidays.some(holiday => isSameDay(holiday, selectedDate)));
+
+  async function onSubmit(data: AppointmentFormValues) {
     if (!selectedPatient) {
       toast({
         variant: "destructive",
@@ -199,10 +225,8 @@ export function SchedulingForm() {
     
     setIsSubmitting(true);
 
-    const newAppointment: Appointment = {
-      id: Date.now(), // ID temporário
+    const submissionData = {
       patientId: selectedPatient.id,
-      patientName: selectedPatient.name,
       date: format(data.date, "yyyy-MM-dd"),
       time: data.time,
       type: data.type,
@@ -210,27 +234,37 @@ export function SchedulingForm() {
       price: parseFloat(data.price),
     };
 
-    setAppointments(prev => [...prev, newAppointment]);
+    try {
+        const response = await fetch('/api/agendamentos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(submissionData),
+        });
 
-    toast({
-      title: "Agendamento Realizado!",
-      description: `Consulta para ${selectedPatient.name} marcada com sucesso (localmente).`,
-    });
+        const result = await response.json();
 
-    handleClearPatient();
-    setIsSubmitting(false);
-  };
+        if (!response.ok) {
+            throw new Error(result.error || 'Erro ao criar agendamento');
+        }
 
-  const handleDayClick = (day: Date) => {
-    setSelectedDate(day);
-    form.setValue("date", day);
-    form.setValue("time", "");
-  };
+        toast({
+            title: "Agendamento Realizado!",
+            description: `Consulta para ${selectedPatient.name} marcada com sucesso.`,
+        });
+        
+        fetchAppointments(); // Re-fetch appointments to update the view
+        handleClearPatient();
 
-  const appointmentDates = appointments.map(app => parseISO(app.date));
-
-  const isFormDisabled = !selectedPatient || isSubmitting;
-  const isDayUnavailable = selectedDate && (isSunday(selectedDate) || holidays.some(holiday => isSameDay(holiday, selectedDate)));
+    } catch (error) {
+         toast({
+            variant: "destructive",
+            title: "Erro no Agendamento",
+            description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">

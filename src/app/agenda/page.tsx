@@ -1,5 +1,5 @@
 
-import { SchedulingForm } from "./scheduling-form";
+import  {SchedulingForm}  from "./scheduling-form";
 
 export default function AgendaPage() {
   return (
