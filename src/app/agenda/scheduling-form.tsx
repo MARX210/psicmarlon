@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -5,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format, parse, isSameDay, isSunday, addMinutes, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -28,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, Loader2 } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -48,17 +49,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 // Feriados
-const holidays = [
-  new Date("2024-01-01"),
-  new Date("2024-04-21"),
-  new Date("2024-05-01"),
-  new Date("2024-09-07"),
-  new Date("2024-10-12"),
-  new Date("2024-11-02"),
-  new Date("2024-11-15"),
-  new Date("2024-12-25"),
+const holidays: Date[] = [
+  // new Date("2024-01-01"), // Ano novo - Exemplo
 ];
 
 const defaultTimeSlots = [
@@ -95,13 +90,14 @@ export function SchedulingForm() {
   const [cpfInput, setCpfInput] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientNotFound, setPatientNotFound] = useState(false);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState(defaultTimeSlots);
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState<number | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [newTimeSlot, setNewTimeSlot] = useState("");
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -114,7 +110,7 @@ export function SchedulingForm() {
     },
   });
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/agendamentos");
@@ -129,15 +125,30 @@ export function SchedulingForm() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
-    fetchAppointments();
     const today = new Date();
     setSelectedDate(today);
     form.setValue("date", today);
-  }, []);
+    
+    // Carregar horários do localStorage ou usar padrão
+    try {
+      const storedSlots = localStorage.getItem("timeSlots");
+      if (storedSlots) {
+        setTimeSlots(JSON.parse(storedSlots));
+      } else {
+        setTimeSlots(defaultTimeSlots);
+      }
+    } catch (error) {
+      console.error("Failed to parse timeSlots from localStorage", error);
+      setTimeSlots(defaultTimeSlots);
+    }
+
+    fetchAppointments();
+
+  }, [form, fetchAppointments]);
 
   const appointmentsOnSelectedDate = selectedDate
     ? appointments
@@ -145,21 +156,43 @@ export function SchedulingForm() {
         .sort((a, b) => a.time.localeCompare(b.time))
     : [];
 
-  const timeSlotsForSelectedDay = defaultTimeSlots.filter(slot => {
-    const slotTime = parse(slot, "HH:mm", selectedDate!);
-    // Se estiver editando, o horário atual do agendamento deve estar disponível
+  const timeSlotsForSelectedDay = timeSlots.filter(slot => {
+    if (!selectedDate) return false;
+    const slotTime = parse(slot, "HH:mm", selectedDate);
     const currentAppointment = isEditing ? appointments.find(a => a.id === isEditing) : null;
-    if (currentAppointment && slot === currentAppointment.time && isSameDay(parseISO(currentAppointment.date), selectedDate!)) {
+    if (currentAppointment && slot === currentAppointment.time && isSameDay(parseISO(currentAppointment.date), selectedDate)) {
       return true;
     }
     return !appointmentsOnSelectedDate.some(app => {
-      // Ignora o próprio agendamento que está sendo editado
       if (app.id === isEditing) return false;
-      const appStartTime = parse(app.time, "HH:mm", selectedDate!);
+      const appStartTime = parse(app.time, "HH:mm", selectedDate);
       const appEndTime = addMinutes(appStartTime, app.duration);
       return slotTime >= appStartTime && slotTime < appEndTime;
     });
   }).sort();
+  
+  const handleAddTimeSlot = () => {
+    const trimmedTime = newTimeSlot.trim();
+    if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(trimmedTime) && !timeSlots.includes(trimmedTime)) {
+      const updatedSlots = [...timeSlots, trimmedTime].sort();
+      setTimeSlots(updatedSlots);
+      localStorage.setItem("timeSlots", JSON.stringify(updatedSlots));
+      setNewTimeSlot("");
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Horário Inválido",
+        description: "Use o formato HH:mm e o horário não pode ser repetido.",
+      });
+    }
+  };
+
+  const handleRemoveTimeSlot = (slotToRemove: string) => {
+    const updatedSlots = timeSlots.filter(slot => slot !== slotToRemove);
+    setTimeSlots(updatedSlots);
+    localStorage.setItem("timeSlots", JSON.stringify(updatedSlots));
+  };
+
 
   const handleSearchPatient = async () => {
     if (!cpfInput) return;
@@ -227,11 +260,14 @@ export function SchedulingForm() {
     setIsEditing(appointment.id);
     setSelectedPatient({ id: appointment.patientId, name: appointment.patientName, cpf: ''});
     form.setValue("patientId", appointment.patientId);
-    form.setValue("date", parseISO(appointment.date));
+    const appointmentDate = parseISO(appointment.date);
+    setSelectedDate(appointmentDate);
+    form.setValue("date", appointmentDate);
     form.setValue("time", appointment.time);
     form.setValue("type", appointment.type as "Online" | "Presencial");
     form.setValue("duration", String(appointment.duration));
     form.setValue("price", String(appointment.price));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
   const handleDeleteClick = (appointment: Appointment) => {
@@ -254,7 +290,7 @@ export function SchedulingForm() {
         title: "Agendamento Excluído!",
         description: "A consulta foi removida da sua agenda.",
       });
-      fetchAppointments(); // Re-fetch
+      fetchAppointments();
     } catch (error) {
       toast({
         variant: "destructive",
@@ -330,8 +366,9 @@ export function SchedulingForm() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-      {/* Formulário de agendamento */}
-      <div className="lg:col-span-2">
+      {/* Coluna Esquerda: Formulários */}
+      <div className="lg:col-span-2 space-y-8">
+         {/* Formulário de agendamento */}
         <Card>
           <CardHeader>
             <CardTitle>{isEditing ? 'Editar Consulta' : 'Nova Consulta'}</CardTitle>
@@ -489,6 +526,39 @@ export function SchedulingForm() {
             </Form>
           </CardContent>
         </Card>
+
+        {/* Gerenciador de Horários */}
+        {isClient && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Meus Horários</CardTitle>
+              <CardDescription>Adicione ou remova os horários disponíveis para agendamento.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <Input
+                  type="time"
+                  value={newTimeSlot}
+                  onChange={(e) => setNewTimeSlot(e.target.value)}
+                  placeholder="HH:mm"
+                />
+                <Button onClick={handleAddTimeSlot}><PlusCircle /> Adicionar</Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {timeSlots.length > 0 ? timeSlots.map(slot => (
+                  <Badge key={slot} variant="secondary" className="text-base">
+                    {slot}
+                    <button onClick={() => handleRemoveTimeSlot(slot)} className="ml-2 p-0.5 rounded-full hover:bg-destructive/20 text-destructive">
+                       <XCircle className="h-4 w-4"/>
+                    </button>
+                  </Badge>
+                )) : (
+                  <p className="text-sm text-muted-foreground">Nenhum horário definido.</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Calendário e agenda */}
@@ -511,7 +581,6 @@ export function SchedulingForm() {
                   mode="single"
                   selected={selectedDate}
                   onSelect={handleDayClick}
-                  onDayClick={handleDayClick}
                   locale={ptBR}
                   disabled={(date) => date < new Date() || isSunday(date) || holidays.some(h => isSameDay(h, date))}
                   modifiers={{
@@ -588,7 +657,7 @@ export function SchedulingForm() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setAppointmentToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Confirmar Exclusão</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Confirmar Exclusão</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
