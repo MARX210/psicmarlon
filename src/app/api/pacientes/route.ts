@@ -81,5 +81,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
   }
 }
-
-    

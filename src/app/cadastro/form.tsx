@@ -345,5 +345,3 @@ export function RegistrationForm() {
     </Form>
   );
 }
-
-    
