@@ -31,7 +31,7 @@ export const patientRegistrationSchema = z.object({
   tipoPaciente: z.number({ required_error: "Tipo de paciente é obrigatório" }),
   comoConheceu: z.string().optional(),
   cartaoId: z.string().min(1, "ID do cartão é obrigatório"),
-  cep: z.string().optional(),
+  cep: z.string().min(9, "CEP incompleto").optional().or(z.literal('')),
   logradouro: z.string().min(1, "Logradouro é obrigatório"),
   numero: z.string().min(1, "Número é obrigatório"),
   complemento: z.string().optional(),
