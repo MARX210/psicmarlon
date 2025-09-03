@@ -1,9 +1,6 @@
-
 import { NextResponse } from 'next/server';
-import getPool from '@/lib/db';
 import { z } from 'zod';
 import { sign } from 'jsonwebtoken';
-import { cookies } from 'next/headers';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido.'),
@@ -24,45 +21,33 @@ export async function POST(req: Request) {
 
     const { email, senha } = validation.data;
 
-    const pool = getPool();
-    const userResult = await pool.query('SELECT * FROM Usuarios WHERE email = $1', [email]);
+    // Credenciais armazenadas no backend via variáveis de ambiente
+    const userEmail = process.env.USER_EMAIL;
+    const userSenha = process.env.USER_PASSWORD;
+    const jwtSecret = process.env.JWT_SECRET;
 
-    if (userResult.rows.length === 0) {
+    if (!userEmail || !userSenha || !jwtSecret) {
+      console.error("Variáveis de ambiente não configuradas: USER_EMAIL, USER_PASSWORD, JWT_SECRET");
+      return NextResponse.json({ error: 'Configuração do servidor incompleta.' }, { status: 500 });
+    }
+
+    if (email !== userEmail || senha !== userSenha) {
       return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 });
     }
+    
+    // O nome do usuário para exibir no header. Pode vir do .env ou ser fixo.
+    const userName = process.env.USER_NAME || 'Dr. Marlon';
 
-    const user = userResult.rows[0];
-
-    // ATENÇÃO: Comparação de senha em texto plano.
-    // Isso corresponde à estrutura do banco de dados fornecida, mas não é seguro.
-    // O ideal é usar bcrypt.compare com uma senha hasheada.
-    const isPasswordCorrect = senha === user.senha;
-
-    if (!isPasswordCorrect) {
-      return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 });
-    }
-
-    const JWT_SECRET = process.env.JWT_SECRET;
-    if (!JWT_SECRET) {
-      // Este erro é para o desenvolvedor, não deve vazar para o cliente.
-      console.error('A variável de ambiente JWT_SECRET não está definida.');
-      return NextResponse.json({ error: 'Erro de configuração no servidor.' }, { status: 500 });
-    }
-
-    // Criar o token JWT
     const token = sign(
-      {
-        id: user.id,
-        email: user.email,
-        nome: user.nome,
-        role: user.role,
-      },
-      JWT_SECRET,
+      { email, nome: userName, role: 'admin' }, // Adicionando nome e role ao token
+      jwtSecret,
       { expiresIn: '1d' } // Token expira em 1 dia
     );
 
-    // Definir o cookie
-    cookies().set('token', token, {
+    const response = NextResponse.json({ message: 'Login bem-sucedido!' });
+    
+    // Define o cookie como httpOnly para segurança
+    response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24, // 1 dia
@@ -70,13 +55,10 @@ export async function POST(req: Request) {
       sameSite: 'lax',
     });
 
-    return NextResponse.json({ message: 'Login bem-sucedido!' }, { status: 200 });
+    return response;
 
   } catch (error) {
-    console.error('Erro no endpoint de login:', error);
-    return NextResponse.json(
-      { error: 'Erro interno do servidor.' },
-      { status: 500 }
-    );
+    console.error("Erro na API de login:", error);
+    return NextResponse.json({ error: "Erro interno do servidor." }, { status: 500 });
   }
 }
