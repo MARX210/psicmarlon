@@ -1,18 +1,21 @@
+
 "use client";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Stethoscope } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,12 +34,14 @@ export default function LoginPage() {
       if (response.ok) {
         toast({
           title: "Login bem-sucedido!",
-          description: `Bem-vindo(a), ${data.user.nome}!`,
+          description: `Bem-vindo(a) de volta!`,
         });
 
-        // Salva usuário no localStorage
         localStorage.setItem('user', JSON.stringify(data.user));
-        router.push('/');
+        
+        // Redireciona para a página de origem ou para a home
+        const from = searchParams.get('from') || '/';
+        router.push(from);
         router.refresh();
       } else {
         toast({
@@ -58,10 +63,14 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+       <div className="absolute top-8 left-8 flex items-center gap-2">
+         <Stethoscope className="w-8 h-8 text-primary" />
+         <span className="text-xl font-bold font-headline">PSICMARLON</span>
+       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Acesso Médico</CardTitle>
-          <CardDescription>Sistema de Consultório</CardDescription>
+          <CardTitle className="text-2xl font-bold">Acesso ao Sistema</CardTitle>
+          <CardDescription>Use suas credenciais para entrar</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -72,7 +81,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="@gmail.com"
+                placeholder="seu@email.com"
                 required
                 disabled={isLoading}
               />

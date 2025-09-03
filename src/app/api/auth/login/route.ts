@@ -19,6 +19,10 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { email, senha } = body;
 
+    if (!email || !senha) {
+        return NextResponse.json({ error: "Email e senha são obrigatórios" }, { status: 400 });
+    }
+
     const pool = getPool();
 
     // Busca usuário ignorando espaços e maiúsculas/minúsculas
@@ -67,7 +71,6 @@ export async function POST(req: Request) {
       {
         message: "Login bem-sucedido!",
         user: userWithoutPassword,
-        token: token,
       },
       { status: 200 }
     );
