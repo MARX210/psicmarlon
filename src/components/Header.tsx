@@ -15,26 +15,44 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, UserPlus } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
+
+interface User {
+  id: number;
+  email: string;
+  nome: string;
+  role: 'medico' | 'recepcionista' | 'admin';
+}
 
 export function Header() {
   const pathname = usePathname();
   const { theme } = useTheme();
   const [logoSrc, setLogoSrc] = useState("/images/logobranca.png"); // Padrão para SSR
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Define a logo com base no tema do lado do cliente para evitar erro de hidratação
     setLogoSrc(theme === "dark" ? "/images/logopreta.png" : "/images/logobranca.png");
+    
+    // Pega os dados do usuário do localStorage
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
   }, [theme]);
 
 
   const navLinks = [
     { href: "/", label: "Início" },
-    { href: "/cadastro", label: "Cadastro" },
+    { href: "/cadastro", label: "Pacientes" },
     { href: "/agenda", label: "Agenda" },
   ];
+  
+  if (user?.role === 'admin') {
+    navLinks.push({ href: "/register", label: "Registrar" });
+  }
 
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">

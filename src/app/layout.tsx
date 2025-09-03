@@ -4,6 +4,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
+import { AppWrapper } from './context/app-context';
 
 export const metadata: Metadata = {
   title: 'PsicMarlon',
@@ -35,11 +36,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {/* O Header e Footer não serão mostrados na tela de login */}
-          <main className="flex-grow">
-            {children}
-          </main>
-          <Toaster />
+            <Header />
+            <main className="flex-grow container mx-auto px-4 py-8">
+                {children}
+            </main>
+            <Footer />
+            <Toaster />
         </ThemeProvider>
       </body>
     </html>
