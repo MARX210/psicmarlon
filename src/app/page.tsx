@@ -24,9 +24,10 @@ export default function Home() {
   useEffect(() => {
     setIsClient(true);
     const userData = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
     
-    if (!userData || !token) {
+    // A verificação do token agora é feita pelo middleware
+    if (!userData) {
+      // O middleware já deve ter redirecionado, mas como uma segurança extra
       router.push('/login');
       return;
     }
@@ -39,23 +40,27 @@ export default function Home() {
     }
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
     localStorage.removeItem('user');
     
-    // Limpa o cookie do token para o middleware
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    // Chama uma API para limpar o cookie httpOnly
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch(e) {
+      console.error("Erro ao fazer logout", e)
+    }
 
     toast({
       title: "Você saiu!",
       description: "Sua sessão foi encerrada com segurança.",
     });
     router.push('/login');
+    router.refresh();
   };
 
   if (!isClient || !user) {
     return (
-      <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-muted-foreground">Carregando...</p>

@@ -4,7 +4,6 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
-import { AppWrapper } from './context/app-context';
 
 export const metadata: Metadata = {
   title: 'PsicMarlon',

@@ -16,7 +16,6 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 
 interface User {
@@ -28,16 +27,11 @@ interface User {
 
 export function Header() {
   const pathname = usePathname();
-  const { theme } = useTheme();
-  const [logoSrc, setLogoSrc] = useState("/images/logobranca.png"); // Padrão para SSR
   const [user, setUser] = useState<User | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    // Define a logo com base no tema do lado do cliente para evitar erro de hidratação
-    setLogoSrc(theme === "dark" ? "/images/logopreta.png" : "/images/logobranca.png");
-    
     // Pega os dados do usuário do localStorage
     const userData = localStorage.getItem('user');
     if (userData) {
@@ -47,8 +41,7 @@ export function Header() {
         console.error("Failed to parse user data from localStorage", error);
       }
     }
-  }, [theme]);
-
+  }, [pathname]); // Re-executa quando a rota muda
 
   const navLinks = [
     { href: "/", label: "Início" },
