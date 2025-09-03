@@ -29,7 +29,7 @@ export function RegistrationForm() {
     defaultValues: {
       nome: "",
       cpf: "",
-      sexo: "",
+      sexo: undefined,
       nascimento: "",
       email: "",
       celular: "",
@@ -120,17 +120,17 @@ export function RegistrationForm() {
         }
         break;
     }
-    
+
     const maxLength = {
-        cpf: 14,
-        nascimento: 10,
-        cep: 9,
-        celular: 15
+      cpf: 14,
+      nascimento: 10,
+      cep: 9,
+      celular: 15
     };
 
     form.setValue(fieldName, maskedValue.slice(0, maxLength[mask]));
   };
-  
+
   async function onSubmit(data: PatientFormValues) {
     try {
       const response = await fetch("/api/pacientes", {
@@ -143,18 +143,18 @@ export function RegistrationForm() {
 
       if (!response.ok) {
         if (response.status === 400 && result.details) {
-            const fieldErrors = result.details.fieldErrors;
-            Object.keys(fieldErrors).forEach((field) => {
-                const messages = fieldErrors[field];
-                if (messages) {
-                    form.setError(field as keyof PatientFormValues, {
-                        type: "manual",
-                        message: messages.join(", "),
-                    });
-                }
-            });
-            toast({ variant: "destructive", title: "Erro de Validação", description: "Por favor, corrija os campos indicados." });
-            return;
+          const fieldErrors = result.details.fieldErrors;
+          Object.keys(fieldErrors).forEach((field) => {
+            const messages = fieldErrors[field];
+            if (messages) {
+              form.setError(field as keyof PatientFormValues, {
+                type: "manual",
+                message: messages.join(", "),
+              });
+            }
+          });
+          toast({ variant: "destructive", title: "Erro de Validação", description: "Por favor, corrija os campos indicados." });
+          return;
         }
         throw new Error(result.error || "Algo deu errado no servidor.");
       }
@@ -190,19 +190,19 @@ export function RegistrationForm() {
                 <FormMessage />
               </FormItem>
             )} />
-             <FormField control={form.control} name="cpf" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CPF*</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="000.000.000-00"
-                      {...field}
-                      onChange={(e) => handleInputChange(e, "cpf", "cpf")}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+            <FormField control={form.control} name="cpf" render={({ field }) => (
+              <FormItem>
+                <FormLabel>CPF*</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="000.000.000-00"
+                    {...field}
+                    onChange={(e) => handleInputChange(e, "cpf", "cpf")}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
             />
             <FormField control={form.control} name="sexo" render={({ field }) => (
               <FormItem>
@@ -227,36 +227,42 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Data de Nascimento*</FormLabel>
                 <FormControl>
-                   <Input
-                     placeholder="dd/mm/aaaa"
-                     {...field}
-                     onChange={(e) => handleInputChange(e, "nascimento", "nascimento")}
-                   />
+                  <Input
+                    placeholder="dd/mm/aaaa"
+                    {...field}
+                    onChange={(e) => handleInputChange(e, "nascimento", "nascimento")}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField control={form.control} name="tipoPaciente" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tipo de Paciente*</FormLabel>
-                <Select
-                  onValueChange={(v) => field.onChange(Number(v))}
-                  value={field.value ? String(field.value) : ""}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {Object.entries(patientTypes).map(([key, value]) => (
-                      <SelectItem key={key} value={key}>{value}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <FormField
+              control={form.control}
+              name="tipoPaciente"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Paciente*</FormLabel>
+                  <Select
+                    onValueChange={(v: string) => field.onChange(Number(v))}
+                    value={field.value !== undefined ? String(field.value) : undefined}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(patientTypes).map(([key, value]) => (
+                        <SelectItem key={key} value={key}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField control={form.control} name="cartaoId" render={({ field }) => (
               <FormItem>
                 <FormLabel>Nº Cartão/ID Gerado</FormLabel>
@@ -288,11 +294,11 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Celular</FormLabel>
                 <FormControl>
-                   <Input
-                     placeholder="(99) 99999-9999"
-                     {...field}
-                     onChange={(e) => handleInputChange(e, "celular", "celular")}
-                   />
+                  <Input
+                    placeholder="(99) 99999-9999"
+                    {...field}
+                    onChange={(e) => handleInputChange(e, "celular", "celular")}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -319,11 +325,11 @@ export function RegistrationForm() {
               <FormItem className="sm:col-span-1">
                 <FormLabel>CEP</FormLabel>
                 <FormControl>
-                   <Input
-                     placeholder="00000-000"
-                     {...field}
-                     onChange={(e) => handleInputChange(e, "cep", "cep")}
-                   />
+                  <Input
+                    placeholder="00000-000"
+                    {...field}
+                    onChange={(e) => handleInputChange(e, "cep", "cep")}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

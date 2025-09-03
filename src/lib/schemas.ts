@@ -1,5 +1,3 @@
-
-"use client";
 import { z } from "zod";
 
 // Função para validar datas no formato dd/mm/yyyy e não futuras
@@ -10,7 +8,7 @@ const isValidDate = (dateString: string) => {
 
   const date = new Date(year, month - 1, day);
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas a data
+  today.setHours(0, 0, 0, 0);
   return (
     date.getFullYear() === year &&
     date.getMonth() === month - 1 &&
@@ -22,7 +20,9 @@ const isValidDate = (dateString: string) => {
 export const patientRegistrationSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   cpf: z.string().min(14, "CPF é obrigatório e deve estar completo"),
-  sexo: z.enum(["Masculino", "Feminino", "Outro", "Prefiro não informar"], { required_error: "Sexo é obrigatório" }),
+  sexo: z.enum(["Masculino", "Feminino", "Outro", "Prefiro não informar"], { 
+    required_error: "Sexo é obrigatório" 
+  }),
   nascimento: z.string()
     .min(10, "Data de nascimento é obrigatória")
     .refine(isValidDate, { message: "Data de nascimento inválida ou futura" }),
