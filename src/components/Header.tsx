@@ -15,7 +15,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, UserPlus } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 
@@ -31,27 +31,38 @@ export function Header() {
   const { theme } = useTheme();
   const [logoSrc, setLogoSrc] = useState("/images/logobranca.png"); // Padrão para SSR
   const [user, setUser] = useState<User | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     // Define a logo com base no tema do lado do cliente para evitar erro de hidratação
     setLogoSrc(theme === "dark" ? "/images/logopreta.png" : "/images/logobranca.png");
     
     // Pega os dados do usuário do localStorage
     const userData = localStorage.getItem('user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error("Failed to parse user data from localStorage", error);
+      }
     }
   }, [theme]);
 
 
   const navLinks = [
     { href: "/", label: "Início" },
-    { href: "/cadastro", label: "Pacientes" },
+    { href: "/cadastro", label: "Cadastro" },
     { href: "/agenda", label: "Agenda" },
   ];
   
-  if (user?.role === 'admin') {
-    navLinks.push({ href: "/register", label: "Registrar" });
+  if (isClient && user?.role === 'admin') {
+    navLinks.push({ href: "/register", label: "Registrar Usuário" });
+  }
+
+  // Não renderiza o header na página de login
+  if (pathname === '/login') {
+    return null;
   }
 
   return (
