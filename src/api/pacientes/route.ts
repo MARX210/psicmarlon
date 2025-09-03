@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     }
 
     const {
-      cartaoId, nome, cpf, sexo, nascimento, email,
+      cartaoId, nome, cpf, sexo, nascimento, email,celular,
       tipoPaciente, comoConheceu, cep, logradouro,
       numero, complemento, bairro, cidade, estado, pais
     } = validation.data;
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     const query = `
       INSERT INTO Pacientes (
-        id, nome, cpf, sexo, nascimento, email,
+        id, nome, cpf, sexo, nascimento, email, celular,
         tipo_paciente, como_conheceu, cep, logradouro,
         numero, complemento, bairro, cidade, estado, pais
       )
