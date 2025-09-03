@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./theme-toggle";
@@ -14,31 +15,46 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, LogOut, User } from "lucide-react";
 import { useState, useEffect } from "react";
+import { jwtDecode } from 'jwt-decode';
+import Cookies from 'js-cookie';
 
-interface User {
+interface UserPayload {
   id: number;
   email: string;
   nome: string;
   role: 'medico' | 'recepcionista' | 'admin';
 }
 
+async function handleLogout(router: any) {
+    const response = await fetch('/api/auth/logout', { method: 'POST' });
+    if (response.ok) {
+        router.push('/login');
+        router.refresh();
+    }
+}
+
 export function Header() {
   const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
+  const [user, setUser] = useState<UserPayload | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    // Pega os dados do usuário do localStorage
-    const userData = localStorage.getItem('user');
-    if (userData) {
+    // Pega o token do cookie
+    const token = Cookies.get('token');
+    if (token) {
       try {
-        setUser(JSON.parse(userData));
+        const decodedToken = jwtDecode<UserPayload>(token);
+        setUser(decodedToken);
       } catch (error) {
-        console.error("Failed to parse user data from localStorage", error);
+        console.error("Failed to decode token", error);
+        setUser(null);
       }
+    } else {
+        setUser(null);
     }
   }, [pathname]); // Re-executa quando a rota muda
 
@@ -49,7 +65,7 @@ export function Header() {
   ];
   
   if (isClient && user?.role === 'admin') {
-    navLinks.push({ href: "/register", label: "Registrar Usuário" });
+    // navLinks.push({ href: "/register", label: "Registrar Usuário" });
   }
 
   // Não renderiza o header na página de login
@@ -103,6 +119,12 @@ export function Header() {
                 <Link href={link.href}>{link.label}</Link>
               </Button>
             ))}
+             {isClient && user && (
+              <Button variant="ghost" size="icon" onClick={() => handleLogout(router)}>
+                <LogOut className="h-5 w-5" />
+                <span className="sr-only">Sair</span>
+              </Button>
+            )}
           </nav>
           <ThemeToggle />
           <div className="md:hidden">
@@ -120,6 +142,12 @@ export function Header() {
                         PSICMARLON
                      </span>
                   </SheetTitle>
+                   {isClient && user && (
+                    <div className="text-sm text-muted-foreground pt-2 flex items-center justify-center gap-2">
+                        <User className="w-4 h-4"/> 
+                        <span>{user.nome}</span>
+                    </div>
+                  )}
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 mt-8">
                   {navLinks.map((link) => (
@@ -138,6 +166,14 @@ export function Header() {
                     </SheetClose>
                   ))}
                 </nav>
+                 {isClient && user && (
+                    <div className="mt-8 pt-4 border-t">
+                        <Button variant="outline" className="w-full" onClick={() => handleLogout(router)}>
+                            <LogOut className="mr-2 h-5 w-5" />
+                            Sair
+                        </Button>
+                    </div>
+                 )}
               </SheetContent>
             </Sheet>
           </div>
