@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import bcrypt from "bcryptjs";
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
       [email]
     );
 
+    // Se o usuário não for encontrado, as credenciais são inválidas
     if (userResult.rows.length === 0) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
@@ -58,6 +60,7 @@ export async function POST(req: Request) {
       .setExpirationTime("1h") // Token expira em 1 hora
       .sign(getSecretKey());
 
+    // Remove a senha do objeto do usuário antes de retornar
     const { senha: _, ...userWithoutPassword } = user;
     
     const response = NextResponse.json(
