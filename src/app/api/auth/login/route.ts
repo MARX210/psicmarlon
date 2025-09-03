@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { SignJWT } from "jose";
+
+// Função para obter a chave secreta de forma segura
+const getSecretKey = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET não está definido nas variáveis de ambiente');
+  }
+  return new TextEncoder().encode(secret);
+};
+
 
 export async function POST(req: Request) {
   try {
@@ -9,9 +20,11 @@ export async function POST(req: Request) {
 
     const pool = getPool();
 
-    // Busca usuário no banco
+    // Busca usuário ignorando espaços e maiúsculas/minúsculas
     const userResult = await pool.query(
-      "SELECT id, nome, email, senha FROM usuarios WHERE email = $1",
+      `SELECT id, nome, email, senha, role
+       FROM usuarios
+       WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) AND ativo = true`,
       [email]
     );
 
@@ -20,24 +33,57 @@ export async function POST(req: Request) {
     }
 
     const user = userResult.rows[0];
-    
-    // Verifica senha
+
+    // Compara a senha fornecida com o hash salvo no banco
     const isPasswordValid = await bcrypt.compare(senha, user.senha);
-    
+
     if (!isPasswordValid) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
+    
+    // Atualiza a data do último login
+    await pool.query(
+        'UPDATE usuarios SET ultimo_login = CURRENT_TIMESTAMP WHERE id = $1',
+        [user.id]
+    );
 
-    // Remove a senha da resposta
+    // Cria o token JWT
+    const token = await new SignJWT({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("1h") // Token expira em 1 hora
+      .sign(getSecretKey());
+
     const { senha: _, ...userWithoutPassword } = user;
+    
+    const response = NextResponse.json(
+      {
+        message: "Login bem-sucedido!",
+        user: userWithoutPassword,
+        token: token,
+      },
+      { status: 200 }
+    );
+    
+    // Define o cookie do token
+    response.cookies.set('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 60 * 60, // 1 hora
+    });
 
-    return NextResponse.json({
-      message: "Login bem-sucedido!",
-      user: userWithoutPassword,
-    }, { status: 200 });
+    return response;
 
   } catch (error) {
     console.error("Erro no login:", error);
-    return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro interno no servidor" },
+      { status: 500 }
+    );
   }
 }

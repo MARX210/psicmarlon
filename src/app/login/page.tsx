@@ -22,9 +22,7 @@ export default function LoginPage() {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha }),
       });
 
@@ -35,7 +33,8 @@ export default function LoginPage() {
           title: "Login bem-sucedido!",
           description: `Bem-vindo(a), ${data.user.nome}!`,
         });
-        // REMOVEU: localStorage.setItem('token', data.token); ← Não precisa mais!
+
+        // Salva usuário no localStorage
         localStorage.setItem('user', JSON.stringify(data.user));
         router.push('/');
         router.refresh();
@@ -47,11 +46,11 @@ export default function LoginPage() {
         });
       }
     } catch (error) {
-       toast({
-          variant: "destructive",
-          title: "Erro de Conexão",
-          description: 'Não foi possível conectar ao servidor.',
-        });
+      toast({
+        variant: "destructive",
+        title: "Erro de Conexão",
+        description: 'Não foi possível conectar ao servidor.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -61,8 +60,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Acesso Médico</CardTitle> {/* Alterado */}
-          <CardDescription>Sistema de Consultório</CardDescription> {/* Alterado */}
+          <CardTitle className="text-2xl font-bold">Acesso Médico</CardTitle>
+          <CardDescription>Sistema de Consultório</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -78,7 +77,6 @@ export default function LoginPage() {
                 disabled={isLoading}
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <Input
@@ -91,21 +89,11 @@ export default function LoginPage() {
                 disabled={isLoading}
               />
             </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full"
-            >
+            <Button type="submit" disabled={isLoading} className="w-full">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-           <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-md"> {/* Alterado cor */}
-            <p className="text-sm text-blue-800 text-center"> {/* Alterado cor */}
-              ⚕️ Acesso restrito à equipe médica {/* Alterado texto */}
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>
