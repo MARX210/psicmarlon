@@ -4,7 +4,6 @@ import getPool from '@/lib/db';
 import { z } from 'zod';
 import { sign } from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import bcrypt from 'bcryptjs';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido.'),
@@ -18,7 +17,7 @@ export async function POST(req: Request) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Dados inválidos.', details: validation.error.flatten() },
+        { error: 'Dados de login inválidos.', details: validation.error.flatten() },
         { status: 400 }
       );
     }
@@ -34,12 +33,9 @@ export async function POST(req: Request) {
 
     const user = userResult.rows[0];
 
-    // Comparar a senha fornecida com a senha (potencialmente plana) no banco
-    // Idealmente, a senha no banco estaria hasheada e usaríamos bcrypt.compare
-    // Por enquanto, faremos uma comparação direta para corresponder ao seu DB.
-    // NOTA DE SEGURANÇA: Armazenar senhas em texto plano é extremamente inseguro.
-    // O ideal seria hashear as senhas no momento do cadastro.
-    // Ex: const isPasswordCorrect = await bcrypt.compare(senha, user.senha);
+    // ATENÇÃO: Comparação de senha em texto plano.
+    // Isso corresponde à estrutura do banco de dados fornecida, mas não é seguro.
+    // O ideal é usar bcrypt.compare com uma senha hasheada.
     const isPasswordCorrect = senha === user.senha;
 
     if (!isPasswordCorrect) {
@@ -48,7 +44,9 @@ export async function POST(req: Request) {
 
     const JWT_SECRET = process.env.JWT_SECRET;
     if (!JWT_SECRET) {
-      throw new Error('A chave secreta JWT_SECRET não está definida no .env');
+      // Este erro é para o desenvolvedor, não deve vazar para o cliente.
+      console.error('A variável de ambiente JWT_SECRET não está definida.');
+      return NextResponse.json({ error: 'Erro de configuração no servidor.' }, { status: 500 });
     }
 
     // Criar o token JWT
@@ -69,12 +67,13 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24, // 1 dia
       path: '/',
+      sameSite: 'lax',
     });
 
     return NextResponse.json({ message: 'Login bem-sucedido!' }, { status: 200 });
 
   } catch (error) {
-    console.error('Erro no login:', error);
+    console.error('Erro no endpoint de login:', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor.' },
       { status: 500 }
