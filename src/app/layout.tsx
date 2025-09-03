@@ -28,18 +28,17 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased flex flex-col min-h-screen">
+      <body className="font-body antialiased flex flex-col min-h-screen bg-background">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <Header />
-          <main className="flex-grow container mx-auto p-4 md:p-6">
+          {/* O Header e Footer não serão mostrados na tela de login */}
+          <main className="flex-grow">
             {children}
           </main>
-          <Footer />
           <Toaster />
         </ThemeProvider>
       </body>

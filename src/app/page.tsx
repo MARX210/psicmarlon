@@ -1,15 +1,87 @@
-
+"use client";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, UserPlus, Stethoscope, UserCheck } from "lucide-react";
+import { Calendar, UserPlus, Stethoscope, UserCheck, LogOut, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useToast } from '@/hooks/use-toast';
 
+interface User {
+  id: number;
+  email: string;
+  nome: string;
+  role: 'medico' | 'recepcionista' | 'admin';
+}
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setIsClient(true);
+    const userData = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    
+    if (!userData || !token) {
+      router.push('/login');
+      return;
+    }
+    
+    try {
+      setUser(JSON.parse(userData));
+    } catch(e) {
+      // Se os dados do usuário estiverem corrompidos, força o logout
+      handleLogout();
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Limpa o cookie do token para o middleware
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+    toast({
+      title: "Você saiu!",
+      description: "Sua sessão foi encerrada com segurança.",
+    });
+    router.push('/login');
+  };
+
+  if (!isClient || !user) {
+    return (
+      <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="mt-4 text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-16 md:space-y-24">
-      <section className="text-center pt-12 md:pt-20">
+      <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow-sm border">
+        <div>
+           <p className="text-lg font-semibold text-foreground">Olá, {user.nome}!</p>
+           <p className="text-sm text-muted-foreground capitalize">{user.role}</p>
+        </div>
+        <Button
+            onClick={handleLogout}
+            variant="outline"
+            size="sm"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Sair</span>
+          </Button>
+      </div>
+
+      <section className="text-center pt-8 md:pt-12">
         <div className="flex justify-center mb-6">
             <Stethoscope className="h-16 w-16 text-primary" />
         </div>
@@ -108,5 +180,5 @@ export default function Home() {
           </div>
       </section>
     </div>
-  )
+  );
 }
