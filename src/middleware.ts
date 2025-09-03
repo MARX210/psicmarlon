@@ -1,71 +1,27 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
 
-// Função para obter a chave secreta de forma segura
-const getSecretKey = () => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    throw new Error('JWT_SECRET não está definido nas variáveis de ambiente');
-  }
-  return new TextEncoder().encode(secret);
-};
-
-// Função para verificar o token
-async function verifyToken(token: string) {
-  try {
-    const { payload } = await jwtVerify(token, getSecretKey());
-    return payload as { role: string; [key: string]: any };
-  } catch (error) {
-    console.error('Erro de verificação do token:', error);
-    return null; // Retorna nulo se a verificação falhar
-  }
-}
-
-export async function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
+export function middleware(request: NextRequest) {
+  const user = request.cookies.get('user') || localStorage.getItem('user'); // Verifica de ambas as formas
   const { pathname } = request.nextUrl;
 
+  // Rotas públicas
   const publicRoutes = ['/login'];
-  const isApiAuthRoute = pathname.startsWith('/api/auth');
-
-  // A rota de login e as rotas de API de autenticação são sempre públicas
-  if (publicRoutes.includes(pathname) || isApiAuthRoute) {
-    // Se o usuário já está logado e tenta acessar /login, redireciona para a home
-    if (token && pathname === '/login') {
-      const decoded = await verifyToken(token);
-      if (decoded) {
-        return NextResponse.redirect(new URL('/', request.url));
-      }
-    }
-    return NextResponse.next();
-  }
-
-  // Se não há token e a rota não é pública, redireciona para login
-  if (!token) {
+  const isPublicRoute = publicRoutes.includes(pathname);
+  
+  // Se não está em rota pública e não tem usuário logado, redireciona para login
+  if (!isPublicRoute && !user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Se há token, verifica sua validade
-  const decoded = await verifyToken(token);
-
-  // Se o token for inválido, redireciona para o login e limpa o cookie
-  if (!decoded) {
-    const response = NextResponse.redirect(new URL('/login', request.url));
-    response.cookies.delete('token');
-    return response;
-  }
-
-  // Exemplo de proteção de rota: apenas admins podem registrar novos usuários
-  if (pathname.startsWith('/register') && decoded.role !== 'admin') {
+  // Se está logado e tenta acessar login, redireciona para home
+  if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/', request.url));
   }
-
 
   return NextResponse.next();
 }
 
 export const config = {
-  // Ignora arquivos estáticos, imagens e a favicon
-  matcher: ['/((?!api/|_next/static|_next/image|favicon.ico|images/).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

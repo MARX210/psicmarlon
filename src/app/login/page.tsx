@@ -35,7 +35,7 @@ export default function LoginPage() {
           title: "Login bem-sucedido!",
           description: `Bem-vindo(a), ${data.user.nome}!`,
         });
-        localStorage.setItem('token', data.token);
+        // REMOVEU: localStorage.setItem('token', data.token); ← Não precisa mais!
         localStorage.setItem('user', JSON.stringify(data.user));
         router.push('/');
         router.refresh();
@@ -61,8 +61,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Acesso Restrito</CardTitle>
-          <CardDescription>Para médicos e recepcionistas</CardDescription>
+          <CardTitle className="text-2xl font-bold">Acesso Médico</CardTitle> {/* Alterado */}
+          <CardDescription>Sistema de Consultório</CardDescription> {/* Alterado */}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -73,7 +73,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder="@gmail.com"
                 required
                 disabled={isLoading}
               />
@@ -101,9 +101,9 @@ export default function LoginPage() {
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-           <div className="mt-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-md">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200 text-center">
-              ⚠️ Acesso restrito à equipe.
+           <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-md"> {/* Alterado cor */}
+            <p className="text-sm text-blue-800 text-center"> {/* Alterado cor */}
+              ⚕️ Acesso restrito à equipe médica {/* Alterado texto */}
             </p>
           </div>
         </CardContent>
