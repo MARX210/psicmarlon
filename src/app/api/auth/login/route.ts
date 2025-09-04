@@ -10,24 +10,26 @@ export async function POST(req: Request) {
     const userPassword = process.env.USER_PASSWORD;
 
     if (!userEmail || !userPassword) {
-      console.error("Variáveis de ambiente USER_EMAIL ou USER_PASSWORD não estão configuradas.");
+      console.error("ERRO: Variáveis de ambiente USER_EMAIL ou USER_PASSWORD não estão configuradas na Vercel.");
       return NextResponse.json(
-        { error: "Erro de configuração no servidor." },
+        { error: "Erro de configuração no servidor. Contate o administrador." },
         { status: 500 }
       );
     }
+    
+    console.log("INFO: Variáveis de ambiente de login encontradas na Vercel.");
 
     if (email === userEmail && password === userPassword) {
-      // Apenas retorna sucesso, sem tokens ou cookies.
       return NextResponse.json({ message: "Login bem-sucedido" }, { status: 200 });
     } else {
+      console.warn(`Tentativa de login falhou para o email: ${email}`);
       return NextResponse.json(
         { error: "Credenciais inválidas" },
         { status: 401 }
       );
     }
   } catch (error) {
-    console.error("Erro na API de login:", error);
+    console.error("Erro crítico na API de login:", error);
     return NextResponse.json(
       { error: "Erro interno no servidor" },
       { status: 500 }

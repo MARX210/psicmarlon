@@ -5,11 +5,14 @@ let pool: pkg.Pool | null = null;
 
 const getPool = () => {
   if (!pool) {
-    if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === '') {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl || databaseUrl.trim() === '') {
+      console.error('ERRO: Variável de ambiente DATABASE_URL não está configurada ou está vazia.');
       throw new Error('DATABASE_URL is not set or is empty in the environment variables');
     }
+     console.log("INFO: Variável de ambiente DATABASE_URL encontrada.");
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: databaseUrl,
     });
   }
   return pool;
