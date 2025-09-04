@@ -2,7 +2,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,7 +20,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -48,8 +46,8 @@ export default function LoginPage() {
         description: "Você será redirecionado para a página inicial.",
       });
 
-      // Redirecionamento simples para a página inicial
-      router.push("/");
+      // Redirecionamento simples e direto para a página inicial.
+      window.location.href = "/";
       
     } catch (error) {
       toast({
@@ -92,6 +90,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                placeholder="Sua senha"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

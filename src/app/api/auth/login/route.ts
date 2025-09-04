@@ -10,13 +10,15 @@ export async function POST(req: Request) {
     const userPassword = process.env.USER_PASSWORD;
 
     if (!userEmail || !userPassword) {
+      console.error("Variáveis de ambiente USER_EMAIL ou USER_PASSWORD não estão configuradas.");
       return NextResponse.json(
-        { error: "Variáveis de ambiente não configuradas no servidor." },
+        { error: "Erro de configuração no servidor." },
         { status: 500 }
       );
     }
 
     if (email === userEmail && password === userPassword) {
+      // Apenas retorna sucesso, sem tokens ou cookies.
       return NextResponse.json({ message: "Login bem-sucedido" }, { status: 200 });
     } else {
       return NextResponse.json(
