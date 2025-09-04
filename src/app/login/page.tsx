@@ -37,19 +37,19 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || "Credenciais inválidas");
       }
 
       toast({
         title: "Login bem-sucedido!",
-        description: "Você será redirecionado em breve.",
+        description: "Você será redirecionado para a página inicial.",
       });
 
-      // Redireciona para a página inicial ou para a página que o usuário tentou acessar
+      // Redirecionamento simples para a página inicial
       router.push("/");
-      router.refresh(); // Garante que o header seja atualizado com o estado de login
       
     } catch (error) {
       toast({

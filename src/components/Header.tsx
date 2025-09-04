@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./theme-toggle";
@@ -15,70 +15,10 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, LogOut } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState } from "react";
-import { jwtDecode } from "jwt-decode";
-import { getCookie } from 'cookies-next';
-
-
-interface UserPayload {
-  name: string;
-  email: string;
-}
+import { Menu } from "lucide-react";
 
 export function Header() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { toast } = useToast();
-  const [user, setUser] = useState<UserPayload | null>(null);
-
-  useEffect(() => {
-    // Isso garante que o código só rode no cliente
-    const token = getCookie('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode<UserPayload>(token);
-        setUser(decoded);
-      } catch (error) {
-        console.error("Token inválido:", error);
-        // Opcional: limpar o cookie se for inválido
-        handleLogout(false);
-      }
-    } else {
-        setUser(null);
-    }
-  }, [pathname]); // Re-avalia quando a rota muda
-
-
-  const handleLogout = async (showToast = true) => {
-    try {
-      const res = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
-
-      if (!res.ok) throw new Error("Falha ao fazer logout");
-      
-      setUser(null);
-      
-      if(showToast) {
-        toast({
-          title: "Logout bem-sucedido",
-          description: "Você foi desconectado com segurança.",
-        });
-      }
-      
-      router.push("/login");
-      router.refresh();
-
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível fazer logout. Tente novamente.",
-      });
-    }
-  };
 
   const navLinks = [
     { href: "/", label: "Início" },
@@ -117,14 +57,6 @@ export function Header() {
         </div>
         
         <div className="flex items-center justify-end gap-2 flex-shrink-0">
-          {user && (
-            <div className="hidden md:flex items-center gap-4">
-              <span className="text-sm font-medium">Olá, {user.name}</span>
-               <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
-                  <LogOut className="h-5 w-5" />
-               </Button>
-            </div>
-          )}
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
             {navLinks.map((link) => (
               <Button
@@ -133,8 +65,7 @@ export function Header() {
                 variant="ghost"
                 className={cn(
                   "text-sm lg:text-base",
-                  (pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href))) &&
-                    "font-bold text-primary underline"
+                   pathname === link.href && "font-bold text-primary underline"
                 )}
               >
                 <Link href={link.href}>{link.label}</Link>
@@ -165,7 +96,7 @@ export function Header() {
                         href={link.href}
                         className={cn(
                           "text-lg text-center p-2 rounded-lg",
-                          (pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href)))
+                           pathname === link.href
                             ? "bg-primary text-primary-foreground font-bold"
                             : "text-foreground hover:bg-accent"
                         )}
@@ -174,13 +105,6 @@ export function Header() {
                       </Link>
                     </SheetClose>
                   ))}
-                  {user && (
-                     <SheetClose asChild>
-                      <Button variant="destructive" onClick={handleLogout} className="w-full mt-4">
-                         <LogOut className="mr-2 h-5 w-5" /> Sair
-                      </Button>
-                     </SheetClose>
-                  )}
                 </nav>
               </SheetContent>
             </Sheet>
