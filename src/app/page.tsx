@@ -14,19 +14,11 @@ interface UserPayload {
   name: string;
 }
 
-const getClientCookie = (name: string): string | undefined => {
-  if (typeof window === 'undefined') return undefined;
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift();
-};
-
-
 export default function Home() {
     const [user, setUser] = useState<UserPayload | null>(null);
 
     useEffect(() => {
-        const token = getClientCookie('token');
+        const token = getCookie('token');
         if (token) {
             try {
                 const decoded = jwtDecode<UserPayload>(token);
@@ -106,7 +98,7 @@ export default function Home() {
               Passe menos tempo organizando e mais tempo cuidando dos seus pacientes.
             </p>
           </CardContent>
-        </Card>
+        </card>
       </section>
 
       <section className="bg-card p-6 md:p-8 rounded-lg shadow-sm flex flex-col md:flex-row items-center gap-8">
