@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, password } = body;
+    const { email, password } = body; // Correção: de 'senha' para 'password'
 
     const userEmail = process.env.USER_EMAIL;
     const userPassword = process.env.USER_PASSWORD;
