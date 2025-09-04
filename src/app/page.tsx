@@ -1,11 +1,44 @@
 
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, UserPlus, Stethoscope, UserCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { jwtDecode } from "jwt-decode";
+import { getCookie } from 'cookies-next';
+
+interface UserPayload {
+  name: string;
+}
+
+const getClientCookie = (name: string): string | undefined => {
+  if (typeof window === 'undefined') return undefined;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+};
+
 
 export default function Home() {
+    const [user, setUser] = useState<UserPayload | null>(null);
+
+    useEffect(() => {
+        const token = getClientCookie('token');
+        if (token) {
+            try {
+                const decoded = jwtDecode<UserPayload>(token);
+                setUser(decoded);
+            } catch (e) {
+                console.error("Failed to decode token", e);
+                setUser(null);
+            }
+        }
+    }, []);
+
+
   return (
     <div className="space-y-16 md:space-y-24">
       <section className="text-center pt-8 md:pt-12">
@@ -13,7 +46,7 @@ export default function Home() {
           <Stethoscope className="h-16 w-16 text-primary" />
         </div>
         <h1 className="text-4xl md:text-6xl font-bold font-headline text-foreground">
-          Bem-vindo ao seu Consultório Digital
+           {user ? `Bem-vindo, ${user.name}!` : 'Bem-vindo ao seu Consultório Digital'}
         </h1>
         <p className="mt-4 text-lg md:text-xl max-w-2xl mx-auto text-muted-foreground">
           Organize seus pacientes e sua agenda de forma simples, rápida e de forma inteligente.
