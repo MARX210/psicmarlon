@@ -15,10 +15,25 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, LogIn, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function Header() {
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
+    setIsLoggedIn(loggedInStatus);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    setIsLoggedIn(false);
+    window.location.href = "/login";
+  };
 
   const navLinks = [
     { href: "/", label: "Início" },
@@ -58,7 +73,7 @@ export function Header() {
         
         <div className="flex items-center justify-end gap-2 flex-shrink-0">
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-            {navLinks.map((link) => (
+            {isLoggedIn && navLinks.map((link) => (
               <Button
                 key={link.href}
                 asChild
@@ -72,7 +87,27 @@ export function Header() {
               </Button>
             ))}
           </nav>
+
+          {isClient && (
+            isLoggedIn ? (
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            ) : (
+              pathname !== '/login' && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/login">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login
+                  </Link>
+                </Button>
+              )
+            )
+          )}
+          
           <ThemeToggle />
+
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -90,7 +125,7 @@ export function Header() {
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 mt-8">
-                  {navLinks.map((link) => (
+                  {isLoggedIn && navLinks.map((link) => (
                     <SheetClose asChild key={link.href}>
                       <Link
                         href={link.href}

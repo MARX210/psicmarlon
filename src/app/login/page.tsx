@@ -46,7 +46,9 @@ export default function LoginPage() {
         description: "Você será redirecionado para a página inicial.",
       });
 
-      // Redirecionamento simples e direto para a página inicial.
+      localStorage.setItem("isLoggedIn", "true");
+      
+      // Redirecionamento para a página inicial.
       window.location.href = "/";
       
     } catch (error) {
