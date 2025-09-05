@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { z } from "zod";
@@ -9,6 +10,7 @@ const appointmentSchema = z.object({
   type: z.enum(["Online", "Presencial"]),
   duration: z.number().positive(),
   price: z.number().nonnegative(),
+  status: z.string().optional(),
 });
 
 export async function GET() {
@@ -25,7 +27,8 @@ export async function GET() {
         a.time,
         a.type,
         a.duration,
-        a.price::float
+        a.price::float,
+        a.status
       FROM agendamentos a
       JOIN pacientes p ON a.patient_id = p.id
       ORDER BY a.date, a.time
@@ -53,7 +56,7 @@ export async function POST(req: Request) {
       );
     }
     
-    const { patientId, date, time, type, duration, price } = validation.data;
+    const { patientId, date, time, type, duration, price, status } = validation.data;
 
     const pool = getPool();
 
@@ -61,8 +64,8 @@ export async function POST(req: Request) {
 
     const result = await pool.query(
       `
-      INSERT INTO agendamentos (patient_id, date, time, type, duration, price)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO agendamentos (patient_id, date, time, type, duration, price, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING 
         id, 
         patient_id AS "patientId", 
@@ -70,9 +73,10 @@ export async function POST(req: Request) {
         time, 
         type, 
         duration, 
-        price
+        price,
+        status
       `,
-      [patientId, date, time, type, duration, price]
+      [patientId, date, time, type, duration, price, status || 'Confirmado']
     );
 
     return NextResponse.json(

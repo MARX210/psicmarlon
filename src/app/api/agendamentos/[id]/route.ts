@@ -1,15 +1,23 @@
+
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { z } from "zod";
 
-// Schema para validação da atualização
+// Schema para validação da atualização completa
 const appointmentUpdateSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
   type: z.enum(["Online", "Presencial"]),
   duration: z.number().positive(),
   price: z.number().nonnegative(),
+  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou"]),
 });
+
+// Schema para validação da atualização parcial (só o status)
+const statusUpdateSchema = z.object({
+  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou"]),
+});
+
 
 // PUT - Atualizar um agendamento existente
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
@@ -20,41 +28,63 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   try {
     const body = await req.json();
-    const validation = appointmentUpdateSchema.safeParse(body);
+    const pool = getPool();
+    let result;
 
-    if (!validation.success) {
-      return NextResponse.json(
-        { error: "Dados inválidos", details: validation.error.flatten() },
-        { status: 400 }
-      );
+    // Se o corpo contiver mais do que apenas o status, é uma edição completa
+    if (Object.keys(body).length > 1) {
+        const validation = appointmentUpdateSchema.safeParse(body);
+        if (!validation.success) {
+            return NextResponse.json({ error: "Dados de atualização completa inválidos", details: validation.error.flatten() }, { status: 400 });
+        }
+        const { date, time, type, duration, price, status } = validation.data;
+        result = await pool.query(
+            `
+            UPDATE agendamentos
+            SET date = $1, time = $2, type = $3, duration = $4, price = $5, status = $7
+            WHERE id = $6
+            RETURNING *
+            `,
+            [date, time, type, duration, price, id, status]
+        );
+    } else { // Caso contrário, é apenas uma atualização de status
+        const validation = statusUpdateSchema.safeParse(body);
+        if (!validation.success) {
+            return NextResponse.json({ error: "Dados de atualização de status inválidos", details: validation.error.flatten() }, { status: 400 });
+        }
+        const { status } = validation.data;
+        result = await pool.query(
+            `
+            UPDATE agendamentos
+            SET status = $1
+            WHERE id = $2
+            RETURNING *
+            `,
+            [status, id]
+        );
     }
 
-    const { date, time, type, duration, price } = validation.data;
-    const pool = getPool();
-
-    const result = await pool.query(
-      `
-      UPDATE agendamentos
-      SET date = $1, time = $2, type = $3, duration = $4, price = $5
-      WHERE id = $6
-      RETURNING 
-        id, 
-        patient_id AS "patientId", 
-        to_char(date, 'YYYY-MM-DD') AS date,
-        time, 
-        type, 
-        duration, 
-        price
-      `,
-      [date, time, type, duration, price, id]
-    );
 
     if (result.rowCount === 0) {
       return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
     }
+    
+    // Normaliza o retorno para corresponder à estrutura do frontend
+    const updatedAppointment = result.rows[0];
+    const responseData = {
+        id: updatedAppointment.id,
+        patientId: updatedAppointment.patient_id,
+        date: new Date(updatedAppointment.date).toISOString().split('T')[0], // Formato YYYY-MM-DD
+        time: updatedAppointment.time,
+        type: updatedAppointment.type,
+        duration: updatedAppointment.duration,
+        price: parseFloat(updatedAppointment.price),
+        status: updatedAppointment.status
+    };
+
 
     return NextResponse.json(
-      { message: "Agendamento atualizado com sucesso", appointment: result.rows[0] },
+      { message: "Agendamento atualizado com sucesso", appointment: responseData },
       { status: 200 }
     );
   } catch (error) {

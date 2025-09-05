@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, Users, Search, Edit, CalendarClock } from "lucide-react";
+import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +52,18 @@ type Appointment = {
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
   type: string;
+  status: string;
 };
+
+type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou";
+
+const statusConfig: Record<AppointmentStatus, { label: string; icon: React.ElementType; color: string }> = {
+  Confirmado: { label: "Confirmado", icon: CalendarClock, color: "text-blue-500" },
+  Realizado: { label: "Realizado", icon: CheckCircle2, color: "text-green-500" },
+  Cancelado: { label: "Cancelado", icon: XCircle, color: "text-gray-500" },
+  Faltou: { label: "Faltou", icon: AlertCircle, color: "text-red-500" },
+};
+
 
 const patientUpdateSchema = z.object({
   email: z.string().email("Email inválido").optional().or(z.literal('')),
@@ -162,11 +173,15 @@ export default function PacientesPage() {
 
 
   const filteredPatients = useMemo(() => {
-    const term = searchTerm.toLowerCase().replace(/\D/g, ""); // Remove formatação para busca
+    const term = searchTerm.toLowerCase();
     if (!term) return patients;
+    
+    // Remove formatação de CPF e busca
+    const cleanTerm = term.replace(/\D/g, "");
+
     return patients.filter(p => 
-      p.cpf.replace(/\D/g, "").includes(term) ||
-      p.id.toLowerCase().includes(searchTerm.toLowerCase())
+      p.cpf.replace(/\D/g, "").includes(cleanTerm) ||
+      p.id.toLowerCase().includes(term)
     );
   }, [patients, searchTerm]);
 
@@ -435,12 +450,25 @@ export default function PacientesPage() {
                <h3 className="font-semibold text-lg border-b pb-2 flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Agendamentos</h3>
                {patientAppointments.length > 0 ? (
                  <ul className="space-y-2">
-                   {patientAppointments.map(app => (
-                     <li key={app.id} className="text-sm p-2 bg-muted rounded-md">
-                       <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
-                       <p className="text-xs text-muted-foreground">{app.type}</p>
-                     </li>
-                   ))}
+                   {patientAppointments.map(app => {
+                      const status = (app.status as AppointmentStatus) || "Confirmado";
+                      const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
+                      const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
+                      const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
+
+                     return(
+                       <li key={app.id} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
+                         <div>
+                           <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
+                           <p className="text-xs text-muted-foreground">{app.type}</p>
+                         </div>
+                         <div className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2 py-1 ${currentStatusColor}`}>
+                            <CurrentStatusIcon className="h-3.5 w-3.5" />
+                            {currentStatusLabel}
+                         </div>
+                       </li>
+                     )
+                   })}
                  </ul>
                ) : (
                  <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>

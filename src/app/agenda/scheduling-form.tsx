@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -50,6 +50,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 
 // Feriados
 const holidays: Date[] = [
@@ -68,6 +70,7 @@ const appointmentSchema = z.object({
   type: z.enum(["Online", "Presencial"]),
   duration: z.string().nonempty("A duração é obrigatória."),
   price: z.string().nonempty("O valor é obrigatório."),
+  status: z.string().optional(),
 });
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
@@ -86,6 +89,15 @@ type Appointment = {
   type: string;
   duration: number;
   price: number;
+  status: string;
+};
+type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou";
+
+const statusConfig: Record<AppointmentStatus, { label: string; icon: React.ElementType; color: string }> = {
+  Confirmado: { label: "Confirmado", icon: CalendarClock, color: "text-blue-500" },
+  Realizado: { label: "Realizado", icon: CheckCircle2, color: "text-green-500" },
+  Cancelado: { label: "Cancelado", icon: XCircle, color: "text-gray-500" },
+  Faltou: { label: "Faltou", icon: AlertCircle, color: "text-red-500" },
 };
 
 const calculateAge = (birthDate: string) => {
@@ -121,6 +133,7 @@ export function SchedulingForm() {
       type: "Online",
       duration: "50",
       price: "0",
+      status: "Confirmado",
     },
   });
   
@@ -175,6 +188,44 @@ export function SchedulingForm() {
     fetchAllPatients();
 
   }, [form, fetchAppointments, fetchAllPatients]);
+  
+  const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus) => {
+    const originalAppointments = [...appointments];
+    
+    // Optimistic update
+    setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, status } : a));
+
+    try {
+      const response = await fetch(`/api/agendamentos/${appointmentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }), // Only send the status
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar status');
+      }
+      
+      const result = await response.json();
+      
+      // Sync with server response
+      setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, ...result.appointment } : a));
+
+      toast({
+        title: "Status Atualizado!",
+        description: `O status do agendamento foi alterado para ${status}.`,
+      });
+
+    } catch (error) {
+      // Revert on error
+      setAppointments(originalAppointments);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível atualizar o status do agendamento.",
+      });
+    }
+  };
 
   const appointmentsOnSelectedDate = selectedDate
     ? appointments
@@ -272,6 +323,7 @@ export function SchedulingForm() {
       type: "Online",
       duration: "50",
       price: "0",
+      status: "Confirmado",
     });
   };
 
@@ -303,6 +355,7 @@ export function SchedulingForm() {
         type: appointment.type as "Online" | "Presencial",
         duration: String(appointment.duration),
         price: String(appointment.price),
+        status: appointment.status,
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -365,6 +418,7 @@ export function SchedulingForm() {
       type: data.type,
       duration: parseInt(data.duration, 10),
       price: parseFloat(data.price),
+      status: data.status || 'Confirmado',
     };
 
     const url = isEditing ? `/api/agendamentos/${isEditing}` : '/api/agendamentos';
@@ -401,6 +455,38 @@ export function SchedulingForm() {
         setIsSubmitting(false);
     }
   }
+  
+  const AppointmentStatusBadge = ({ status }: { status: AppointmentStatus }) => {
+    const config = statusConfig[status] || statusConfig.Confirmado;
+    const Icon = config.icon;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className={`flex items-center gap-1.5 h-auto px-2 py-1 text-xs rounded-full ${config.color}`}>
+            <Icon className="h-3.5 w-3.5" />
+            {config.label}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {Object.keys(statusConfig).map(key => {
+            const statusKey = key as AppointmentStatus;
+            const itemConfig = statusConfig[statusKey];
+            const ItemIcon = itemConfig.icon;
+            return (
+              <DropdownMenuItem key={statusKey} onSelect={() => {
+                // We need the appointment ID here. This component needs to be used inside the map.
+                // This is just a placeholder to show how it would be structured.
+              }}>
+                <ItemIcon className={`mr-2 h-4 w-4 ${itemConfig.color}`} />
+                <span>{itemConfig.label}</span>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -419,11 +505,11 @@ export function SchedulingForm() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Busca de paciente */}
                 <div className="space-y-2">
-                  <FormLabel htmlFor="cpf">Buscar Paciente por CPF</FormLabel>
+                  <FormLabel htmlFor="cpf">Buscar Paciente por CPF ou Nº ID</FormLabel>
                   <div className="flex gap-2">
                     <Input
                       id="cpf"
-                      placeholder="000.000.000-00"
+                      placeholder="000.000.000-00 ou ID"
                       value={cpfInput}
                       onChange={(e) => setCpfInput(e.target.value)}
                       disabled={!!selectedPatient}
@@ -657,22 +743,50 @@ export function SchedulingForm() {
                       </div>
                     ) : appointmentsOnSelectedDate.length > 0 ? (
                       <ul className="space-y-3">
-                        {appointmentsOnSelectedDate.map(app => (
-                          <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                            <div>
-                              <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span className="font-bold">{app.time}</span> - {app.patientName}</p>
-                              <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min - R$ {app.price.toFixed(2)}</p>
-                            </div>
-                            <div className="flex gap-2 self-end sm:self-center">
-                              <Button variant="ghost" size="icon" onClick={() => handleEditClick(app)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(app)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </li>
-                        ))}
+                        {appointmentsOnSelectedDate.map(app => {
+                          const status = (app.status as AppointmentStatus) || "Confirmado";
+                          const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
+                          const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
+                          const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
+
+                          return (
+                            <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between gap-2">
+                              <div className="flex-grow">
+                                <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span className="font-bold">{app.time}</span> - {app.patientName}</p>
+                                <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min - R$ {app.price.toFixed(2)}</p>
+                              </div>
+                              <div className="flex gap-2 self-end sm:self-center">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className={`flex items-center gap-1 h-auto px-2 py-1 text-xs rounded-full ${currentStatusColor}`}>
+                                      <CurrentStatusIcon className="h-3.5 w-3.5" />
+                                      {currentStatusLabel}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                    {Object.keys(statusConfig).map(key => {
+                                      const statusKey = key as AppointmentStatus;
+                                      const itemConfig = statusConfig[statusKey];
+                                      const ItemIcon = itemConfig.icon;
+                                      return (
+                                        <DropdownMenuItem key={statusKey} onSelect={() => handleUpdateStatus(app.id, statusKey)}>
+                                          <ItemIcon className={`mr-2 h-4 w-4 ${itemConfig.color}`} />
+                                          <span>{itemConfig.label}</span>
+                                        </DropdownMenuItem>
+                                      );
+                                    })}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(app)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteClick(app)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </li>
+                          )
+                        })}
                       </ul>
                     ) : (
                       <p className="text-sm text-muted-foreground">Não há agendamentos para este dia.</p>
@@ -706,5 +820,3 @@ export function SchedulingForm() {
     </div>
   );
 }
-
-    
