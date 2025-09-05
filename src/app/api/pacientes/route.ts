@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { patientRegistrationSchema } from "@/lib/schemas";
@@ -16,7 +17,8 @@ export async function GET(req: Request) {
       const result = await pool.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
-      const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular FROM Pacientes ORDER BY nome";
+      // Query to get all fields needed for the patient list and edit form
+      const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM Pacientes ORDER BY nome";
       const result = await pool.query(query);
       return NextResponse.json(result.rows, { status: 200 });
     }

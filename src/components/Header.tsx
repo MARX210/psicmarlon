@@ -15,7 +15,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, LogIn, LogOut } from "lucide-react";
+import { Menu, LogIn, LogOut, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function Header() {
@@ -39,6 +39,7 @@ export function Header() {
     { href: "/", label: "Início" },
     { href: "/cadastro", label: "Cadastro" },
     { href: "/agenda", label: "Agenda" },
+    { href: "/pacientes", label: "Pacientes" },
   ];
 
   return (
