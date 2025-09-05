@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, Users, Search, Edit } from "lucide-react";
+import { Loader2, Users, Search, Edit, CalendarClock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type Patient = {
   id: string;
@@ -41,6 +43,15 @@ type Patient = {
   cidade: string | null;
   estado: string | null;
   pais: string | null;
+};
+
+type Appointment = {
+  id: number;
+  patientId: string;
+  patientName: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  type: string;
 };
 
 const patientUpdateSchema = z.object({
@@ -81,6 +92,7 @@ export default function PacientesPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -93,6 +105,32 @@ export default function PacientesPage() {
   
   const ITEMS_PER_PAGE = 10;
 
+  const fetchPatients = async () => {
+    try {
+      const res = await fetch('/api/pacientes');
+      if (!res.ok) throw new Error('Erro ao buscar pacientes');
+      const data: Patient[] = await res.json();
+      setPatients(data);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível carregar a lista de pacientes.",
+      });
+    }
+  };
+
+  const fetchAppointments = async () => {
+    try {
+      const res = await fetch("/api/agendamentos");
+      if (!res.ok) throw new Error("Erro ao buscar agendamentos");
+      const data: Appointment[] = await res.json();
+      setAppointments(data);
+    } catch (error) {
+      console.error("Erro no fetchAppointments:", error);
+    }
+  };
+
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
@@ -100,7 +138,8 @@ export default function PacientesPage() {
     if (!loggedIn) {
       window.location.href = "/login";
     } else {
-      fetchPatients();
+      setIsLoading(true);
+      Promise.all([fetchPatients(), fetchAppointments()]).finally(() => setIsLoading(false));
     }
   }, []);
   
@@ -121,23 +160,6 @@ export default function PacientesPage() {
     }
   }, [editingPatient, form]);
 
-  const fetchPatients = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/pacientes');
-      if (!res.ok) throw new Error('Erro ao buscar pacientes');
-      const data: Patient[] = await res.json();
-      setPatients(data);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível carregar a lista de pacientes.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const filteredPatients = useMemo(() =>
     patients.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())),
@@ -150,6 +172,13 @@ export default function PacientesPage() {
   }, [filteredPatients, currentPage]);
 
   const totalPages = Math.ceil(filteredPatients.length / ITEMS_PER_PAGE);
+
+  const patientAppointments = useMemo(() => {
+    if (!editingPatient) return [];
+    return appointments
+      .filter(app => app.patientId === editingPatient.id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [appointments, editingPatient]);
 
   const handleUpdatePatient = async (data: PatientUpdateFormValues) => {
     if (!editingPatient) return;
@@ -179,7 +208,7 @@ export default function PacientesPage() {
     } finally {
         setIsUpdating(false);
     }
-};
+  };
 
 
   if (!isClient || !isLoggedIn) {
@@ -282,114 +311,137 @@ export default function PacientesPage() {
       )}
 
       <Dialog open={!!editingPatient} onOpenChange={() => setEditingPatient(null)}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] md:max-w-[800px] max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Editar Paciente</DialogTitle>
+            <DialogTitle>Detalhes de {editingPatient?.name}</DialogTitle>
             <DialogDescription>
-              Atualize os dados de {editingPatient?.name}. Clique em salvar quando terminar.
+              Atualize os dados cadastrais ou visualize o histórico de agendamentos.
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
-              <FormField control={form.control} name="celular" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Celular</FormLabel>
-                  <FormControl>
-                    <Input placeholder="(99) 99999-9999" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="email@exemplo.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="cep" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CEP</FormLabel>
-                  <FormControl>
-                    <Input placeholder="00000-000" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="logradouro" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Logradouro</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Rua, Avenida..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="numero" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número</FormLabel>
-                  <FormControl>
-                    <Input placeholder="123" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="complemento" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Complemento</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Apto, Bloco..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="bairro" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bairro</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Bairro" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="cidade" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cidade</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Cidade" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="estado" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Estado</FormLabel>
-                  <FormControl>
-                    <Input placeholder="UF" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="pais" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>País</FormLabel>
-                  <FormControl>
-                    <Input placeholder="País" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-               <DialogFooter className="md:col-span-2">
-                 <Button type="button" variant="outline" onClick={() => setEditingPatient(null)}>Cancelar</Button>
-                 <Button type="submit" disabled={isUpdating}>
-                    {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Salvar Alterações
-                 </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 flex-grow overflow-y-auto pr-4">
+            {/* Coluna de Edição */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg border-b pb-2">Dados Cadastrais</h3>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="space-y-4">
+                  <FormField control={form.control} name="celular" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Celular</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(99) 99999-9999" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="email" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="email@exemplo.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="cep" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CEP</FormLabel>
+                      <FormControl>
+                        <Input placeholder="00000-000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="logradouro" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Logradouro</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Rua, Avenida..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="numero" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número</FormLabel>
+                      <FormControl>
+                        <Input placeholder="123" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="complemento" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Complemento</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Apto, Bloco..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="bairro" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bairro</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Bairro" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="cidade" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cidade</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Cidade" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="estado" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado</FormLabel>
+                      <FormControl>
+                        <Input placeholder="UF" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="pais" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>País</FormLabel>
+                      <FormControl>
+                        <Input placeholder="País" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                   <DialogFooter className="pt-4 sticky bottom-0 bg-background">
+                     <Button type="button" variant="outline" onClick={() => setEditingPatient(null)}>Cancelar</Button>
+                     <Button type="submit" disabled={isUpdating}>
+                        {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Salvar Alterações
+                     </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </div>
+            
+            {/* Coluna de Histórico */}
+            <div className="space-y-4">
+               <h3 className="font-semibold text-lg border-b pb-2 flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Agendamentos</h3>
+               {patientAppointments.length > 0 ? (
+                 <ul className="space-y-2">
+                   {patientAppointments.map(app => (
+                     <li key={app.id} className="text-sm p-2 bg-muted rounded-md">
+                       <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
+                       <p className="text-xs text-muted-foreground">{app.type}</p>
+                     </li>
+                   ))}
+                 </ul>
+               ) : (
+                 <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>
+               )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
