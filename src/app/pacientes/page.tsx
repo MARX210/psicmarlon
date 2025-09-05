@@ -161,10 +161,15 @@ export default function PacientesPage() {
   }, [editingPatient, form]);
 
 
-  const filteredPatients = useMemo(() =>
-    patients.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())),
-    [patients, searchTerm]
-  );
+  const filteredPatients = useMemo(() => {
+    const term = searchTerm.toLowerCase().replace(/\D/g, ""); // Remove formatação para busca
+    if (!term) return patients;
+    return patients.filter(p => 
+      p.cpf.replace(/\D/g, "").includes(term) ||
+      p.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [patients, searchTerm]);
+
 
   const paginatedPatients = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -234,7 +239,7 @@ export default function PacientesPage() {
       <div className="flex justify-center">
         <div className="relative w-full max-w-md">
           <Input 
-            placeholder="Buscar paciente por nome..."
+            placeholder="Buscar por CPF ou Nº ID..."
             value={searchTerm}
             onChange={e => {
               setSearchTerm(e.target.value);
