@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
-import { format, parse, isSameDay, isSunday, addMinutes, parseISO, differenceInYears } from "date-fns";
+import { format, parse, isSameDay, isSunday, addMinutes, parseISO, differenceInYears, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
@@ -396,7 +396,10 @@ export function SchedulingForm() {
 
 
   const appointmentDates = appointments.map(app => parseISO(app.date));
-  const isFormDisabled = !selectedPatient || isSubmitting;
+  
+  const isDayInPast = selectedDate && isBefore(selectedDate, startOfDay(new Date()));
+  const isFormDisabled = !selectedPatient || isSubmitting || (isDayInPast && !isEditing);
+  
   const isDayUnavailable = selectedDate && (isSunday(selectedDate) || holidays.some(holiday => isSameDay(holiday, selectedDate)));
 
   async function onSubmit(data: AppointmentFormValues) {
@@ -551,6 +554,11 @@ export function SchedulingForm() {
                     </Button>
                   </div>
                 )}
+                
+                {isDayInPast && !isEditing && (
+                    <p className="text-xs text-destructive pt-1 flex items-center gap-2"><BadgeAlert className="h-4 w-4" /> Não é possível criar agendamentos em datas passadas.</p>
+                )}
+
 
                 {/* Horário */}
                 <div className="grid grid-cols-1 gap-4">
@@ -578,11 +586,11 @@ export function SchedulingForm() {
                             ))}
                           </SelectContent>
                         </Select>
-                        {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && (
+                        {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && !isDayInPast &&(
                           <p className="text-xs text-muted-foreground pt-1">Não há horários disponíveis.</p>
                         )}
                         {isDayUnavailable && (
-                          <p className="text-xs text-destructive pt-1">Dia indisponível.</p>
+                          <p className="text-xs text-destructive pt-1">Dia indisponível para agendamentos.</p>
                         )}
                         <FormMessage />
                       </FormItem>
@@ -710,7 +718,7 @@ export function SchedulingForm() {
                   selected={selectedDate}
                   onSelect={handleDayClick}
                   locale={ptBR}
-                  disabled={(date) => date < new Date() || isSunday(date) || holidays.some(h => isSameDay(h, date))}
+                  disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
                   modifiers={{
                     booked: appointmentDates,
                     unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
@@ -820,3 +828,5 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
