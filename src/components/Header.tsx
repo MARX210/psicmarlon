@@ -47,8 +47,8 @@ export function Header() {
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
         {/* Left side on desktop, hamburger on mobile */}
         <div className="flex items-center gap-2 md:w-1/4">
-          {isClient && isLoggedIn && (
-            <div className="md:hidden">
+          <div className="md:hidden">
+            {isClient && isLoggedIn && (
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="icon">
@@ -104,8 +104,8 @@ export function Header() {
                   </nav>
                 </SheetContent>
               </Sheet>
-            </div>
-          )}
+            )}
+          </div>
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-0">
              {isClient && isLoggedIn && navLinks.slice(0, 2).map((link) => (
               <Button
