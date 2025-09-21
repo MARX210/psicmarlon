@@ -24,9 +24,9 @@ export function Header() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
     const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedInStatus);
+    setIsClient(true);
   }, []);
 
   const handleLogout = () => {
