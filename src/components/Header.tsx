@@ -14,23 +14,21 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, LogIn, LogOut, Users } from "lucide-react";
+import { Menu, LogIn, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function Header() {
   const pathname = usePathname();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
-    const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
-    setIsLoggedIn(loggedInStatus);
+    setIsMounted(true);
   }, []);
+
+  const isLoggedIn = isMounted && localStorage.getItem("isLoggedIn") === "true";
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
-    setIsLoggedIn(false);
     window.location.href = "/login";
   };
 
@@ -44,17 +42,103 @@ export function Header() {
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
-        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-          <>
+        {/* Left side */}
+        <div className="flex items-center justify-start gap-2 md:w-1/4">
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" disabled={!isMounted}>
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Abrir menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left">
+                <SheetHeader>
+                  <SheetTitle>
+                    <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+                      <Image
+                        src="/images/logopreta.png"
+                        alt="PsicMarlon Logo"
+                        width={100}
+                        height={20}
+                        priority
+                        className="object-contain"
+                      />
+                    </Link>
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col space-y-4 mt-8">
+                  {isMounted && isLoggedIn ? (
+                    <>
+                      {navLinks.map((link) => (
+                        <SheetClose asChild key={link.href}>
+                          <Link
+                            href={link.href}
+                            className={cn(
+                              "text-lg text-center p-2 rounded-lg",
+                              pathname === link.href
+                                ? "bg-primary text-primary-foreground font-bold"
+                                : "text-foreground hover:bg-accent"
+                            )}
+                          >
+                            {link.label}
+                          </Link>
+                        </SheetClose>
+                      ))}
+                      <SheetClose asChild>
+                        <Button onClick={handleLogout} variant="outline" className="text-lg">
+                          <LogOut className="mr-2 h-5 w-5" />
+                          Logout
+                        </Button>
+                      </SheetClose>
+                    </>
+                  ) : isMounted ? (
+                     <SheetClose asChild>
+                        <Button asChild variant="outline" size="lg">
+                           <Link href="/login">
+                              <LogIn className="mr-2 h-5 w-5" />
+                              Login
+                           </Link>
+                        </Button>
+                     </SheetClose>
+                  ) : null}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
+             {navLinks.slice(0, 2).map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "text-sm lg:text-base px-3 py-2 rounded-md transition-colors",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  pathname === link.href 
+                    ? "font-bold text-primary underline" 
+                    : "text-foreground",
+                  !isMounted || !isLoggedIn ? "hidden" : "inline-block" // Control visibility
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        {/* Logo */}
+        <div className="flex justify-center md:flex-grow">
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
               src="/images/logopreta.png"
               alt="PsicMarlon Logo"
               width={100}
               height={20}
               priority
-              className="object-contain dark:hidden ml-[-1px]"
+              className="object-contain dark:hidden"
             />
-             <Image
+            <Image
               src="/images/logobranca.png"
               alt="PsicMarlon Logo"
               width={100}
@@ -62,95 +146,47 @@ export function Header() {
               priority
               className="object-contain hidden dark:block"
             />
-          </>
-        </Link>
-
-        <div className="flex-grow flex justify-center items-center">
-           <span className="hidden md:block text-xl font-bold font-headline text-foreground whitespace-nowrap">
-            PSICMARLON
-          </span>
+          </Link>
         </div>
-        
-        <div className="flex items-center justify-end gap-2 flex-shrink-0">
+
+        {/* Right side */}
+        <div className="flex items-center justify-end gap-2 md:w-1/4">
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-            {isClient && isLoggedIn && navLinks.map((link) => (
-              <Button
+             {navLinks.slice(2).map((link) => (
+               <Link
                 key={link.href}
-                asChild
-                variant="ghost"
+                href={link.href}
                 className={cn(
-                  "text-sm lg:text-base",
-                   pathname === link.href && "font-bold text-primary underline"
+                  "text-sm lg:text-base px-3 py-2 rounded-md transition-colors",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  pathname === link.href 
+                    ? "font-bold text-primary underline" 
+                    : "text-foreground",
+                  !isMounted || !isLoggedIn ? "hidden" : "inline-block" // Control visibility
                 )}
               >
-                <Link href={link.href}>{link.label}</Link>
-              </Button>
+                {link.label}
+              </Link>
             ))}
           </nav>
-
-          {isClient && (
-            isLoggedIn ? (
-              <Button onClick={handleLogout} variant="outline" size="sm" className="hidden md:inline-flex">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            ) : (
-              pathname !== '/login' && (
-                <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
-                  <Link href="/login">
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Login
-                  </Link>
-                </Button>
-              )
-            )
-          )}
           
           <ThemeToggle />
 
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Menu className="h-6 w-6" />
-                  <span className="sr-only">Abrir menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right">
-                <SheetHeader>
-                  <SheetTitle>
-                     <span className="text-xl font-bold font-headline text-foreground">
-                        PSICMARLON
-                     </span>
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col space-y-4 mt-8">
-                  {isClient && isLoggedIn && navLinks.map((link) => (
-                    <SheetClose asChild key={link.href}>
-                      <Link
-                        href={link.href}
-                        className={cn(
-                          "text-lg text-center p-2 rounded-lg",
-                           pathname === link.href
-                            ? "bg-primary text-primary-foreground font-bold"
-                            : "text-foreground hover:bg-accent"
-                        )}
-                      >
-                        {link.label}
-                      </Link>
-                    </SheetClose>
-                  ))}
-                  {isClient && isLoggedIn && (
-                     <SheetClose asChild>
-                        <Button onClick={handleLogout} variant="outline" className="text-lg">
-                          <LogOut className="mr-2 h-5 w-5" />
-                          Logout
-                        </Button>
-                     </SheetClose>
-                  )}
-                </nav>
-              </SheetContent>
-            </Sheet>
+          <div className="hidden md:inline-flex">
+            {isMounted && isLoggedIn && (
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            )}
+            {isMounted && !isLoggedIn && pathname !== '/login' && (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/login">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Login
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
