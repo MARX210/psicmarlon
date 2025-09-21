@@ -47,76 +47,65 @@ export function Header() {
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
         {/* Left side on desktop, hamburger on mobile */}
         <div className="flex items-center gap-2 md:w-1/4">
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Menu className="h-6 w-6" />
-                  <span className="sr-only">Abrir menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left">
-                <SheetHeader>
-                  <SheetTitle>
-                     <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-                        <Image
-                          src="/images/logobranca.png"
-                          alt="PsicMarlon Logo"
-                          width={100}
-                          height={20}
-                          priority
-                          className="object-contain dark:hidden"
-                        />
-                         <Image
-                          src="/images/logopreta.png"
-                          alt="PsicMarlon Logo"
-                          width={100}
-                          height={20}
-                          priority
-                          className="object-contain hidden dark:block"
-                        />
-                      </Link>
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col space-y-4 mt-8">
-                  {isClient && isLoggedIn && navLinks.map((link) => (
-                    <SheetClose asChild key={link.href}>
-                      <Link
-                        href={link.href}
-                        className={cn(
-                          "text-lg text-center p-2 rounded-lg",
-                           pathname === link.href
-                            ? "bg-primary text-primary-foreground font-bold"
-                            : "text-foreground hover:bg-accent"
-                        )}
-                      >
-                        {link.label}
-                      </Link>
-                    </SheetClose>
-                  ))}
-                   {isClient && (
-                    isLoggedIn ? (
-                       <SheetClose asChild>
-                        <Button onClick={handleLogout} variant="outline" className="text-lg">
-                          <LogOut className="mr-2 h-5 w-5" />
-                          Logout
-                        </Button>
+          {isClient && isLoggedIn && (
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-6 w-6" />
+                    <span className="sr-only">Abrir menu</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left">
+                  <SheetHeader>
+                    <SheetTitle>
+                       <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+                          <Image
+                            src="/images/logobranca.png"
+                            alt="PsicMarlon Logo"
+                            width={100}
+                            height={20}
+                            priority
+                            className="object-contain dark:hidden"
+                          />
+                           <Image
+                            src="/images/logopreta.png"
+                            alt="PsicMarlon Logo"
+                            width={100}
+                            height={20}
+                            priority
+                            className="object-contain hidden dark:block"
+                          />
+                        </Link>
+                    </SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col space-y-4 mt-8">
+                    {navLinks.map((link) => (
+                      <SheetClose asChild key={link.href}>
+                        <Link
+                          href={link.href}
+                          className={cn(
+                            "text-lg text-center p-2 rounded-lg",
+                             pathname === link.href
+                              ? "bg-primary text-primary-foreground font-bold"
+                              : "text-foreground hover:bg-accent"
+                          )}
+                        >
+                          {link.label}
+                        </Link>
                       </SheetClose>
-                    ) : (
-                      pathname !== '/login' && (
-                        <SheetClose asChild>
-                           <Link href="/login" className={cn("text-lg text-center p-2 rounded-lg text-foreground hover:bg-accent flex items-center justify-center")}>
-                              <LogIn className="mr-2 h-5 w-5" />
-                              Login
-                           </Link>
-                        </SheetClose>
-                      )
-                    )
-                  )}
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
+                    ))}
+                    <SheetClose asChild>
+                      <Button onClick={handleLogout} variant="outline" className="text-lg">
+                        <LogOut className="mr-2 h-5 w-5" />
+                        Logout
+                      </Button>
+                    </SheetClose>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            </div>
+          )}
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-0">
              {isClient && isLoggedIn && navLinks.slice(0, 2).map((link) => (
               <Button
