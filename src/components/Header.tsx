@@ -15,7 +15,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Menu, LogIn, LogOut, Users } from "lucide-react";
+import { Menu, LogIn, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function Header() {
@@ -45,70 +45,8 @@ export function Header() {
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
-        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-          <>
-            <Image
-              src="/images/logobranca.png"
-              alt="PsicMarlon Logo"
-              width={60}
-              height={50}
-              priority
-              className="object-contain dark:hidden"
-            />
-             <Image
-              src="/images/logopreta.png"
-              alt="PsicMarlon Logo"
-              width={60}
-              height={50}
-              priority
-              className="object-contain hidden dark:block"
-            />
-          </>
-        </Link>
-
-        <div className="flex-grow flex justify-center items-center">
-           <span className="hidden md:block text-xl font-bold font-headline text-foreground whitespace-nowrap">
-            PSICMARLON
-          </span>
-        </div>
-        
-        <div className="flex items-center justify-end gap-2 flex-shrink-0">
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-            {isLoggedIn && navLinks.map((link) => (
-              <Button
-                key={link.href}
-                asChild
-                variant="ghost"
-                className={cn(
-                  "text-sm lg:text-base",
-                   pathname === link.href && "font-bold text-primary underline"
-                )}
-              >
-                <Link href={link.href}>{link.label}</Link>
-              </Button>
-            ))}
-          </nav>
-
-          {isClient && (
-            isLoggedIn ? (
-              <Button onClick={handleLogout} variant="outline" size="sm">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            ) : (
-              pathname !== '/login' && (
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/login">
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Login
-                  </Link>
-                </Button>
-              )
-            )
-          )}
-          
-          <ThemeToggle />
-
+        {/* Left side on desktop, hamburger on mobile */}
+        <div className="flex items-center gap-2 md:w-1/4">
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -117,12 +55,27 @@ export function Header() {
                   <span className="sr-only">Abrir menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right">
+              <SheetContent side="left">
                 <SheetHeader>
                   <SheetTitle>
-                     <span className="text-xl font-bold font-headline text-foreground">
-                        PSICMARLON
-                     </span>
+                     <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+                        <Image
+                          src="/images/logobranca.png"
+                          alt="PsicMarlon Logo"
+                          width={100}
+                          height={20}
+                          priority
+                          className="object-contain dark:hidden"
+                        />
+                         <Image
+                          src="/images/logopreta.png"
+                          alt="PsicMarlon Logo"
+                          width={100}
+                          height={20}
+                          priority
+                          className="object-contain hidden dark:block"
+                        />
+                      </Link>
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 mt-8">
@@ -145,6 +98,82 @@ export function Header() {
               </SheetContent>
             </Sheet>
           </div>
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-0">
+             {isLoggedIn && navLinks.slice(0, 2).map((link) => (
+              <Button
+                key={link.href}
+                asChild
+                variant="ghost"
+                className={cn(
+                  "text-sm lg:text-base",
+                   pathname === link.href && "font-bold text-primary underline"
+                )}
+              >
+                <Link href={link.href}>{link.label}</Link>
+              </Button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Centered Logo */}
+        <div className="flex justify-center md:w-1/2">
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+            <Image
+              src="/images/logobranca.png"
+              alt="PsicMarlon Logo"
+              width={100}
+              height={20}
+              priority
+              className="object-contain dark:hidden"
+            />
+             <Image
+              src="/images/logopreta.png"
+              alt="PsicMarlon Logo"
+              width={100}
+              height={20}
+              priority
+              className="object-contain hidden dark:block"
+            />
+          </Link>
+        </div>
+        
+        {/* Right side */}
+        <div className="flex items-center justify-end gap-2 md:w-1/4">
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-0">
+            {isLoggedIn && navLinks.slice(2).map((link) => (
+              <Button
+                key={link.href}
+                asChild
+                variant="ghost"
+                className={cn(
+                  "text-sm lg:text-base",
+                   pathname === link.href && "font-bold text-primary underline"
+                )}
+              >
+                <Link href={link.href}>{link.label}</Link>
+              </Button>
+            ))}
+          </nav>
+          
+          <ThemeToggle />
+
+          {isClient && (
+            isLoggedIn ? (
+              <Button onClick={handleLogout} variant="outline" size="sm" className="hidden md:inline-flex">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            ) : (
+              pathname !== '/login' && (
+                <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
+                  <Link href="/login">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login
+                  </Link>
+                </Button>
+              )
+            )
+          )}
         </div>
       </div>
     </header>

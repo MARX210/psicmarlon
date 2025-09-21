@@ -130,14 +130,27 @@ export default function Home() {
             </Button>
           </div>
         </div>
-        <div className="flex-shrink-0">
+        <div className="w-full md:w-1/3 mt-6 md:mt-0">
+          {/* Imagem para modo claro */}
+          <Image
+            src={"/images/imgmarlon-claro.jpg"}
+            alt="Psicólogo em um ambiente de consultório"
+            width={600}
+            height={400}
+            className="rounded-lg w-full h-auto object-cover dark:hidden"
+            data-ai-hint="therapist office"
+            priority
+          />
+
+          {/* Imagem para modo escuro */}
           <Image
             src={"/images/imgmarlon.jpg"}
-            alt="Psicólogo em um ambiente de consultório"
-            width={400}
-            height={300}
-            className="rounded-lg w-full max-w-sm h-auto"
+            alt="Psicólogo em um ambiente de consultório (modo escuro)"
+            width={600}
+            height={400}
+            className="rounded-lg w-full h-auto object-cover hidden dark:block"
             data-ai-hint="therapist office"
+            priority
           />
         </div>
       </section>
