@@ -79,7 +79,7 @@ export function Header() {
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 mt-8">
-                  {isLoggedIn && navLinks.map((link) => (
+                  {isClient && isLoggedIn && navLinks.map((link) => (
                     <SheetClose asChild key={link.href}>
                       <Link
                         href={link.href}
@@ -94,12 +94,31 @@ export function Header() {
                       </Link>
                     </SheetClose>
                   ))}
+                   {isClient && (
+                    isLoggedIn ? (
+                       <SheetClose asChild>
+                        <Button onClick={handleLogout} variant="outline" className="text-lg">
+                          <LogOut className="mr-2 h-5 w-5" />
+                          Logout
+                        </Button>
+                      </SheetClose>
+                    ) : (
+                      pathname !== '/login' && (
+                        <SheetClose asChild>
+                           <Link href="/login" className={cn("text-lg text-center p-2 rounded-lg text-foreground hover:bg-accent flex items-center justify-center")}>
+                              <LogIn className="mr-2 h-5 w-5" />
+                              Login
+                           </Link>
+                        </SheetClose>
+                      )
+                    )
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
           </div>
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-0">
-             {isLoggedIn && navLinks.slice(0, 2).map((link) => (
+             {isClient && isLoggedIn && navLinks.slice(0, 2).map((link) => (
               <Button
                 key={link.href}
                 asChild
@@ -116,7 +135,7 @@ export function Header() {
         </div>
 
         {/* Centered Logo */}
-        <div className="flex justify-center md:w-1/2">
+        <div className="flex justify-center md:w-1/2 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
               src="/images/logobranca.png"
@@ -140,7 +159,7 @@ export function Header() {
         {/* Right side */}
         <div className="flex items-center justify-end gap-2 md:w-1/4">
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-0">
-            {isLoggedIn && navLinks.slice(2).map((link) => (
+            {isClient && isLoggedIn && navLinks.slice(2).map((link) => (
               <Button
                 key={link.href}
                 asChild
