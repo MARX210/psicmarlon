@@ -48,20 +48,20 @@ export function Header() {
         <Link href="/" className="flex items-center gap-2 flex-shrink-0">
           <>
             <Image
-              src="/images/logobranca.png"
+              src="/images/logopreta.png"
               alt="PsicMarlon Logo"
-              width={60}
-              height={50}
+              width={100}
+              height={20}
               priority
-              className="object-contain dark:hidden"
+              className="object-contain dark:hidden ml-[-1px]"
             />
              <Image
               src="/images/logopreta.png"
               alt="PsicMarlon Logo"
-              width={60}
+              width={95}
               height={50}
               priority
-              className="object-contain hidden dark:block"
+              className="object-contain hidden dark:block  ml-[80px]"
             />
           </>
         </Link>

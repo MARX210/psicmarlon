@@ -131,12 +131,23 @@ export default function Home() {
           </div>
         </div>
         <div className="flex-shrink-0">
+          {/* Imagem para modo claro */}
+          <Image
+            src={"/images/imgmarlon-claro.jpg"}
+            alt="Psicólogo em um ambiente de consultório"
+            width={9000}
+            height={900}
+            className="rounded-lg w-full max-w-sm h-auto dark:hidden ml-[-10%]"
+            data-ai-hint="therapist office"
+          />
+
+          {/* Imagem para modo escuro */}
           <Image
             src={"/images/imgmarlon.jpg"}
-            alt="Psicólogo em um ambiente de consultório"
-            width={400}
-            height={300}
-            className="rounded-lg w-full max-w-sm h-auto"
+            alt="Psicólogo em um ambiente de consultório (modo escuro)"
+            width={9000}
+            height={900}
+            className="rounded-lg w-full max-w-sm h-auto hidden dark:block ml-[-10%]"
             data-ai-hint="therapist office"
           />
         </div>
