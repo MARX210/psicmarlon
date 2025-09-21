@@ -48,29 +48,29 @@ export function Header() {
         {/* Left side on desktop, hamburger on mobile */}
         <div className="flex items-center gap-2 md:w-1/4">
           <div className="md:hidden">
-            {isClient && isLoggedIn && (
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Menu className="h-6 w-6" />
-                    <span className="sr-only">Abrir menu</span>
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left">
-                  <SheetHeader>
-                    <SheetTitle>
-                       <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-                           <Image
-                            src="/images/logopreta.png"
-                            alt="PsicMarlon Logo"
-                            width={100}
-                            height={20}
-                            priority
-                            className="object-contain"
-                          />
-                        </Link>
-                    </SheetTitle>
-                  </SheetHeader>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" disabled={!isClient || !isLoggedIn}>
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Abrir menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left">
+                <SheetHeader>
+                  <SheetTitle>
+                    <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+                      <Image
+                        src="/images/logopreta.png"
+                        alt="PsicMarlon Logo"
+                        width={100}
+                        height={20}
+                        priority
+                        className="object-contain"
+                      />
+                    </Link>
+                  </SheetTitle>
+                </SheetHeader>
+                {isClient && isLoggedIn && (
                   <nav className="flex flex-col space-y-4 mt-8">
                     {navLinks.map((link) => (
                       <SheetClose asChild key={link.href}>
@@ -78,7 +78,7 @@ export function Header() {
                           href={link.href}
                           className={cn(
                             "text-lg text-center p-2 rounded-lg",
-                             pathname === link.href
+                            pathname === link.href
                               ? "bg-primary text-primary-foreground font-bold"
                               : "text-foreground hover:bg-accent"
                           )}
@@ -94,19 +94,19 @@ export function Header() {
                       </Button>
                     </SheetClose>
                   </nav>
-                </SheetContent>
-              </Sheet>
-            )}
+                )}
+              </SheetContent>
+            </Sheet>
           </div>
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-0">
-             {isClient && isLoggedIn && navLinks.slice(0, 2).map((link) => (
+            {isClient && isLoggedIn && navLinks.slice(0, 2).map((link) => (
               <Button
                 key={link.href}
                 asChild
                 variant="ghost"
                 className={cn(
                   "text-sm lg:text-base",
-                   pathname === link.href && "font-bold text-primary underline"
+                  pathname === link.href && "font-bold text-primary underline"
                 )}
               >
                 <Link href={link.href}>{link.label}</Link>
@@ -128,7 +128,7 @@ export function Header() {
             />
           </Link>
         </div>
-        
+
         {/* Right side */}
         <div className="flex items-center justify-end gap-2 md:w-1/4">
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-0">
@@ -139,7 +139,7 @@ export function Header() {
                 variant="ghost"
                 className={cn(
                   "text-sm lg:text-base",
-                   pathname === link.href && "font-bold text-primary underline"
+                  pathname === link.href && "font-bold text-primary underline"
                 )}
               >
                 <Link href={link.href}>{link.label}</Link>
