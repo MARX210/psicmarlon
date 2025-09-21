@@ -24,9 +24,9 @@ export function Header() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedInStatus);
-    setIsClient(true);
   }, []);
 
   const handleLogout = () => {
@@ -60,21 +60,13 @@ export function Header() {
                   <SheetHeader>
                     <SheetTitle>
                        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-                          <Image
-                            src="/images/logobranca.png"
-                            alt="PsicMarlon Logo"
-                            width={100}
-                            height={20}
-                            priority
-                            className="object-contain dark:hidden"
-                          />
                            <Image
                             src="/images/logopreta.png"
                             alt="PsicMarlon Logo"
                             width={100}
                             height={20}
                             priority
-                            className="object-contain hidden dark:block"
+                            className="object-contain"
                           />
                         </Link>
                     </SheetTitle>
@@ -127,20 +119,12 @@ export function Header() {
         <div className="flex justify-center md:w-1/2 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
-              src="/images/logobranca.png"
-              alt="PsicMarlon Logo"
-              width={100}
-              height={20}
-              priority
-              className="object-contain dark:hidden"
-            />
-             <Image
               src="/images/logopreta.png"
               alt="PsicMarlon Logo"
               width={100}
               height={20}
               priority
-              className="object-contain hidden dark:block"
+              className="object-contain"
             />
           </Link>
         </div>
