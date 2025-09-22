@@ -728,7 +728,7 @@ export function SchedulingForm() {
                     booked: "bg-primary/20 text-primary-foreground font-bold",
                     unavailable: "text-muted-foreground opacity-50",
                   }}
-                  className="mx-auto border rounded-lg"
+                  className="border rounded-lg"
                 />
               )}
 
@@ -829,5 +829,7 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
 
     
