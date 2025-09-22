@@ -715,22 +715,22 @@ export function SchedulingForm() {
                 </div>
               ) : (
                 <div className="w-full xl:max-w-sm">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={handleDayClick}
-                    locale={ptBR}
-                    disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
-                    modifiers={{
-                      booked: appointmentDates,
-                      unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
-                    }}
-                    modifiersClassNames={{
-                      booked: "bg-primary/20 text-primary-foreground font-bold",
-                      unavailable: "text-muted-foreground opacity-50",
-                    }}
-                    className="border rounded-lg"
-                  />
+                    <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={handleDayClick}
+                        locale={ptBR}
+                        disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
+                        modifiers={{
+                        booked: appointmentDates,
+                        unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
+                        }}
+                        modifiersClassNames={{
+                        booked: "bg-primary/20 text-primary-foreground font-bold rounded-full",
+                        unavailable: "text-muted-foreground opacity-50",
+                        }}
+                        className="border rounded-lg p-3"
+                    />
                 </div>
               )}
 
