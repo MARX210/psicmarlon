@@ -493,9 +493,9 @@ export function SchedulingForm() {
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+    <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
       {/* Coluna Esquerda: Formulários */}
-      <div className="lg:col-span-2 space-y-8">
+      <div className="xl:col-span-2 space-y-8">
          {/* Formulário de agendamento */}
         <Card>
           <CardHeader>
@@ -699,7 +699,7 @@ export function SchedulingForm() {
       </div>
 
       {/* Calendário e agenda */}
-      <div className="lg:col-span-3">
+      <div className="xl:col-span-3">
         <Card>
           <CardHeader>
             <CardTitle>Calendário e Agenda</CardTitle>
@@ -708,7 +708,7 @@ export function SchedulingForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col xl:flex-row gap-8">
-            <div className="flex flex-col md:flex-row gap-8">
+            <div className="flex flex-col xl:flex-row gap-8 w-full">
               {!isClient ? (
                 <div className="flex-1 flex justify-center items-center">
                   <Skeleton className="w-full h-[300px]" />
