@@ -45,7 +45,7 @@ export function Header() {
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
         {/* Left side */}
-        <div className="flex items-center justify-start gap-2 md:w-1/4">
+        <div className="flex items-center justify-start gap-2">
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -120,7 +120,7 @@ export function Header() {
                   pathname === link.href 
                     ? "font-bold text-primary underline" 
                     : "text-foreground",
-                  !isMounted || !isLoggedIn ? "hidden" : "inline-block" // Control visibility
+                  isMounted && !isLoggedIn ? "hidden" : "inline-block"
                 )}
               >
                 {link.label}
@@ -130,7 +130,7 @@ export function Header() {
         </div>
 
         {/* Logo */}
-        <div className="flex justify-center md:flex-grow">
+        <div className="flex justify-center flex-grow">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
               src="/images/logopreta.png"
@@ -152,7 +152,7 @@ export function Header() {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center justify-end gap-2 md:w-1/4">
+        <div className="flex items-center justify-end gap-2">
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
              {navLinks.slice(2).map((link) => (
                <Link
@@ -164,7 +164,7 @@ export function Header() {
                   pathname === link.href 
                     ? "font-bold text-primary underline" 
                     : "text-foreground",
-                  !isMounted || !isLoggedIn ? "hidden" : "inline-block" // Control visibility
+                  isMounted && !isLoggedIn ? "hidden" : "inline-block"
                 )}
               >
                 {link.label}
@@ -175,13 +175,12 @@ export function Header() {
           <ThemeToggle />
 
           <div className="hidden md:inline-flex">
-            {isMounted && isLoggedIn && (
+            {isMounted && isLoggedIn ? (
               <Button onClick={handleLogout} variant="outline" size="sm">
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </Button>
-            )}
-            {isMounted && !isLoggedIn && pathname !== '/login' && (
+            ) : ( isMounted && pathname !== '/login' &&
               <Button asChild variant="outline" size="sm">
                 <Link href="/login">
                   <LogIn className="mr-2 h-4 w-4" />

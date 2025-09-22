@@ -192,8 +192,8 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <Card className="xl:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -205,7 +205,7 @@ export default function FinanceiroPage() {
             <p className="text-xs text-muted-foreground">Valor total de consultas pagas.</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="xl:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita do Mês</CardTitle>
             <Banknote className="h-4 w-4 text-muted-foreground" />
@@ -217,7 +217,7 @@ export default function FinanceiroPage() {
             <p className="text-xs text-muted-foreground">Faturamento de {format(new Date(), 'MMMM', { locale: ptBR })}.</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="md:col-span-2 xl:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pagamentos Pendentes</CardTitle>
             <Hourglass className="h-4 w-4 text-muted-foreground" />
