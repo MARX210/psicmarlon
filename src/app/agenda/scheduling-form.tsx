@@ -84,7 +84,7 @@ type Appointment = {
   id: number;
   patientId: string;
   patientName: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYY-MM-DD
   time: string; // HH:mm
   type: string;
   duration: number;
@@ -708,7 +708,7 @@ export function SchedulingForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col xl:flex-row gap-8">
-            <div className="flex-1 flex flex-col md:flex-row gap-8">
+            <div className="flex flex-col md:flex-row gap-8">
               {!isClient ? (
                 <div className="flex-1 flex justify-center items-center">
                   <Skeleton className="w-full h-[300px]" />

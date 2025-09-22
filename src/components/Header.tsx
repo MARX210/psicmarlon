@@ -25,12 +25,10 @@ export function Header() {
     setIsMounted(true);
   }, []);
 
-  // Check login status only on the client after mounting
   const isLoggedIn = isMounted ? localStorage.getItem("isLoggedIn") === "true" : false;
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
-    // Force a re-render to update UI immediately
     window.location.href = "/login";
   };
 
@@ -46,11 +44,11 @@ export function Header() {
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
         {/* Left side */}
-        <div className="flex items-center justify-start gap-2 w-1/4">
-          <div className="md:hidden">
+        <div className="flex items-center justify-start w-1/4">
+          <div className="lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" disabled={!isMounted}>
+                <Button variant="outline" size="icon" disabled={!isMounted || !isLoggedIn}>
                   <Menu className="h-6 w-6" />
                   <span className="sr-only">Abrir menu</span>
                 </Button>
@@ -95,22 +93,13 @@ export function Header() {
                         </Button>
                       </SheetClose>
                     </>
-                  ) : isMounted ? (
-                     <SheetClose asChild>
-                        <Button asChild variant="outline" size="lg">
-                           <Link href="/login">
-                              <LogIn className="mr-2 h-5 w-5" />
-                              Login
-                           </Link>
-                        </Button>
-                     </SheetClose>
                   ) : null}
                 </nav>
               </SheetContent>
             </Sheet>
           </div>
 
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
+          <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2">
              {navLinks.slice(0, 2).map((link) => (
               <Link
                 key={link.href}
@@ -121,7 +110,7 @@ export function Header() {
                   pathname === link.href 
                     ? "font-bold text-primary underline" 
                     : "text-foreground",
-                  isMounted && !isLoggedIn ? "hidden" : "inline-block"
+                  isMounted && !isLoggedIn && "hidden"
                 )}
               >
                 {link.label}
@@ -154,7 +143,7 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center justify-end gap-2 w-1/4">
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
+          <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2">
              {navLinks.slice(2).map((link) => (
                <Link
                 key={link.href}
@@ -165,7 +154,7 @@ export function Header() {
                   pathname === link.href 
                     ? "font-bold text-primary underline" 
                     : "text-foreground",
-                  isMounted && !isLoggedIn ? "hidden" : "inline-block"
+                  isMounted && !isLoggedIn && "hidden"
                 )}
               >
                 {link.label}
@@ -175,13 +164,13 @@ export function Header() {
           
           <ThemeToggle />
 
-          <div className="hidden md:inline-flex">
-            {isMounted && isLoggedIn ? (
+          <div className={cn("hidden lg:inline-flex", { "hidden": !isMounted })}>
+            {isLoggedIn ? (
               <Button onClick={handleLogout} variant="outline" size="sm">
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </Button>
-            ) : ( isMounted && pathname !== '/login' &&
+            ) : (pathname !== '/login' &&
               <Button asChild variant="outline" size="sm">
                 <Link href="/login">
                   <LogIn className="mr-2 h-4 w-4" />
