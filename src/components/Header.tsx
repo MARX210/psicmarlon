@@ -20,12 +20,13 @@ import { useEffect, useState } from "react";
 export function Header() {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
+    setIsLoggedIn(loggedInStatus);
   }, []);
-
-  const isLoggedIn = isMounted && localStorage.getItem("isLoggedIn") === "true";
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
@@ -37,6 +38,7 @@ export function Header() {
     { href: "/cadastro", label: "Cadastro" },
     { href: "/agenda", label: "Agenda" },
     { href: "/pacientes", label: "Pacientes" },
+    { href: "/financeiro", label: "Financeiro" },
   ];
 
   return (

@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock, CreditCard } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -91,11 +91,12 @@ type Appointment = {
   price: number;
   status: string;
 };
-type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou";
+type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou" | "Pago";
 
 const statusConfig: Record<AppointmentStatus, { label: string; icon: React.ElementType; color: string }> = {
   Confirmado: { label: "Confirmado", icon: CalendarClock, color: "text-blue-500" },
   Realizado: { label: "Realizado", icon: CheckCircle2, color: "text-green-500" },
+  Pago: { label: "Pago", icon: CreditCard, color: "text-emerald-500" },
   Cancelado: { label: "Cancelado", icon: XCircle, color: "text-gray-500" },
   Faltou: { label: "Faltou", icon: AlertCircle, color: "text-red-500" },
 };

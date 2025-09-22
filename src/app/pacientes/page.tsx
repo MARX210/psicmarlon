@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,11 +55,12 @@ type Appointment = {
   status: string;
 };
 
-type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou";
+type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou" | "Pago";
 
 const statusConfig: Record<AppointmentStatus, { label: string; icon: React.ElementType; color: string }> = {
   Confirmado: { label: "Confirmado", icon: CalendarClock, color: "text-blue-500" },
   Realizado: { label: "Realizado", icon: CheckCircle2, color: "text-green-500" },
+  Pago: { label: "Pago", icon: CreditCard, color: "text-emerald-500" },
   Cancelado: { label: "Cancelado", icon: XCircle, color: "text-gray-500" },
   Faltou: { label: "Faltou", icon: AlertCircle, color: "text-red-500" },
 };

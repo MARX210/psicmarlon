@@ -10,12 +10,12 @@ const appointmentUpdateSchema = z.object({
   type: z.enum(["Online", "Presencial"]),
   duration: z.number().positive(),
   price: z.number().nonnegative(),
-  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou"]),
+  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou", "Pago"]),
 });
 
 // Schema para validação da atualização parcial (só o status)
 const statusUpdateSchema = z.object({
-  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou"]),
+  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou", "Pago"]),
 });
 
 
