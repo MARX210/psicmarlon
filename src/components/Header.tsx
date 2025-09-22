@@ -20,16 +20,17 @@ import { useEffect, useState } from "react";
 export function Header() {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-    const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
-    setIsLoggedIn(loggedInStatus);
   }, []);
+
+  // Check login status only on the client after mounting
+  const isLoggedIn = isMounted ? localStorage.getItem("isLoggedIn") === "true" : false;
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
+    // Force a re-render to update UI immediately
     window.location.href = "/login";
   };
 
@@ -45,7 +46,7 @@ export function Header() {
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
         {/* Left side */}
-        <div className="flex items-center justify-start gap-2">
+        <div className="flex items-center justify-start gap-2 w-1/4">
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -130,7 +131,7 @@ export function Header() {
         </div>
 
         {/* Logo */}
-        <div className="flex justify-center flex-grow">
+        <div className="flex justify-center w-1/2">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
               src="/images/logopreta.png"
@@ -152,7 +153,7 @@ export function Header() {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 w-1/4">
           <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
              {navLinks.slice(2).map((link) => (
                <Link

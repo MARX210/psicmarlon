@@ -242,7 +242,7 @@ export default function PacientesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl md:text-4xl font-bold font-headline text-center mb-4">
           Meus Pacientes

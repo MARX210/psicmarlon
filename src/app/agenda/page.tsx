@@ -28,7 +28,7 @@ export default function AgendaPage() {
   }
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto">
       <h1 className="text-3xl md:text-4xl font-bold font-headline text-center mb-8">
         Minha Agenda
       </h1>
