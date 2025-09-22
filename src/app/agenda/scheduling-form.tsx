@@ -714,22 +714,24 @@ export function SchedulingForm() {
                   <Skeleton className="w-full h-[300px]" />
                 </div>
               ) : (
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDayClick}
-                  locale={ptBR}
-                  disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
-                  modifiers={{
-                    booked: appointmentDates,
-                    unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
-                  }}
-                  modifiersClassNames={{
-                    booked: "bg-primary/20 text-primary-foreground font-bold",
-                    unavailable: "text-muted-foreground opacity-50",
-                  }}
-                  className="border rounded-lg"
-                />
+                <div className="w-full xl:max-w-sm">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDayClick}
+                    locale={ptBR}
+                    disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
+                    modifiers={{
+                      booked: appointmentDates,
+                      unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
+                    }}
+                    modifiersClassNames={{
+                      booked: "bg-primary/20 text-primary-foreground font-bold",
+                      unavailable: "text-muted-foreground opacity-50",
+                    }}
+                    className="border rounded-lg"
+                  />
+                </div>
               )}
 
               <div className="flex-1">
