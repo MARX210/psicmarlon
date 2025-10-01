@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { z } from "zod";
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const saltRounds = 10;
 
