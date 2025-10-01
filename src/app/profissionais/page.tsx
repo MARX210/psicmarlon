@@ -286,7 +286,7 @@ export default function ProfissionaisPage() {
                 <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem>
                     <FormLabel>E-mail</FormLabel>
-                    <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} /></FormControl>
+                    <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} disabled={editingProfessional?.email === 'marlonvictor.a.g.a@gmail.com'} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -300,7 +300,7 @@ export default function ProfissionaisPage() {
                 <FormField control={form.control} name="role" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Função</FormLabel>
-                    <FormControl><Input placeholder="Ex: Admin, Nutricionista, Psicólogo" {...field} disabled={editingProfessional?.email === adminEmail} /></FormControl>
+                    <FormControl><Input placeholder="Ex: Admin, Nutricionista, Psicólogo" {...field} disabled={editingProfessional?.email === 'marlonvictor.a.g.a@gmail.com'} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -334,7 +334,7 @@ export default function ProfissionaisPage() {
             </TableHeader>
             <TableBody>
               {professionals.length > 0 ? professionals.map(pro => {
-                const isCurrentUserAdmin = pro.email === adminEmail;
+                const isCurrentUserAdmin = pro.email === 'marlonvictor.a.g.a@gmail.com';
                 return (
                   <TableRow key={pro.id}>
                     <TableCell className="font-medium">{pro.nome}</TableCell>

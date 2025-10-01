@@ -37,6 +37,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     const currentDataResult = await client.query("SELECT * FROM profissionais WHERE id = $1", [id]);
     if (currentDataResult.rowCount === 0) {
+        client.release();
         return NextResponse.json({ error: "Profissional não encontrado" }, { status: 404 });
     }
 
@@ -49,9 +50,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     if (isAdminUser) {
         if (email && email !== process.env.ADMIN_EMAIL) {
+             client.release();
              return NextResponse.json({ error: "O e-mail do administrador principal não pode ser alterado." }, { status: 403 });
         }
         if (is_active === false) {
+             client.release();
              return NextResponse.json({ error: "O administrador principal não pode ser desativado." }, { status: 403 });
         }
         // Garante que a role do admin no banco não seja alterada para algo diferente de "Admin"
@@ -102,16 +105,19 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     
     const professionalResult = await client.query("SELECT email FROM profissionais WHERE id = $1", [id]);
     if (professionalResult.rowCount === 0) {
+      client.release();
       return NextResponse.json({ error: "Profissional não encontrado" }, { status: 404 });
     }
 
     if (professionalResult.rows[0].email === process.env.ADMIN_EMAIL) {
+      client.release();
       return NextResponse.json({ error: "O administrador principal não pode ser excluído." }, { status: 403 });
     }
 
     const result = await client.query("DELETE FROM profissionais WHERE id = $1 RETURNING *", [id]);
 
     if (result.rowCount === 0) {
+      client.release();
       return NextResponse.json({ error: "Profissional não encontrado ao tentar excluir" }, { status: 404 });
     }
 
