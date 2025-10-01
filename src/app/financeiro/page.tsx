@@ -170,7 +170,7 @@ export default function FinanceiroPage() {
             if (app.price > 150) {
                 clinicShare = app.price * 0.2; // 20% para a clínica
             } else {
-                clinicShare = app.price * 0.5; // 50% para a clínica
+                clinicShare = 50; // R$50 para a clínica
             }
         }
         return sum + clinicShare;
@@ -239,7 +239,7 @@ export default function FinanceiroPage() {
               if (app.price > 150) {
                   clinicShare = app.price * 0.2;
               } else {
-                  clinicShare = app.price * 0.5;
+                  clinicShare = 50;
               }
           }
           dataByMonth[monthKey].revenue += clinicShare;
@@ -505,3 +505,5 @@ export default function FinanceiroPage() {
     </div>
   );
 }
+
+    
