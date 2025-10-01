@@ -102,6 +102,22 @@ export default function FinanceiroPage() {
     }
   });
 
+  const fetchFinancialData = useCallback(async () => {
+    try {
+      const res = await fetch("/api/financeiro");
+      if (!res.ok) throw new Error("Erro ao buscar lançamentos financeiros");
+      const data: Transaction[] = await res.json();
+      setOtherTransactions(data);
+    } catch (error) {
+      console.error("Erro no fetchFinancialData:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível carregar os lançamentos manuais.",
+      });
+    }
+  }, [toast]);
+
 
   const fetchAppointments = useCallback(async () => {
     try {
@@ -119,18 +135,6 @@ export default function FinanceiroPage() {
     }
   }, [toast]);
 
-  const loadOtherTransactions = useCallback(() => {
-    try {
-      const stored = localStorage.getItem("otherTransactions");
-      if (stored) {
-        setOtherTransactions(JSON.parse(stored));
-      }
-    } catch(e) {
-      console.error("Failed to load transactions from localStorage", e);
-      setOtherTransactions([]);
-    }
-  }, []);
-
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
@@ -139,21 +143,56 @@ export default function FinanceiroPage() {
       window.location.href = "/login";
     } else {
       setIsLoading(true);
-      Promise.all([fetchAppointments(), loadOtherTransactions()]).finally(() => setIsLoading(false));
+      Promise.all([fetchAppointments(), fetchFinancialData()]).finally(() => setIsLoading(false));
     }
-  }, [fetchAppointments, loadOtherTransactions]);
+  }, [fetchAppointments, fetchFinancialData]);
 
-  const saveTransaction = (newTransaction: Transaction) => {
-    const updatedTransactions = [...otherTransactions, newTransaction];
-    setOtherTransactions(updatedTransactions);
-    localStorage.setItem("otherTransactions", JSON.stringify(updatedTransactions));
+  const onTransactionSubmit = async (data: TransactionFormValues) => {
+    try {
+        const response = await fetch('/api/financeiro', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || 'Erro ao adicionar lançamento.');
+        }
+        
+        toast({ title: "Sucesso!", description: "Novo lançamento adicionado." });
+        form.reset();
+        setIsFormOpen(false);
+        fetchFinancialData(); // Re-fetch data to update the UI
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Erro',
+            description: error instanceof Error ? error.message : 'Não foi possível salvar o lançamento.',
+        });
+    }
   };
   
-  const deleteTransaction = (id: string) => {
-    const updatedTransactions = otherTransactions.filter(t => t.id !== id);
-    setOtherTransactions(updatedTransactions);
-    localStorage.setItem("otherTransactions", JSON.stringify(updatedTransactions));
-    toast({ title: "Transação Removida", description: "O lançamento foi excluído com sucesso." });
+  const deleteTransaction = async (id: string) => {
+    try {
+        const response = await fetch(`/api/financeiro/${id}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || 'Erro ao excluir lançamento.');
+        }
+
+        toast({ title: "Transação Removida", description: "O lançamento foi excluído com sucesso." });
+        fetchFinancialData(); // Re-fetch data to update the UI
+    } catch (error) {
+         toast({
+            variant: 'destructive',
+            title: 'Erro',
+            description: error instanceof Error ? error.message : 'Não foi possível remover o lançamento.',
+        });
+    }
   }
 
   const financialSummary = useMemo(() => {
@@ -166,11 +205,11 @@ export default function FinanceiroPage() {
         let clinicShare = 0;
         if (app.professional === 'Psicólogo') {
             clinicShare = app.price; // 100% para a clínica
-        } else { // Se for outro profissional
+        } else {
             if (app.price > 150) {
                 clinicShare = app.price * 0.2; // 20% para a clínica
             } else {
-                clinicShare = 50; // R$50 para a clínica
+                clinicShare = 50; // R$50 fixo para a clínica
             }
         }
         return sum + clinicShare;
@@ -261,16 +300,6 @@ export default function FinanceiroPage() {
     }));
   }, [appointments, otherTransactions]);
 
-  async function onTransactionSubmit(data: TransactionFormValues) {
-    const newTransaction: Transaction = {
-      ...data,
-      id: `manual-${Date.now()}`,
-    };
-    saveTransaction(newTransaction);
-    toast({ title: "Sucesso!", description: "Novo lançamento adicionado." });
-    form.reset();
-    setIsFormOpen(false);
-  }
 
   if (!isClient || isLoading) {
     return (
@@ -484,7 +513,7 @@ export default function FinanceiroPage() {
                            {t.type === 'receita_consulta' ? '' : (t.type === 'receita_outros' ? '+' : '-')} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </TableCell>
                          <TableCell className="text-right">
-                           {t.id.startsWith('manual-') && (
+                           {t.id.startsWith('apt-') ? null : (
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => deleteTransaction(t.id)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
