@@ -217,7 +217,7 @@ export function SchedulingForm() {
         throw new Error('Erro ao atualizar status');
       }
       
-      await fetchAppointments(); // Re-fetch all to ensure sync
+      await fetchAppointments(); // Re-fetch to ensure sync
 
       toast({
         title: "Status Atualizado!",
@@ -391,6 +391,7 @@ export function SchedulingForm() {
         title: "Agendamento Excluído!",
         description: "A consulta foi removida da sua agenda.",
       });
+      // Re-fetch data for appointments to update the UI
       fetchAppointments();
     } catch (error) {
       toast({
