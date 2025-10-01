@@ -47,6 +47,14 @@ export default function SetupPage() {
       try {
         const res = await fetch("/api/profissionais/count");
         if (!res.ok) {
+          // Se a API falhar (ex: tabela não existe), permite o setup.
+          if (res.status === 500) {
+             const errorData = await res.json().catch(() => null);
+             if (errorData && errorData.error?.includes("undefined_table") || errorData.error?.includes("does not exist")) {
+                setIsSetupAllowed(true);
+                return;
+             }
+          }
           throw new Error("Falha ao verificar o status do sistema.");
         }
         const data = await res.json();
@@ -56,12 +64,10 @@ export default function SetupPage() {
           router.push("/login");
         }
       } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Erro de Verificação",
-          description: error instanceof Error ? error.message : "Não foi possível conectar ao servidor.",
-        });
-        router.push("/login");
+        // Se a API de contagem falhar, uma causa provável é a tabela não existir,
+        // então devemos permitir a configuração.
+        console.warn("Assumindo permissão de setup devido a erro na verificação:", error);
+        setIsSetupAllowed(true);
       } finally {
         setIsLoading(false);
       }
@@ -84,7 +90,7 @@ export default function SetupPage() {
       const response = await fetch('/api/profissionais', {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, role: "Admin" }), // A API vai forçar 'Admin' se for o primeiro de qualquer forma.
+        body: JSON.stringify({ ...data, role: "Admin" }), // A API vai forçar 'Admin' se for o primeiro
       });
 
       if (!response.ok) {
@@ -121,7 +127,7 @@ export default function SetupPage() {
     // Redirecionamento já foi acionado, mas mantemos isso como fallback.
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
-        <p>Redirecionando para o login...</p>
+        <p>Sistema já configurado. Redirecionando para o login...</p>
       </div>
     );
   }
