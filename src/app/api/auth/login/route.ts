@@ -1,38 +1,52 @@
 
 import { NextResponse } from "next/server";
+import getPool from "@/lib/db";
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export async function POST(req: Request) {
+  const pool = getPool();
+  const client = await pool.connect();
+
   try {
     const body = await req.json();
     const { email, password } = body;
 
-    const userEmail = process.env.USER_EMAIL;
-    const userPassword = process.env.USER_PASSWORD;
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email e senha são obrigatórios" }, { status: 400 });
+    }
 
-    if (!userEmail || !userPassword) {
-      console.error("ERRO: Variáveis de ambiente USER_EMAIL ou USER_PASSWORD não estão configuradas na Vercel.");
-      return NextResponse.json(
-        { error: "Erro de configuração no servidor. Contate o administrador." },
-        { status: 500 }
-      );
+    const result = await client.query("SELECT * FROM profissionais WHERE email = $1", [email]);
+
+    if (result.rowCount === 0) {
+      console.warn(`Tentativa de login falhou (usuário não encontrado): ${email}`);
+      return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
+    }
+
+    const professional = result.rows[0];
+
+    if (!professional.is_active) {
+        console.warn(`Tentativa de login falhou (usuário inativo): ${email}`);
+        return NextResponse.json({ error: "Usuário bloqueado. Contate o administrador." }, { status: 403 });
     }
     
-    console.log("INFO: Variáveis de ambiente de login encontradas na Vercel.");
+    const isPasswordValid = await bcrypt.compare(password, professional.password_hash);
 
-    if (email === userEmail && password === userPassword) {
-      return NextResponse.json({ message: "Login bem-sucedido" }, { status: 200 });
-    } else {
-      console.warn(`Tentativa de login falhou para o email: ${email}`);
-      return NextResponse.json(
-        { error: "Credenciais inválidas" },
-        { status: 401 }
-      );
+    if (!isPasswordValid) {
+      console.warn(`Tentativa de login falhou (senha incorreta): ${email}`);
+      return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
+    
+    // Opcional: Gerar um token JWT se for usar no futuro
+    // const secret = process.env.JWT_SECRET || 'seu-segredo-super-secreto';
+    // const token = jwt.sign({ id: professional.id, email: professional.email, role: professional.role }, secret, { expiresIn: '1h' });
+
+    return NextResponse.json({ message: "Login bem-sucedido" }, { status: 200 });
+
   } catch (error) {
     console.error("Erro crítico na API de login:", error);
-    return NextResponse.json(
-      { error: "Erro interno no servidor" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 });
+  } finally {
+    client.release();
   }
 }

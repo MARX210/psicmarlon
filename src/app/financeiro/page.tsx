@@ -281,11 +281,11 @@ export default function FinanceiroPage() {
   }, [transactions, appointments]);
 
 
-  if (!isClient || isLoading) {
+  if (!isClient || !isLoggedIn) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />
-        <p className="ml-4">Carregando dados financeiros...</p>
+        <p className="ml-4">Carregando...</p>
       </div>
     );
   }
@@ -518,7 +518,3 @@ export default function FinanceiroPage() {
     </div>
   );
 }
-
-    
-
-    

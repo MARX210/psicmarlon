@@ -94,6 +94,7 @@ export default function ProfissionaisPage() {
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    setIsLoggedIn(loggedIn);
     if (!loggedIn) {
       window.location.href = "/login";
     } else {
@@ -126,7 +127,7 @@ export default function ProfissionaisPage() {
     const method = isEditing ? 'PUT' : 'POST';
 
     // Se estiver editando e a senha não for alterada, não envie o campo password
-    const submissionData: any = data;
+    const submissionData: any = { ...data };
     if (isEditing && (!data.password || data.password.trim() === '')) {
         delete submissionData.password;
     } else if (!isEditing && (!data.password || data.password.trim() === '')) {
@@ -225,7 +226,7 @@ export default function ProfissionaisPage() {
   }
 
 
-  if (!isClient) {
+  if (!isClient || !isLoggedIn) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />

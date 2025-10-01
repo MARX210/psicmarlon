@@ -47,7 +47,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         let { nome, email, password, role, is_active } = updatedData;
         let password_hash = currentData.password_hash;
         
-        if (password) {
+        // Se uma nova senha for fornecida, criptografe-a
+        if (password && password.trim() !== '') {
             password_hash = await bcrypt.hash(password, saltRounds);
         }
 
