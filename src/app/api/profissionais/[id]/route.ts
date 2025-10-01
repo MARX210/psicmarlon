@@ -2,12 +2,19 @@
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { z } from "zod";
+import bcrypt from 'bcryptjs';
+
+const saltRounds = 10;
 
 const professionalUpdateSchema = z.object({
-  is_active: z.boolean(),
+  nome: z.string().min(1, "O nome é obrigatório.").optional(),
+  email: z.string().email("O e-mail é inválido.").optional(),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres.").optional(),
+  role: z.string().min(1, "A função é obrigatória.").optional(),
+  is_active: z.boolean().optional(),
 });
 
-// PUT - Atualizar status de um profissional (ativar/desativar)
+// PUT - Atualizar um profissional
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
   if (!id || isNaN(Number(id))) {
@@ -24,22 +31,42 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         { status: 400 }
       );
     }
-
-    const { is_active } = validation.data;
+    
     const pool = getPool();
-    const result = await pool.query(
-      "UPDATE profissionais SET is_active = $1 WHERE id = $2 RETURNING *",
-      [is_active, id]
-    );
+    const client = await pool.connect();
 
-    if (result.rowCount === 0) {
-      return NextResponse.json({ error: "Profissional não encontrado" }, { status: 404 });
+    try {
+        const currentDataResult = await client.query("SELECT * FROM profissionais WHERE id = $1", [id]);
+        if (currentDataResult.rowCount === 0) {
+            return NextResponse.json({ error: "Profissional não encontrado" }, { status: 404 });
+        }
+
+        const currentData = currentDataResult.rows[0];
+        const updatedData = { ...currentData, ...body };
+        
+        let { nome, email, password, role, is_active } = updatedData;
+        let password_hash = currentData.password_hash;
+        
+        if (password) {
+            password_hash = await bcrypt.hash(password, saltRounds);
+        }
+
+        const result = await client.query(
+            `UPDATE profissionais 
+             SET nome = $1, email = $2, role = $3, is_active = $4, password_hash = $5
+             WHERE id = $6 RETURNING id, nome, email, role, is_active`,
+            [nome, email, role, is_active, password_hash, id]
+        );
+
+        return NextResponse.json(
+            { message: "Profissional atualizado com sucesso", professional: result.rows[0] },
+            { status: 200 }
+        );
+
+    } finally {
+        client.release();
     }
 
-    return NextResponse.json(
-      { message: "Status do profissional atualizado com sucesso", professional: result.rows[0] },
-      { status: 200 }
-    );
   } catch (error) {
     console.error("Erro ao atualizar profissional:", error);
     return NextResponse.json(

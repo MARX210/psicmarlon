@@ -43,7 +43,7 @@ import { Badge } from "@/components/ui/badge";
 const professionalSchema = z.object({
   nome: z.string().min(1, "O nome é obrigatório."),
   email: z.string().email("O e-mail é inválido."),
-  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres."),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres.").optional().or(z.literal('')),
   role: z.string().min(1, "A função é obrigatória."),
 });
 
@@ -63,6 +63,7 @@ export default function ProfissionaisPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProfessional, setEditingProfessional] = useState<Professional | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [professionalToDelete, setProfessionalToDelete] = useState<Professional | null>(null);
 
@@ -70,12 +71,6 @@ export default function ProfissionaisPage() {
   const { toast } = useToast();
   const form = useForm<ProfessionalFormValues>({
     resolver: zodResolver(professionalSchema),
-    defaultValues: {
-      nome: "",
-      email: "",
-      password: "",
-      role: "",
-    },
   });
 
   const fetchProfessionals = async () => {
@@ -105,30 +100,63 @@ export default function ProfissionaisPage() {
       fetchProfessionals();
     }
   }, []);
+  
+  useEffect(() => {
+    if (editingProfessional) {
+      form.reset({
+        nome: editingProfessional.nome,
+        email: editingProfessional.email,
+        role: editingProfessional.role,
+        password: "",
+      });
+    } else {
+      form.reset({
+        nome: "",
+        email: "",
+        password: "",
+        role: "",
+      });
+    }
+  }, [editingProfessional, form]);
+
 
   async function onFormSubmit(data: ProfessionalFormValues) {
+    const isEditing = !!editingProfessional;
+    const url = isEditing ? `/api/profissionais/${editingProfessional.id}` : '/api/profissionais';
+    const method = isEditing ? 'PUT' : 'POST';
+
+    // Se estiver editando e a senha não for alterada, não envie o campo password
+    const submissionData: any = data;
+    if (isEditing && (!data.password || data.password.trim() === '')) {
+        delete submissionData.password;
+    } else if (!isEditing && (!data.password || data.password.trim() === '')) {
+        form.setError("password", { message: "A senha é obrigatória para novos profissionais." });
+        return;
+    }
+
     try {
-      const response = await fetch("/api/profissionais", {
-        method: "POST",
+      const response = await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(submissionData),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Algo deu errado no servidor.");
+        throw new Error(result.error || `Algo deu errado ao ${isEditing ? 'atualizar' : 'cadastrar'}.`);
       }
 
-      toast({ title: "Sucesso!", description: "Novo profissional adicionado." });
+      toast({ title: "Sucesso!", description: `Profissional ${isEditing ? 'atualizado' : 'adicionado'}.` });
       form.reset();
       setIsFormOpen(false);
+      setEditingProfessional(null);
       fetchProfessionals();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Erro no Cadastro",
-        description: error instanceof Error ? error.message : "Não foi possível cadastrar.",
+        title: `Erro ao ${isEditing ? 'Atualizar' : 'Cadastrar'}`,
+        description: error instanceof Error ? error.message : "Não foi possível completar a operação.",
       });
     }
   }
@@ -190,6 +218,11 @@ export default function ProfissionaisPage() {
         setProfessionalToDelete(null);
     }
   };
+  
+  const handleOpenForm = (professional: Professional | null) => {
+    setEditingProfessional(professional);
+    setIsFormOpen(true);
+  }
 
 
   if (!isClient) {
@@ -212,17 +245,20 @@ export default function ProfissionaisPage() {
             Adicione, edite ou remova profissionais do sistema.
           </p>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Profissional
-            </Button>
-          </DialogTrigger>
+        <Button onClick={() => handleOpenForm(null)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Profissional
+        </Button>
+      </div>
+
+      <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
+          if(!isOpen) setEditingProfessional(null);
+          setIsFormOpen(isOpen);
+      }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Adicionar Novo Profissional</DialogTitle>
+              <DialogTitle>{editingProfessional ? 'Editar Profissional' : 'Adicionar Novo Profissional'}</DialogTitle>
               <DialogDescription>
-                Preencha os dados para criar um novo acesso.
+                {editingProfessional ? 'Altere os dados abaixo.' : 'Preencha os dados para criar um novo acesso.'}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -244,7 +280,7 @@ export default function ProfissionaisPage() {
                 <FormField control={form.control} name="password" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Senha</FormLabel>
-                    <FormControl><Input type="password" placeholder="Crie uma senha forte" {...field} /></FormControl>
+                    <FormControl><Input type="password" placeholder={editingProfessional ? "Deixe em branco para não alterar" : "Crie uma senha forte"} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -266,7 +302,6 @@ export default function ProfissionaisPage() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
 
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
@@ -307,7 +342,7 @@ export default function ProfissionaisPage() {
                         onCheckedChange={() => handleToggleActive(pro)}
                         aria-label="Ativar ou bloquear profissional"
                     />
-                    <Button variant="ghost" size="icon" disabled>
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenForm(pro)}>
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Editar</span>
                     </Button>
