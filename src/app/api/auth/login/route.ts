@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 
 export async function POST(req: Request) {
   const pool = getPool();
@@ -37,7 +36,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
     
-    // A role vem diretamente do banco de dados agora.
     const user = {
       id: professional.id,
       name: professional.nome,
@@ -51,6 +49,8 @@ export async function POST(req: Request) {
     console.error("Erro crítico na API de login:", error);
     return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 });
   } finally {
-    client.release();
+    if (client) {
+        client.release();
+    }
   }
 }

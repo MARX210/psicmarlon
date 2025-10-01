@@ -14,7 +14,6 @@ const professionalUpdateSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-// PUT - Atualizar um profissional
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
   if (!id || isNaN(Number(id))) {
@@ -37,7 +36,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     const currentDataResult = await client.query("SELECT * FROM profissionais WHERE id = $1", [id]);
     if (currentDataResult.rowCount === 0) {
-        client.release();
         return NextResponse.json({ error: "Profissional não encontrado" }, { status: 404 });
     }
 
@@ -46,18 +44,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     let { nome, email, password, role, is_active } = updatedData;
     
-    // Proteção para não desativar ou rebaixar o último Admin
     if (currentData.role === 'Admin') {
       const adminCountResult = await client.query("SELECT COUNT(*) FROM profissionais WHERE role = 'Admin' AND is_active = TRUE");
       const adminCount = parseInt(adminCountResult.rows[0].count, 10);
 
       if (adminCount <= 1) {
         if (is_active === false) {
-           client.release();
            return NextResponse.json({ error: "O último administrador não pode ser desativado." }, { status: 403 });
         }
         if (role !== 'Admin') {
-           client.release();
            return NextResponse.json({ error: "A função do último administrador não pode ser alterada." }, { status: 403 });
         }
       }
@@ -65,7 +60,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     let password_hash = currentData.password_hash;
     
-    // Se uma nova senha for fornecida, criptografe-a
     if (password && password.trim() !== '') {
         password_hash = await bcrypt.hash(password, saltRounds);
     }
@@ -89,12 +83,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       { status: 500 }
     );
   } finally {
-    client.release();
+    if(client) client.release();
   }
 }
 
-
-// DELETE - Excluir um profissional
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const { id } = params;
   if (!id || isNaN(Number(id))) {
@@ -107,24 +99,17 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     
     const professionalResult = await client.query("SELECT role FROM profissionais WHERE id = $1", [id]);
     if (professionalResult.rowCount === 0) {
-      client.release();
       return NextResponse.json({ error: "Profissional não encontrado" }, { status: 404 });
     }
 
     if (professionalResult.rows[0].role === 'Admin') {
        const adminCountResult = await client.query("SELECT COUNT(*) FROM profissionais WHERE role = 'Admin' AND is_active = TRUE");
        if (parseInt(adminCountResult.rows[0].count, 10) <= 1) {
-          client.release();
           return NextResponse.json({ error: "O último administrador não pode ser excluído." }, { status: 403 });
        }
     }
 
-    const result = await client.query("DELETE FROM profissionais WHERE id = $1 RETURNING *", [id]);
-
-    if (result.rowCount === 0) {
-      client.release();
-      return NextResponse.json({ error: "Profissional não encontrado ao tentar excluir" }, { status: 404 });
-    }
+    await client.query("DELETE FROM profissionais WHERE id = $1 RETURNING *", [id]);
 
     return new Response(null, { status: 204 });
 
@@ -135,6 +120,6 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       { status: 500 }
     );
   } finally {
-    client.release();
+    if(client) client.release();
   }
 }

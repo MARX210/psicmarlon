@@ -15,10 +15,10 @@ const appointmentSchema = z.object({
 });
 
 export async function GET() {
+  const pool = getPool();
+  const client = await pool.connect();
   try {
-    const pool = getPool();
-
-    const result = await pool.query(`
+    const result = await client.query(`
       SELECT
         a.id,
         a.patient_id AS "patientId",
@@ -38,10 +38,9 @@ export async function GET() {
     return NextResponse.json(result.rows, { status: 200 });
   } catch (error) {
     console.error("Erro ao buscar agendamentos:", error);
-    return NextResponse.json(
-      { error: "Erro interno ao buscar agendamentos" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro interno ao buscar agendamentos" }, { status: 500 });
+  } finally {
+      if (client) client.release();
   }
 }
 
@@ -53,60 +52,38 @@ export async function POST(req: Request) {
     const validation = appointmentSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(
-        { error: "Dados inválidos", details: validation.error.flatten() },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Dados inválidos", details: validation.error.flatten() }, { status: 400 });
     }
     
     const { patientId, date, time, professional, type, duration, price, status } = validation.data;
     
     await client.query('BEGIN');
     
-    // Verificar conflitos de horário antes de inserir
-    const conflictCheck = await client.query(
-        `SELECT id FROM agendamentos WHERE date = $1 AND time = $2`,
-        [date, time]
-    );
+    const conflictCheck = await client.query(`SELECT id FROM agendamentos WHERE date = $1 AND time = $2`, [date, time]);
 
     if (conflictCheck.rowCount > 0) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: 'Já existe um agendamento neste horário.' }, { status: 409 });
     }
 
-
     const result = await client.query(
       `
       INSERT INTO agendamentos (patient_id, date, time, professional, type, duration, price, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING 
-        id, 
-        patient_id AS "patientId", 
-        to_char(date, 'YYYY-MM-DD') AS date,
-        time,
-        professional,
-        type, 
-        duration, 
-        price,
-        status
+      RETURNING id, patient_id AS "patientId", to_char(date, 'YYYY-MM-DD') AS date,
+        time, professional, type, duration, price, status
       `,
       [patientId, date, time, professional, type, duration, price, status || 'Confirmado']
     );
 
     await client.query('COMMIT');
     
-    return NextResponse.json(
-      { message: "Agendamento criado com sucesso", appointment: result.rows[0] },
-      { status: 201 }
-    );
+    return NextResponse.json({ message: "Agendamento criado com sucesso", appointment: result.rows[0] }, { status: 201 });
   } catch (error: any) {
     await client.query('ROLLBACK');
     console.error("Erro ao criar agendamento:", error);
-    return NextResponse.json(
-      { error: "Erro interno ao criar agendamento" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro interno ao criar agendamento" }, { status: 500 });
   } finally {
-      client.release();
+      if (client) client.release();
   }
 }

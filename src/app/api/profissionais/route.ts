@@ -14,9 +14,10 @@ const professionalSchema = z.object({
 });
 
 export async function GET() {
+  const pool = getPool();
+  const client = await pool.connect();
   try {
-    const pool = getPool();
-    const result = await pool.query("SELECT id, nome, email, role, is_active FROM profissionais ORDER BY nome");
+    const result = await client.query("SELECT id, nome, email, role, is_active FROM profissionais ORDER BY nome");
     return NextResponse.json(result.rows, { status: 200 });
   } catch (error) {
     console.error("Erro ao buscar profissionais:", error);
@@ -24,10 +25,14 @@ export async function GET() {
       { error: "Erro interno ao buscar profissionais" },
       { status: 500 }
     );
+  } finally {
+      if(client) client.release();
   }
 }
 
 export async function POST(req: Request) {
+  const pool = getPool();
+  const client = await pool.connect();
   try {
     const body = await req.json();
     const validation = professionalSchema.safeParse(body);
@@ -41,11 +46,9 @@ export async function POST(req: Request) {
 
     const { nome, email, password, role } = validation.data;
     
-    // Criptografa a senha com bcrypt
     const password_hash = await bcrypt.hash(password, saltRounds);
 
-    const pool = getPool();
-    const result = await pool.query(
+    const result = await client.query(
       `
       INSERT INTO profissionais (nome, email, password_hash, role)
       VALUES ($1, $2, $3, $4)
@@ -60,11 +63,13 @@ export async function POST(req: Request) {
     );
   } catch (error: any) {
     console.error("ERRO NO POST de profissionais:", error);
-    if (error.code === '23505') { // Unique violation
+    if (error.code === '23505') { 
         return NextResponse.json({ error: 'Já existe um profissional com este e-mail.' }, { status: 409 });
     }
     return NextResponse.json({ 
       error: "Erro interno no servidor ao adicionar profissional." 
     }, { status: 500 });
+  } finally {
+      if(client) client.release();
   }
 }

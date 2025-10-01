@@ -109,7 +109,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     console.error("Erro ao atualizar agendamento:", error);
     return NextResponse.json({ error: "Erro interno ao atualizar agendamento" }, { status: 500 });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
@@ -142,6 +142,6 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     console.error("Erro ao excluir agendamento:", error);
     return NextResponse.json({ error: "Erro interno ao excluir agendamento" }, { status: 500 });
   } finally {
-      client.release();
+      if (client) client.release();
   }
 }
