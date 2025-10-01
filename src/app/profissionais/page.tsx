@@ -22,6 +22,16 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -53,6 +63,9 @@ export default function ProfissionaisPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [professionalToDelete, setProfessionalToDelete] = useState<Professional | null>(null);
+
 
   const { toast } = useToast();
   const form = useForm<ProfessionalFormValues>({
@@ -120,6 +133,65 @@ export default function ProfissionaisPage() {
       });
     }
   }
+
+  const handleToggleActive = async (professional: Professional) => {
+    const newStatus = !professional.is_active;
+    try {
+      const response = await fetch(`/api/profissionais/${professional.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: newStatus }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      
+      toast({
+        title: "Status Alterado!",
+        description: `O profissional ${professional.nome} foi ${newStatus ? 'ativado' : 'bloqueado'}.`
+      });
+      fetchProfessionals();
+
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Erro ao Alterar Status",
+            description: error instanceof Error ? error.message : "Não foi possível alterar o status.",
+        });
+    }
+  };
+
+  const handleDeleteClick = (professional: Professional) => {
+    setProfessionalToDelete(professional);
+    setShowDeleteAlert(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!professionalToDelete) return;
+    try {
+        const response = await fetch(`/api/profissionais/${professionalToDelete.id}`, {
+            method: 'DELETE',
+        });
+        if(!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || "Erro ao excluir profissional.");
+        }
+        toast({
+            title: "Profissional Excluído!",
+            description: "O registro foi removido permanentemente.",
+        });
+        fetchProfessionals();
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Erro ao Excluir",
+            description: error instanceof Error ? error.message : "Ocorreu um erro.",
+        });
+    } finally {
+        setShowDeleteAlert(false);
+        setProfessionalToDelete(null);
+    }
+  };
+
 
   if (!isClient || !isLoggedIn) {
     return (
@@ -230,12 +302,17 @@ export default function ProfissionaisPage() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right flex items-center justify-end gap-2">
+                    <Switch
+                        checked={pro.is_active}
+                        onCheckedChange={() => handleToggleActive(pro)}
+                        aria-label="Ativar ou bloquear profissional"
+                    />
                     <Button variant="ghost" size="icon" disabled>
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Editar</span>
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" disabled>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(pro)}>
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Excluir</span>
                     </Button>
@@ -250,6 +327,23 @@ export default function ProfissionaisPage() {
           </Table>
         )}
       </div>
+
+       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o profissional
+              <span className="font-bold"> {professionalToDelete?.nome} </span>
+              e todo o seu acesso ao sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setProfessionalToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Confirmar Exclusão</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
