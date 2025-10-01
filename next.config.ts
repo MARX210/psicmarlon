@@ -16,6 +16,7 @@ const nextConfig = {
       },
     ],
   },
+  transpilePackages: ['bcryptjs', 'jsonwebtoken'],
 }
 
 module.exports = nextConfig
