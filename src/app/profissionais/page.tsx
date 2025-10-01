@@ -97,7 +97,7 @@ export default function ProfissionaisPage() {
     const role = localStorage.getItem("userRole");
 
     setUserRole(role);
-    setAdminEmail(localStorage.getItem("userEmail")); // Assuming admin email is the logged in user's email if they are admin
+    setAdminEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL); 
 
     if (!loggedIn) {
       window.location.href = "/login";
@@ -182,8 +182,10 @@ export default function ProfissionaisPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_active: newStatus }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error);
+      }
       
       toast({
         title: "Status Alterado!",
@@ -212,8 +214,11 @@ export default function ProfissionaisPage() {
             method: 'DELETE',
         });
         if(!response.ok) {
-            const result = await response.json();
-            throw new Error(result.error || "Erro ao excluir profissional.");
+            // Since 204 No Content has no body, we only parse JSON if it's an error response
+            if (response.status !== 204) {
+              const result = await response.json();
+              throw new Error(result.error || "Erro ao excluir profissional.");
+            }
         }
         toast({
             title: "Profissional Excluído!",

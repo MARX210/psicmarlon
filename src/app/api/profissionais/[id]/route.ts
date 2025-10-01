@@ -42,13 +42,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 
     const currentData = currentDataResult.rows[0];
-    const isAdminUser = currentData.email === process.env.ADMIN_EMAIL;
+    const isAdminUserByEnv = currentData.email === process.env.ADMIN_EMAIL;
 
     const updatedData = { ...currentData, ...body };
     
     let { nome, email, password, role, is_active } = updatedData;
     
-    if (isAdminUser) {
+    if (isAdminUserByEnv) {
         if (email && email !== process.env.ADMIN_EMAIL) {
              client.release();
              return NextResponse.json({ error: "O e-mail do administrador principal não pode ser alterado." }, { status: 403 });
@@ -121,7 +121,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return NextResponse.json({ error: "Profissional não encontrado ao tentar excluir" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Profissional excluído com sucesso" }, { status: 200 });
+    return new Response(null, { status: 204 });
+
   } catch (error) {
     console.error("Erro ao excluir profissional:", error);
     return NextResponse.json(
