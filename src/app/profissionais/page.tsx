@@ -59,13 +59,14 @@ type Professional = {
 export default function ProfissionaisPage() {
   const [isClient, setIsClient] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProfessional, setEditingProfessional] = useState<Professional | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [professionalToDelete, setProfessionalToDelete] = useState<Professional | null>(null);
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [adminCount, setAdminCount] = useState(0);
 
 
   const { toast } = useToast();
@@ -80,6 +81,8 @@ export default function ProfissionaisPage() {
       if (!res.ok) throw new Error('Erro ao buscar profissionais');
       const data: Professional[] = await res.json();
       setProfessionals(data);
+      const activeAdmins = data.filter(p => p.role === 'Admin' && p.is_active).length;
+      setAdminCount(activeAdmins);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -95,9 +98,10 @@ export default function ProfissionaisPage() {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const role = localStorage.getItem("userRole");
+    const id = localStorage.getItem("userId");
 
     setUserRole(role);
-    setAdminEmail(process.env.NEXT_PUBLIC_ADMIN_EMAIL); 
+    setUserId(id);
 
     if (!loggedIn) {
       window.location.href = "/login";
@@ -140,12 +144,6 @@ export default function ProfissionaisPage() {
         form.setError("password", { message: "A senha é obrigatória para novos profissionais." });
         return;
     }
-    
-    // Prevent changing role of admin user in the form
-    if (isEditing && editingProfessional?.email === adminEmail) {
-        submissionData.role = 'Admin';
-    }
-
 
     try {
       const response = await fetch(url, {
@@ -291,7 +289,7 @@ export default function ProfissionaisPage() {
                 <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem>
                     <FormLabel>E-mail</FormLabel>
-                    <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} disabled={editingProfessional?.email === 'marlonvictor.a.g.a@gmail.com'} /></FormControl>
+                    <FormControl><Input type="email" placeholder="email@exemplo.com" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -305,7 +303,7 @@ export default function ProfissionaisPage() {
                 <FormField control={form.control} name="role" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Função</FormLabel>
-                    <FormControl><Input placeholder="Ex: Admin, Nutricionista, Psicólogo" {...field} disabled={editingProfessional?.email === 'marlonvictor.a.g.a@gmail.com'} /></FormControl>
+                    <FormControl><Input placeholder="Ex: Admin, Nutricionista, Psicólogo" {...field} disabled={editingProfessional?.id === Number(userId) && adminCount <= 1} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -339,7 +337,9 @@ export default function ProfissionaisPage() {
             </TableHeader>
             <TableBody>
               {professionals.length > 0 ? professionals.map(pro => {
-                const isCurrentUserAdmin = pro.email === 'marlonvictor.a.g.a@gmail.com';
+                 const isLastAdmin = pro.role === 'Admin' && adminCount <= 1;
+                 const isSelf = pro.id === Number(userId);
+
                 return (
                   <TableRow key={pro.id}>
                     <TableCell className="font-medium">{pro.nome}</TableCell>
@@ -361,13 +361,13 @@ export default function ProfissionaisPage() {
                           checked={pro.is_active}
                           onCheckedChange={() => handleToggleActive(pro)}
                           aria-label="Ativar ou bloquear profissional"
-                          disabled={isCurrentUserAdmin}
+                          disabled={isSelf && isLastAdmin}
                       />
                       <Button variant="ghost" size="icon" onClick={() => handleOpenForm(pro)}>
                         <Edit className="h-4 w-4" />
                         <span className="sr-only">Editar</span>
                       </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(pro)} disabled={isCurrentUserAdmin}>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(pro)} disabled={isSelf && isLastAdmin}>
                         <Trash2 className="h-4 w-4" />
                         <span className="sr-only">Excluir</span>
                       </Button>

@@ -42,23 +42,25 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 
     const currentData = currentDataResult.rows[0];
-    const isAdminUserByEnv = currentData.email === process.env.ADMIN_EMAIL;
-
     const updatedData = { ...currentData, ...body };
     
     let { nome, email, password, role, is_active } = updatedData;
     
-    if (isAdminUserByEnv) {
-        if (email && email !== process.env.ADMIN_EMAIL) {
-             client.release();
-             return NextResponse.json({ error: "O e-mail do administrador principal não pode ser alterado." }, { status: 403 });
-        }
+    // Proteção para não desativar ou rebaixar o último Admin
+    if (currentData.role === 'Admin') {
+      const adminCountResult = await client.query("SELECT COUNT(*) FROM profissionais WHERE role = 'Admin' AND is_active = TRUE");
+      const adminCount = parseInt(adminCountResult.rows[0].count, 10);
+
+      if (adminCount <= 1) {
         if (is_active === false) {
-             client.release();
-             return NextResponse.json({ error: "O administrador principal não pode ser desativado." }, { status: 403 });
+           client.release();
+           return NextResponse.json({ error: "O último administrador não pode ser desativado." }, { status: 403 });
         }
-        // Garante que a role do admin no banco não seja alterada para algo diferente de "Admin"
-        role = "Admin";
+        if (role !== 'Admin') {
+           client.release();
+           return NextResponse.json({ error: "A função do último administrador não pode ser alterada." }, { status: 403 });
+        }
+      }
     }
 
     let password_hash = currentData.password_hash;
@@ -103,15 +105,18 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const client = await pool.connect();
   try {
     
-    const professionalResult = await client.query("SELECT email FROM profissionais WHERE id = $1", [id]);
+    const professionalResult = await client.query("SELECT role FROM profissionais WHERE id = $1", [id]);
     if (professionalResult.rowCount === 0) {
       client.release();
       return NextResponse.json({ error: "Profissional não encontrado" }, { status: 404 });
     }
 
-    if (professionalResult.rows[0].email === process.env.ADMIN_EMAIL) {
-      client.release();
-      return NextResponse.json({ error: "O administrador principal não pode ser excluído." }, { status: 403 });
+    if (professionalResult.rows[0].role === 'Admin') {
+       const adminCountResult = await client.query("SELECT COUNT(*) FROM profissionais WHERE role = 'Admin' AND is_active = TRUE");
+       if (parseInt(adminCountResult.rows[0].count, 10) <= 1) {
+          client.release();
+          return NextResponse.json({ error: "O último administrador não pode ser excluído." }, { status: 403 });
+       }
     }
 
     const result = await client.query("DELETE FROM profissionais WHERE id = $1 RETURNING *", [id]);

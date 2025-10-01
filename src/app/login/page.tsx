@@ -49,6 +49,7 @@ export default function LoginPage() {
       // Armazenar os dados do usuário no localStorage
       localStorage.setItem("isLoggedIn", "true");
       if (data.user) {
+          localStorage.setItem("userId", data.user.id);
           localStorage.setItem("userName", data.user.name);
           localStorage.setItem("userEmail", data.user.email);
           localStorage.setItem("userRole", data.user.role);

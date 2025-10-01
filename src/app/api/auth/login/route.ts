@@ -37,14 +37,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
     
-    // Define a role com base na variável de ambiente
-    const isAdmin = professional.email === process.env.ADMIN_EMAIL;
-    const userRole = isAdmin ? "Admin" : professional.role;
-
+    // A role vem diretamente do banco de dados agora.
     const user = {
+      id: professional.id,
       name: professional.nome,
       email: professional.email,
-      role: userRole,
+      role: professional.role,
     };
 
     return NextResponse.json({ message: "Login bem-sucedido", user }, { status: 200 });
