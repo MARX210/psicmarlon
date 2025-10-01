@@ -27,19 +27,24 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: "ID do agendamento não fornecido" }, { status: 400 });
   }
 
+  const pool = getPool();
+  const client = await pool.connect();
+
   try {
     const body = await req.json();
-    const pool = getPool();
     let result;
+    
+    await client.query('BEGIN');
 
     // Se o corpo contiver mais do que apenas o status, é uma edição completa
     if (Object.keys(body).length > 1) {
         const validation = appointmentUpdateSchema.safeParse(body);
         if (!validation.success) {
+            await client.query('ROLLBACK');
             return NextResponse.json({ error: "Dados de atualização completa inválidos", details: validation.error.flatten() }, { status: 400 });
         }
         const { date, time, professional, type, duration, price, status } = validation.data;
-        result = await pool.query(
+        result = await client.query(
             `
             UPDATE agendamentos
             SET date = $1, time = $2, type = $3, duration = $4, price = $5, status = $7, professional = $8
@@ -51,10 +56,29 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     } else { // Caso contrário, é apenas uma atualização de status
         const validation = statusUpdateSchema.safeParse(body);
         if (!validation.success) {
+            await client.query('ROLLBACK');
             return NextResponse.json({ error: "Dados de atualização de status inválidos", details: validation.error.flatten() }, { status: 400 });
         }
         const { status } = validation.data;
-        result = await pool.query(
+
+        // Verifica se o status está sendo mudado para "Pago"
+        if (status === 'Pago') {
+            const agendamentoResult = await client.query('SELECT * FROM agendamentos WHERE id = $1', [id]);
+            const agendamento = agendamentoResult.rows[0];
+
+            if (agendamento && agendamento.status !== 'Pago') {
+                 // Busca o nome do paciente
+                const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [agendamento.patient_id]);
+                const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
+
+                await client.query(
+                    `INSERT INTO transacoes (date, description, amount, type) VALUES ($1, $2, $3, $4)`,
+                    [agendamento.date, `Consulta - ${patientName} (${agendamento.professional})`, agendamento.price, 'receita_consulta']
+                );
+            }
+        }
+        
+        result = await client.query(
             `
             UPDATE agendamentos
             SET status = $1
@@ -64,7 +88,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             [status, id]
         );
     }
-
+    
+    await client.query('COMMIT');
 
     if (result.rowCount === 0) {
       return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
@@ -84,17 +109,19 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         status: updatedAppointment.status
     };
 
-
     return NextResponse.json(
       { message: "Agendamento atualizado com sucesso", appointment: responseData },
       { status: 200 }
     );
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error("Erro ao atualizar agendamento:", error);
     return NextResponse.json(
       { error: "Erro interno ao atualizar agendamento" },
       { status: 500 }
     );
+  } finally {
+    client.release();
   }
 }
 

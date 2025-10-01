@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const transactionSchema = z.object({
   description: z.string().min(1),
-  amount: z.coerce.number().positive(),
+  amount: z.coerce.number(), // Pode ser negativo para despesa
   type: z.enum(['receita_outros', 'despesa']),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
@@ -22,7 +22,7 @@ export async function GET() {
         amount::float, 
         type
       FROM transacoes 
-      ORDER BY date DESC
+      ORDER BY date DESC, id DESC
     `);
     return NextResponse.json(result.rows, { status: 200 });
   } catch (error) {

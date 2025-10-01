@@ -38,17 +38,8 @@ import { Label } from "@/components/ui/label";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-
-type Appointment = {
-  id: number;
-  patientName: string;
-  date: string; // YYYY-MM-DD
-  price: number;
-  status: string;
-  professional: string;
-};
 
 type Transaction = {
   id: string;
@@ -85,9 +76,8 @@ export default function FinanceiroPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [otherTransactions, setOtherTransactions] = useState<Transaction[]>([]);
-
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  
   const [selectedMonth, setSelectedMonth] = useState(getMonth(new Date()));
   const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
 
@@ -99,39 +89,27 @@ export default function FinanceiroPage() {
     defaultValues: {
       description: "",
       amount: 0,
+      type: "despesa",
+      date: format(new Date(), "yyyy-MM-dd"),
     }
   });
 
   const fetchFinancialData = useCallback(async () => {
+    setIsLoading(true);
     try {
       const res = await fetch("/api/financeiro");
       if (!res.ok) throw new Error("Erro ao buscar lançamentos financeiros");
       const data: Transaction[] = await res.json();
-      setOtherTransactions(data);
+      setTransactions(data);
     } catch (error) {
       console.error("Erro no fetchFinancialData:", error);
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Não foi possível carregar os lançamentos manuais.",
+        description: "Não foi possível carregar os lançamentos financeiros.",
       });
-    }
-  }, [toast]);
-
-
-  const fetchAppointments = useCallback(async () => {
-    try {
-      const res = await fetch("/api/agendamentos");
-      if (!res.ok) throw new Error("Erro ao buscar agendamentos");
-      const data: Appointment[] = await res.json();
-      setAppointments(data);
-    } catch (error) {
-      console.error("Erro no fetchAppointments:", error);
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível carregar os dados de agendamentos.",
-      });
+    } finally {
+        setIsLoading(false);
     }
   }, [toast]);
 
@@ -142,17 +120,22 @@ export default function FinanceiroPage() {
     if (!loggedIn) {
       window.location.href = "/login";
     } else {
-      setIsLoading(true);
-      Promise.all([fetchAppointments(), fetchFinancialData()]).finally(() => setIsLoading(false));
+      fetchFinancialData();
     }
-  }, [fetchAppointments, fetchFinancialData]);
+  }, [fetchFinancialData]);
 
   const onTransactionSubmit = async (data: TransactionFormValues) => {
+    // Para despesas, o valor deve ser negativo
+    const submissionData = {
+        ...data,
+        amount: data.type === 'despesa' ? -Math.abs(data.amount) : Math.abs(data.amount),
+    };
+
     try {
         const response = await fetch('/api/financeiro', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
+            body: JSON.stringify(submissionData),
         });
 
         if (!response.ok) {
@@ -195,68 +178,48 @@ export default function FinanceiroPage() {
     }
   }
 
+  const transactionsForPeriod = useMemo(() => {
+    const selectedDate = new Date(selectedYear, selectedMonth);
+    const interval = { start: startOfMonth(selectedDate), end: endOfMonth(selectedDate) };
+    return transactions
+        .filter(t => isWithinInterval(parseISO(t.date), interval))
+        .sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+  }, [transactions, selectedMonth, selectedYear]);
+
   const financialSummary = useMemo(() => {
-    const selectedDate = new Date(selectedYear, selectedMonth);
-    const interval = { start: startOfMonth(selectedDate), end: endOfMonth(selectedDate) };
+    const totalBilledFromAppointments = transactionsForPeriod
+        .filter(t => t.type === 'receita_consulta')
+        .reduce((sum, t) => sum + t.amount, 0);
 
-    const revenueFromAppointments = appointments
-      .filter(app => app.status === "Pago" && isWithinInterval(parseISO(app.date), interval))
-      .reduce((sum, app) => {
-        let clinicShare = 0;
-        if (app.professional === 'Psicólogo') {
-            clinicShare = app.price; // 100% para a clínica
-        } else {
-            if (app.price > 150) {
-                clinicShare = app.price * 0.2; // 20% para a clínica
-            } else {
-                clinicShare = 50; // R$50 fixo para a clínica
-            }
-        }
-        return sum + clinicShare;
-      }, 0);
+    const clinicTotalRevenue = transactionsForPeriod
+      .map(t => {
+          if (t.type === 'despesa') return 0;
+          if (t.type === 'receita_outros') return t.amount;
 
-    const transactionsInPeriod = otherTransactions
-      .filter(t => isWithinInterval(parseISO(t.date), interval));
-
-    const otherRevenue = transactionsInPeriod
-      .filter(t => t.type === 'receita_outros')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const totalExpenses = transactionsInPeriod
-      .filter(t => t.type === 'despesa')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const clinicTotalRevenue = revenueFromAppointments + otherRevenue;
-    const netProfit = clinicTotalRevenue - totalExpenses;
-
-    const totalBilledFromAppointments = appointments
-      .filter(app => app.status === "Pago" && isWithinInterval(parseISO(app.date), interval))
-      .reduce((sum, app) => sum + app.price, 0);
-
-    return { clinicTotalRevenue, totalExpenses, netProfit, totalBilledFromAppointments };
-}, [appointments, otherTransactions, selectedMonth, selectedYear]);
-  
-  const allTransactionsForPeriod: Transaction[] = useMemo(() => {
-    const selectedDate = new Date(selectedYear, selectedMonth);
-    const interval = { start: startOfMonth(selectedDate), end: endOfMonth(selectedDate) };
-
-    const fromAppointments: Transaction[] = appointments
-        .filter(app => app.status === "Pago" && isWithinInterval(parseISO(app.date), interval))
-        .map(app => ({
-            id: `apt-${app.id}`,
-            date: app.date,
-            description: `Consulta - ${app.patientName} (${app.professional})`,
-            amount: app.price,
-            type: 'receita_consulta'
-        }));
-
-    const fromOthers: Transaction[] = otherTransactions
-        .filter(t => isWithinInterval(parseISO(t.date), interval));
+          // Lógica de comissão para 'receita_consulta'
+          const professional = t.description.substring(t.description.indexOf('(') + 1, t.description.indexOf(')'));
+          if (professional === 'Psicólogo') {
+              return t.amount; // 100% para a clínica
+          } else {
+              if (t.amount > 150) {
+                  return t.amount * 0.2; // 20% para a clínica
+              } else {
+                  return 50; // R$50 fixo para a clínica
+              }
+          }
+      })
+      .reduce((sum, value) => sum + value, 0);
     
-    return [...fromAppointments, ...fromOthers].sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+    const totalExpenses = transactionsForPeriod
+        .filter(t => t.type === 'despesa')
+        .reduce((sum, t) => sum + t.amount, 0);
+    
+    const netProfit = clinicTotalRevenue + totalExpenses; // expenses are already negative
 
-  }, [appointments, otherTransactions, selectedMonth, selectedYear]);
-
+    return { clinicTotalRevenue, totalExpenses: Math.abs(totalExpenses), netProfit, totalBilledFromAppointments };
+}, [transactionsForPeriod]);
+  
+  
   const monthlyChartData = useMemo(() => {
     const dataByMonth: { [key: string]: { revenue: number, expenses: number } } = {};
     const today = new Date();
@@ -267,30 +230,28 @@ export default function FinanceiroPage() {
       dataByMonth[monthKey] = { revenue: 0, expenses: 0 };
     }
     
-    appointments.filter(a => a.status === 'Pago').forEach(app => {
-      const date = parseISO(app.date);
-      const monthKey = format(date, 'MMM/yy', { locale: ptBR });
-      if (dataByMonth[monthKey]) {
-          let clinicShare = 0;
-          if (app.professional === 'Psicólogo') {
-              clinicShare = app.price;
-          } else {
-              if (app.price > 150) {
-                  clinicShare = app.price * 0.2;
-              } else {
-                  clinicShare = 50;
-              }
-          }
-          dataByMonth[monthKey].revenue += clinicShare;
-      }
-    });
-    
-    otherTransactions.forEach(t => {
+    transactions.forEach(t => {
       const date = parseISO(t.date);
       const monthKey = format(date, 'MMM/yy', { locale: ptBR });
       if(dataByMonth[monthKey]) {
-        if(t.type === 'receita_outros') dataByMonth[monthKey].revenue += t.amount;
-        if(t.type === 'despesa') dataByMonth[monthKey].expenses += t.amount;
+        if(t.type === 'despesa') {
+            dataByMonth[monthKey].expenses += Math.abs(t.amount);
+        } else if (t.type === 'receita_outros') {
+            dataByMonth[monthKey].revenue += t.amount;
+        } else if (t.type === 'receita_consulta') {
+            const professional = t.description.substring(t.description.indexOf('(') + 1, t.description.indexOf(')'));
+            let clinicShare = 0;
+            if (professional === 'Psicólogo') {
+                clinicShare = t.amount;
+            } else {
+                if (t.amount > 150) {
+                    clinicShare = t.amount * 0.2;
+                } else {
+                    clinicShare = 50;
+                }
+            }
+            dataByMonth[monthKey].revenue += clinicShare;
+        }
       }
     });
 
@@ -298,7 +259,7 @@ export default function FinanceiroPage() {
       month,
       ...values
     }));
-  }, [appointments, otherTransactions]);
+  }, [transactions]);
 
 
   if (!isClient || isLoading) {
@@ -372,7 +333,7 @@ export default function FinanceiroPage() {
             <div className="text-2xl font-bold text-green-600">
               {financialSummary.clinicTotalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-             <p className="text-xs text-muted-foreground">Total faturado no mês: {financialSummary.totalBilledFromAppointments.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+             <p className="text-xs text-muted-foreground">Total de consultas pagas: {financialSummary.totalBilledFromAppointments.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
           </CardContent>
         </Card>
         <Card>
@@ -393,7 +354,7 @@ export default function FinanceiroPage() {
             <Hourglass className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className={`text-2xl font-bold ${financialSummary.netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
               {financialSummary.netProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
             <p className="text-xs text-muted-foreground">Lucro Bruto - Despesas.</p>
@@ -417,7 +378,7 @@ export default function FinanceiroPage() {
                         tickLine={false}
                         tickMargin={10}
                         axisLine={false}
-                        tickFormatter={(value) => value.slice(0, 3)}
+                        tickFormatter={(value) => value}
                         />
                         <YAxis tickFormatter={(value) => `R$${value / 1000}k`} />
                         <ChartTooltip
@@ -451,9 +412,11 @@ export default function FinanceiroPage() {
                                 <DialogDescription>Registre uma receita ou despesa que não seja de uma consulta.</DialogDescription>
                             </DialogHeader>
                              <form onSubmit={form.handleSubmit(onTransactionSubmit)} className="space-y-4 py-4">
+                                <input type="hidden" {...form.register("date")} value={format(new Date(selectedYear, selectedMonth), "yyyy-MM-dd")} />
+                                
                                 <div>
                                     <Label htmlFor="type">Tipo de Lançamento</Label>
-                                    <Select required onValueChange={(v) => form.setValue('type', v as 'receita_outros' | 'despesa')} >
+                                    <Select required onValueChange={(v) => form.setValue('type', v as 'receita_outros' | 'despesa')} defaultValue={form.getValues('type')}>
                                         <SelectTrigger id="type">
                                             <SelectValue placeholder="Selecione o tipo" />
                                         </SelectTrigger>
@@ -463,7 +426,6 @@ export default function FinanceiroPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <input type="hidden" {...form.register("date")} value={format(new Date(selectedYear, selectedMonth), "yyyy-MM-dd")} />
 
                                 <div>
                                    <Label htmlFor="description">Descrição</Label>
@@ -479,7 +441,10 @@ export default function FinanceiroPage() {
 
                                 <DialogFooter>
                                     <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
-                                    <Button type="submit">Salvar Lançamento</Button>
+                                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                                      {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                      Salvar
+                                    </Button>
                                 </DialogFooter>
                             </form>
                         </DialogContent>
@@ -492,11 +457,11 @@ export default function FinanceiroPage() {
                     <TableRow>
                       <TableHead>Descrição</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
-                       <TableHead className="w-[50px] text-right">Ação</TableHead>
+                       <TableHead className="w-[50px] text-right"> </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {allTransactionsForPeriod.length > 0 ? allTransactionsForPeriod.map(t => (
+                    {transactionsForPeriod.length > 0 ? transactionsForPeriod.map(t => (
                       <TableRow key={t.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -509,11 +474,11 @@ export default function FinanceiroPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className={`text-right font-semibold ${t.type.startsWith('receita') ? 'text-green-600' : 'text-red-600'}`}>
-                           {t.type === 'receita_consulta' ? '' : (t.type === 'receita_outros' ? '+' : '-')} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <TableCell className={`text-right font-semibold ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                           {t.amount >= 0 ? '+' : ''} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </TableCell>
                          <TableCell className="text-right">
-                           {t.id.startsWith('apt-') ? null : (
+                           {t.type === 'receita_consulta' ? null : (
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => deleteTransaction(t.id)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -534,5 +499,3 @@ export default function FinanceiroPage() {
     </div>
   );
 }
-
-    
