@@ -2,17 +2,9 @@
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { z } from "zod";
+import bcrypt from 'bcrypt';
 
-// Para uma aplicação real, usaríamos uma biblioteca como bcrypt
-// Por simplicidade aqui, vamos apenas armazenar o hash (NÃO FAÇA ISSO EM PRODUÇÃO REAL)
-// Uma implementação real precisaria de `npm install bcrypt @types/bcrypt`
-// e o código seria:
-// import bcrypt from 'bcrypt';
-// const saltRounds = 10;
-// const password_hash = await bcrypt.hash(password, saltRounds);
-// Aqui, vamos apenas criar uma simulação de hash
-const createPseudoHash = (password: string) => `hashed_${password}_${new Date().getTime()}`;
-
+const saltRounds = 10;
 
 const professionalSchema = z.object({
   nome: z.string().min(1),
@@ -49,8 +41,8 @@ export async function POST(req: Request) {
 
     const { nome, email, password, role } = validation.data;
     
-    // Simulação de hash da senha
-    const password_hash = createPseudoHash(password);
+    // Criptografa a senha com bcrypt
+    const password_hash = await bcrypt.hash(password, saltRounds);
 
     const pool = getPool();
     const result = await pool.query(
