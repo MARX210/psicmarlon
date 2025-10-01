@@ -32,7 +32,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
   try {
     const body = await req.json();
-    let result;
     
     await client.query('BEGIN');
 
@@ -49,6 +48,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [currentAppointment.patient_id]);
     const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
 
+    let updatedAppointmentData: any;
+    let newStatus: string;
+
     // Se o corpo contiver mais do que apenas o status, é uma edição completa
     if (Object.keys(body).length > 1) {
         const validation = appointmentUpdateSchema.safeParse(body);
@@ -56,50 +58,30 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             await client.query('ROLLBACK');
             return NextResponse.json({ error: "Dados de atualização completa inválidos", details: validation.error.flatten() }, { status: 400 });
         }
-        const { date, time, professional, type, duration, price, status: newStatus } = validation.data;
-        
-        // Lógica de transação para edição completa
-        if (newStatus === 'Pago' && oldStatus !== 'Pago') {
-            // Cria transação com a descrição simplificada
-             await client.query(
-                `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (agendamento_id) DO NOTHING`,
-                [date, `Consulta - ${patientName}`, price, 'receita_consulta', id]
-            );
-        } else if (newStatus !== 'Pago' && oldStatus === 'Pago') {
-            // Remove transação
-            await client.query('DELETE FROM transacoes WHERE agendamento_id = $1', [id]);
-        }
+        updatedAppointmentData = validation.data;
+        newStatus = updatedAppointmentData.status;
 
-        result = await client.query(
+        const result = await client.query(
             `
             UPDATE agendamentos
             SET date = $1, time = $2, type = $3, duration = $4, price = $5, status = $7, professional = $8
             WHERE id = $6
             RETURNING *
             `,
-            [date, time, type, duration, price, id, newStatus, professional]
+            [updatedAppointmentData.date, updatedAppointmentData.time, updatedAppointmentData.type, updatedAppointmentData.duration, updatedAppointmentData.price, id, newStatus, updatedAppointmentData.professional]
         );
+        updatedAppointmentData = result.rows[0];
+
     } else { // Caso contrário, é apenas uma atualização de status
         const validation = statusUpdateSchema.safeParse(body);
         if (!validation.success) {
             await client.query('ROLLBACK');
             return NextResponse.json({ error: "Dados de atualização de status inválidos", details: validation.error.flatten() }, { status: 400 });
         }
-        const { status: newStatus } = validation.data;
+        const { status } = validation.data;
+        newStatus = status;
 
-        // Lógica de transação para atualização de status
-        if (newStatus === 'Pago' && oldStatus !== 'Pago') {
-            // Cria transação se não existir com a descrição simplificada
-            await client.query(
-                `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (agendamento_id) DO NOTHING`,
-                [currentAppointment.date, `Consulta - ${patientName}`, currentAppointment.price, 'receita_consulta', id]
-            );
-        } else if (newStatus !== 'Pago' && oldStatus === 'Pago') {
-            // Remove transação se existir
-            await client.query('DELETE FROM transacoes WHERE agendamento_id = $1', [id]);
-        }
-        
-        result = await client.query(
+        const result = await client.query(
             `
             UPDATE agendamentos
             SET status = $1
@@ -108,27 +90,34 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             `,
             [newStatus, id]
         );
+        updatedAppointmentData = result.rows[0];
+    }
+    
+    // Lógica de transação unificada
+    if (newStatus === 'Pago' && oldStatus !== 'Pago') {
+        // Cria transação se não existir com a descrição simplificada
+        await client.query(
+            `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (agendamento_id) DO NOTHING`,
+            [updatedAppointmentData.date, `Consulta - ${patientName}`, updatedAppointmentData.price, 'receita_consulta', id]
+        );
+    } else if (newStatus !== 'Pago' && oldStatus === 'Pago') {
+        // Remove transação se o status deixar de ser 'Pago'
+        await client.query('DELETE FROM transacoes WHERE agendamento_id = $1', [id]);
     }
     
     await client.query('COMMIT');
-
-    if (result.rowCount === 0) {
-      // Este caso agora é pego no início, mas mantido por segurança.
-      return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
-    }
     
     // Normaliza o retorno para corresponder à estrutura do frontend
-    const updatedAppointment = result.rows[0];
     const responseData = {
-        id: updatedAppointment.id,
-        patientId: updatedAppointment.patient_id,
-        date: new Date(updatedAppointment.date).toISOString().split('T')[0], // Formato YYYY-MM-DD
-        time: updatedAppointment.time,
-        professional: updatedAppointment.professional,
-        type: updatedAppointment.type,
-        duration: updatedAppointment.duration,
-        price: parseFloat(updatedAppointment.price),
-        status: updatedAppointment.status
+        id: updatedAppointmentData.id,
+        patientId: updatedAppointmentData.patient_id,
+        date: new Date(updatedAppointmentData.date).toISOString().split('T')[0], // Formato YYYY-MM-DD
+        time: updatedAppointmentData.time,
+        professional: updatedAppointmentData.professional,
+        type: updatedAppointmentData.type,
+        duration: updatedAppointmentData.duration,
+        price: parseFloat(updatedAppointmentData.price),
+        status: updatedAppointmentData.status
     };
 
     return NextResponse.json(
