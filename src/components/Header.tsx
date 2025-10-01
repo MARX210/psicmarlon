@@ -37,6 +37,7 @@ export function Header() {
     { href: "/cadastro", label: "Cadastro" },
     { href: "/agenda", label: "Agenda" },
     { href: "/pacientes", label: "Pacientes" },
+    { href: "/profissionais", label: "Profissionais" },
     { href: "/financeiro", label: "Financeiro" },
   ];
 
