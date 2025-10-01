@@ -13,12 +13,12 @@ export async function GET(req: Request) {
     
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular FROM Pacientes WHERE cpf = $1 OR id = $1";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular FROM Pacientes WHERE cpf = $1 OR id = $1";
       const result = await pool.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
       // Query to get all fields needed for the patient list and edit form
-      const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM Pacientes ORDER BY nome";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM Pacientes ORDER BY nome";
       const result = await pool.query(query);
       return NextResponse.json(result.rows, { status: 200 });
     }

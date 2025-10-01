@@ -35,7 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 type Patient = {
   id: string;
-  name: string;
+  nome: string;
   cpf: string;
   celular: string | null;
   email: string | null;
@@ -200,7 +200,7 @@ export default function PacientesPage() {
     const cleanTerm = term.replace(/\D/g, "");
 
     return patients.filter(p => 
-      p.name.toLowerCase().includes(term) ||
+      p.nome.toLowerCase().includes(term) ||
       p.cpf.replace(/\D/g, "").includes(cleanTerm) ||
       p.id.toLowerCase().includes(term)
     );
@@ -222,7 +222,7 @@ export default function PacientesPage() {
   }, [appointments, editingPatient]);
   
   const handleTemplateChange = (templateKey: keyof typeof messageTemplates | "custom") => {
-    if (!editingPatient) return;
+    if (!editingPatient || !editingPatient.nome) return;
     
     if (templateKey === "custom") {
         setWhatsappMessage("");
@@ -233,7 +233,7 @@ export default function PacientesPage() {
     const date = nextAppointment ? format(parseISO(nextAppointment.date), 'dd/MM/yyyy', { locale: ptBR }) : '[Data da consulta]';
     const time = nextAppointment ? nextAppointment.time : '[Hora da consulta]';
 
-    const message = messageTemplates[templateKey](editingPatient.name.split(" ")[0], date, time);
+    const message = messageTemplates[templateKey](editingPatient.nome.split(" ")[0], date, time);
     setWhatsappMessage(message);
 };
 
@@ -244,7 +244,7 @@ export default function PacientesPage() {
     }
     let phoneNumber = editingPatient.celular.replace(/\D/g, "");
     // Garante que o DDI 55 esteja presente para números brasileiros
-    if (phoneNumber.length === 11 && !phoneNumber.startsWith('55')) {
+    if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) {
        phoneNumber = '55' + phoneNumber;
     }
     const encodedMessage = encodeURIComponent(whatsappMessage);
@@ -337,7 +337,7 @@ export default function PacientesPage() {
             <TableBody>
               {paginatedPatients.length > 0 ? paginatedPatients.map(patient => (
                 <TableRow key={patient.id} className="cursor-pointer" onClick={() => setEditingPatient(patient)}>
-                  <TableCell className="font-medium">{patient.name}</TableCell>
+                  <TableCell className="font-medium">{patient.nome}</TableCell>
                   <TableCell>{patient.id}</TableCell>
                   <TableCell className="hidden md:table-cell">{formatCpf(patient.cpf)}</TableCell>
                   <TableCell className="hidden sm:table-cell">{formatCelular(patient.celular)}</TableCell>
@@ -386,7 +386,7 @@ export default function PacientesPage() {
       <Dialog open={!!editingPatient} onOpenChange={() => setEditingPatient(null)}>
         <DialogContent className="sm:max-w-[800px] md:max-w-[900px] max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Detalhes de {editingPatient?.name}</DialogTitle>
+            <DialogTitle>Detalhes de {editingPatient?.nome}</DialogTitle>
             <DialogDescription>
               Visualize, atualize os dados ou entre em contato com o paciente.
             </DialogDescription>
@@ -550,7 +550,7 @@ export default function PacientesPage() {
             <DialogHeader>
                 <DialogTitle>Enviar Mensagem via WhatsApp</DialogTitle>
                 <DialogDescription>
-                    Selecione um modelo ou escreva uma mensagem personalizada para {editingPatient?.name}.
+                    Selecione um modelo ou escreva uma mensagem personalizada para {editingPatient?.nome}.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
