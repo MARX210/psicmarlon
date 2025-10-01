@@ -217,10 +217,7 @@ export function SchedulingForm() {
         throw new Error('Erro ao atualizar status');
       }
       
-      const result = await response.json();
-      
-      // Sync with server response
-      setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, ...result.appointment } : a));
+      await fetchAppointments(); // Re-fetch all to ensure sync
 
       toast({
         title: "Status Atualizado!",
@@ -294,7 +291,7 @@ export function SchedulingForm() {
 
     try {
       const normalizedCpf = cpfInput.replace(/\D/g, "");
-      const res = await fetch(`/api/pacientes?cpf=${normalizedCpf}`);
+      const res = await fetch(`/api/pacientes?cpf=${cpfInput}`);
       if (!res.ok) throw new Error("Erro na resposta do servidor");
       
       const data: Patient[] = await res.json();
@@ -514,7 +511,7 @@ export function SchedulingForm() {
           <CardHeader>
             <CardTitle>{isEditing ? 'Editar Consulta' : 'Nova Consulta'}</CardTitle>
             <CardDescription>
-              {isEditing ? 'Altere os dados do agendamento abaixo.' : 'Busque o paciente por CPF e preencha os dados.'}
+              {isEditing ? 'Altere os dados do agendamento abaixo.' : 'Busque o paciente por CPF ou Nº ID e preencha os dados.'}
             </CardDescription>
           </CardHeader>
           <CardContent>

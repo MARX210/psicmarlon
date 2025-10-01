@@ -193,6 +193,7 @@ export default function PacientesPage() {
     const cleanTerm = term.replace(/\D/g, "");
 
     return patients.filter(p => 
+      p.name.toLowerCase().includes(term) ||
       p.cpf.replace(/\D/g, "").includes(cleanTerm) ||
       p.id.toLowerCase().includes(term)
     );
@@ -235,8 +236,9 @@ export default function PacientesPage() {
         return;
     }
     let phoneNumber = editingPatient.celular.replace(/\D/g, "");
-    if (!phoneNumber.startsWith('55')) {
-        phoneNumber = '55' + phoneNumber;
+    // Garante que o DDI 55 esteja presente para números brasileiros
+    if (phoneNumber.length === 11 && !phoneNumber.startsWith('55')) {
+       phoneNumber = '55' + phoneNumber;
     }
     const encodedMessage = encodeURIComponent(whatsappMessage);
     window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
@@ -297,7 +299,7 @@ export default function PacientesPage() {
       <div className="flex justify-center">
         <div className="relative w-full max-w-md">
           <Input 
-            placeholder="Buscar por CPF ou Nº ID..."
+            placeholder="Buscar por Nome, CPF ou Nº ID..."
             value={searchTerm}
             onChange={e => {
               setSearchTerm(e.target.value);
@@ -385,7 +387,10 @@ export default function PacientesPage() {
           
           <div className="flex justify-start gap-2 border-b pb-4">
               <DialogTrigger asChild>
-                 <Button onClick={() => setIsWhatsAppDialogOpen(true)} disabled={!editingPatient?.celular}>
+                 <Button onClick={() => {
+                    setEditingPatient(editingPatient);
+                    setIsWhatsAppDialogOpen(true);
+                 }} disabled={!editingPatient?.celular}>
                     <MessageCircle className="mr-2 h-4 w-4" />
                     Enviar WhatsApp
                  </Button>
@@ -569,4 +574,3 @@ export default function PacientesPage() {
     </div>
   );
 }
-

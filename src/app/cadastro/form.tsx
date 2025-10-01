@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patientRegistrationSchema } from "@/lib/schemas";
 import type { z } from "zod";
+import { Loader2 } from "lucide-react";
 
 type PatientFormValues = z.infer<typeof patientRegistrationSchema>;
 
@@ -243,7 +244,7 @@ export function RegistrationForm() {
                 <FormItem>
                   <FormLabel>Tipo de Paciente*</FormLabel>
                   <Select
-                    onValueChange={(v: string) => field.onChange(Number(v))}
+                    onValueChange={(v: string) => field.onChange(v ? Number(v) : undefined)}
                     value={field.value !== undefined ? String(field.value) : undefined}
                   >
                     <FormControl>
@@ -366,8 +367,7 @@ export function RegistrationForm() {
                 <FormLabel>Bairro*</FormLabel>
                 <FormControl>
                   <Input placeholder="Bairro" {...field} />
-                </FormControl>
-                <FormMessage />
+                </FormControl>                <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="cidade" render={({ field }) => (
@@ -402,6 +402,7 @@ export function RegistrationForm() {
 
         <div className="flex justify-end pt-4">
           <Button type="submit" size="lg" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {form.formState.isSubmitting ? "Salvando..." : "Salvar Cadastro"}
           </Button>
         </div>

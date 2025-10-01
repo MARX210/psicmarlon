@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular FROM Pacientes WHERE cpf = $1";
+      const query = "SELECT id, nome as name, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular FROM Pacientes WHERE cpf = $1 OR id = $1";
       const result = await pool.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
@@ -99,10 +99,15 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("ERRO NO POST:", error);
     
-    if (error.code === '23505') {
-      return NextResponse.json({ 
-        error: 'Já existe um paciente com este CPF.' 
-      }, { status: 409 });
+    if (error.code === '23505') { // Unique violation
+        const isCpf = error.constraint === 'pacientes_cpf_key';
+        const isId = error.constraint === 'pacientes_pkey';
+        if (isCpf) {
+             return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
+        }
+        if(isId) {
+             return NextResponse.json({ error: 'Já existe um paciente com este Nº de Cartão/ID.' }, { status: 409 });
+        }
     }
     
     return NextResponse.json({ 
