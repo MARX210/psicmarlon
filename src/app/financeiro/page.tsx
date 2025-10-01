@@ -164,13 +164,14 @@ export default function FinanceiroPage() {
       .filter(app => app.status === "Pago" && isWithinInterval(parseISO(app.date), interval))
       .reduce((sum, app) => {
         let clinicShare = 0;
-        if (app.professional !== 'Psicólogo') {
-            clinicShare = app.price * 0.5; // 50% para a clínica
-        } else { // Se for Psicólogo
+        if (app.professional === 'Psicólogo') {
+            clinicShare = app.price; // 100% para a clínica
+        } else { // Se for outro profissional
             if (app.price > 150) {
                 clinicShare = app.price * 0.2; // 20% para a clínica
+            } else {
+                clinicShare = app.price * 0.5; // 50% para a clínica
             }
-            // Se for <= 150, a clínica fica com 0%
         }
         return sum + clinicShare;
       }, 0);
@@ -232,11 +233,13 @@ export default function FinanceiroPage() {
       const monthKey = format(date, 'MMM/yy', { locale: ptBR });
       if (dataByMonth[monthKey]) {
           let clinicShare = 0;
-          if (app.professional !== 'Psicólogo') {
-              clinicShare = app.price * 0.5;
+          if (app.professional === 'Psicólogo') {
+              clinicShare = app.price;
           } else {
               if (app.price > 150) {
                   clinicShare = app.price * 0.2;
+              } else {
+                  clinicShare = app.price * 0.5;
               }
           }
           dataByMonth[monthKey].revenue += clinicShare;
