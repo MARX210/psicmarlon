@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email e senha são obrigatórios" }, { status: 400 });
     }
 
-    const result = await client.query("SELECT * FROM profissionais WHERE email = $1", [email]);
+    const result = await client.query('SELECT * FROM profissionais WHERE email = $1', [email]);
 
     if (result.rowCount === 0) {
       console.warn(`Tentativa de login falhou (usuário não encontrado): ${email}`);
