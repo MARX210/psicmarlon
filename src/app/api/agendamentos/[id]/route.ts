@@ -11,7 +11,7 @@ const appointmentUpdateSchema = z.object({
   type: z.enum(["Online", "Presencial"]),
   duration: z.number().positive(),
   price: z.number().nonnegative(),
-  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou", "Pago"]),
+  status: z.string(), // Mantido como string para validação posterior
 });
 
 // Schema para validação da atualização parcial (só o status)
@@ -36,6 +36,16 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     await client.query('BEGIN');
 
+    // Buscar o estado atual do agendamento ANTES de qualquer alteração
+    const currentAppointmentResult = await client.query('SELECT * FROM agendamentos WHERE id = $1', [id]);
+    if (currentAppointmentResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
+    }
+    const currentAppointment = currentAppointmentResult.rows[0];
+    const oldStatus = currentAppointment.status;
+
+
     // Se o corpo contiver mais do que apenas o status, é uma edição completa
     if (Object.keys(body).length > 1) {
         const validation = appointmentUpdateSchema.safeParse(body);
@@ -43,7 +53,22 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             await client.query('ROLLBACK');
             return NextResponse.json({ error: "Dados de atualização completa inválidos", details: validation.error.flatten() }, { status: 400 });
         }
-        const { date, time, professional, type, duration, price, status } = validation.data;
+        const { date, time, professional, type, duration, price, status: newStatus } = validation.data;
+        
+        // Lógica de transação para edição completa
+        if (newStatus === 'Pago' && oldStatus !== 'Pago') {
+            // Cria transação
+             const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [currentAppointment.patient_id]);
+             const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
+             await client.query(
+                `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (agendamento_id) DO NOTHING`,
+                [date, `Consulta - ${patientName}`, price, 'receita_consulta', id]
+            );
+        } else if (newStatus !== 'Pago' && oldStatus === 'Pago') {
+            // Remove transação
+            await client.query('DELETE FROM transacoes WHERE agendamento_id = $1', [id]);
+        }
+
         result = await client.query(
             `
             UPDATE agendamentos
@@ -51,7 +76,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             WHERE id = $6
             RETURNING *
             `,
-            [date, time, type, duration, price, id, status, professional]
+            [date, time, type, duration, price, id, newStatus, professional]
         );
     } else { // Caso contrário, é apenas uma atualização de status
         const validation = statusUpdateSchema.safeParse(body);
@@ -59,29 +84,20 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             await client.query('ROLLBACK');
             return NextResponse.json({ error: "Dados de atualização de status inválidos", details: validation.error.flatten() }, { status: 400 });
         }
-        const { status } = validation.data;
+        const { status: newStatus } = validation.data;
 
-        // Verifica se o status está sendo mudado para "Pago"
-        if (status === 'Pago') {
-            const agendamentoResult = await client.query('SELECT * FROM agendamentos WHERE id = $1', [id]);
-            const agendamento = agendamentoResult.rows[0];
-            
-            // Verifica se o agendamento existe e se o status anterior não era 'Pago'
-            if (agendamento && agendamento.status !== 'Pago') {
-                // Verifica se já não existe uma transação para este agendamento
-                const transacaoExistente = await client.query('SELECT id FROM transacoes WHERE agendamento_id = $1', [id]);
-                
-                if (transacaoExistente.rowCount === 0) {
-                    // Busca o nome do paciente
-                    const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [agendamento.patient_id]);
-                    const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
-
-                    await client.query(
-                        `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5)`,
-                        [agendamento.date, `Consulta - ${patientName}`, agendamento.price, 'receita_consulta', id]
-                    );
-                }
-            }
+        // Lógica de transação para atualização de status
+        if (newStatus === 'Pago' && oldStatus !== 'Pago') {
+            // Cria transação se não existir
+            const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [currentAppointment.patient_id]);
+            const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
+            await client.query(
+                `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (agendamento_id) DO NOTHING`,
+                [currentAppointment.date, `Consulta - ${patientName}`, currentAppointment.price, 'receita_consulta', id]
+            );
+        } else if (newStatus !== 'Pago' && oldStatus === 'Pago') {
+            // Remove transação se existir
+            await client.query('DELETE FROM transacoes WHERE agendamento_id = $1', [id]);
         }
         
         result = await client.query(
@@ -91,13 +107,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
             WHERE id = $2
             RETURNING *
             `,
-            [status, id]
+            [newStatus, id]
         );
     }
     
     await client.query('COMMIT');
 
     if (result.rowCount === 0) {
+      // Este caso agora é pego no início, mas mantido por segurança.
       return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
     }
     
@@ -143,10 +160,11 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   try {
     await client.query('BEGIN');
     
-    // Excluir a transação associada, se existir
+    // Antes de excluir o agendamento, exclui a transação associada.
+    // Isso garante que o financeiro fique consistente.
     await client.query('DELETE FROM transacoes WHERE agendamento_id = $1', [id]);
     
-    // Excluir o agendamento
+    // Agora, exclui o agendamento
     const result = await client.query("DELETE FROM agendamentos WHERE id = $1 RETURNING *", [id]);
 
     if (result.rowCount === 0) {
@@ -156,7 +174,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     
     await client.query('COMMIT');
 
-    return NextResponse.json({ message: "Agendamento e transação associada foram excluídos com sucesso" }, { status: 200 });
+    return NextResponse.json({ message: "Agendamento e transação associada (se houver) foram excluídos com sucesso" }, { status: 200 });
   } catch (error) {
     await client.query('ROLLBACK');
     console.error("Erro ao excluir agendamento:", error);
