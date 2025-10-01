@@ -182,7 +182,6 @@ export function SchedulingForm() {
     setSelectedDate(today);
     form.setValue("date", today);
     
-    // Carregar horários do localStorage ou usar padrão
     try {
       const storedSlots = localStorage.getItem("timeSlots");
       if (storedSlots) {
@@ -201,23 +200,19 @@ export function SchedulingForm() {
   }, [form, fetchAppointments, fetchAllPatients]);
   
   const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus) => {
-    const originalAppointments = [...appointments];
-    
-    // Optimistic update
-    setAppointments(prev => prev.map(a => a.id === appointmentId ? { ...a, status } : a));
-
     try {
       const response = await fetch(`/api/agendamentos/${appointmentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }), // Only send the status
+        body: JSON.stringify({ status }),
       });
 
       if (!response.ok) {
-        throw new Error('Erro ao atualizar status');
+        const result = await response.json();
+        throw new Error(result.error || 'Erro ao atualizar status');
       }
       
-      await fetchAppointments(); // Re-fetch to ensure sync
+      await fetchAppointments(); 
 
       toast({
         title: "Status Atualizado!",
@@ -225,12 +220,10 @@ export function SchedulingForm() {
       });
 
     } catch (error) {
-      // Revert on error
-      setAppointments(originalAppointments);
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Não foi possível atualizar o status do agendamento.",
+        description: error instanceof Error ? error.message : "Não foi possível atualizar o status do agendamento.",
       });
     }
   };
@@ -391,8 +384,7 @@ export function SchedulingForm() {
         title: "Agendamento Excluído!",
         description: "A consulta foi removida da sua agenda.",
       });
-      // Re-fetch data for appointments to update the UI
-      fetchAppointments();
+      await fetchAppointments();
     } catch (error) {
       toast({
         variant: "destructive",
@@ -457,7 +449,7 @@ export function SchedulingForm() {
             description: `Consulta para ${selectedPatient.name} foi ${isEditing ? 'atualizada' : 'marcada'} com sucesso.`,
         });
         
-        fetchAppointments();
+        await fetchAppointments();
         handleClearPatient();
 
     } catch (error) {
@@ -468,6 +460,7 @@ export function SchedulingForm() {
         });
     } finally {
         setIsSubmitting(false);
+        setIsEditing(null);
     }
   }
   

@@ -18,7 +18,6 @@ export async function GET() {
   try {
     const pool = getPool();
 
-    // Query para buscar agendamentos e juntar com o nome do paciente
     const result = await pool.query(`
       SELECT
         a.id,
@@ -47,6 +46,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+    const pool = getPool();
+    const client = await pool.connect();
   try {
     const body = await req.json();
     const validation = appointmentSchema.safeParse(body);
@@ -59,12 +60,22 @@ export async function POST(req: Request) {
     }
     
     const { patientId, date, time, professional, type, duration, price, status } = validation.data;
+    
+    await client.query('BEGIN');
+    
+    // Verificar conflitos de horário antes de inserir
+    const conflictCheck = await client.query(
+        `SELECT id FROM agendamentos WHERE date = $1 AND time = $2`,
+        [date, time]
+    );
 
-    const pool = getPool();
+    if (conflictCheck.rowCount > 0) {
+        await client.query('ROLLBACK');
+        return NextResponse.json({ error: 'Já existe um agendamento neste horário.' }, { status: 409 });
+    }
 
-    // TODO: Verificar conflitos de horário antes de inserir
 
-    const result = await pool.query(
+    const result = await client.query(
       `
       INSERT INTO agendamentos (patient_id, date, time, professional, type, duration, price, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -82,15 +93,20 @@ export async function POST(req: Request) {
       [patientId, date, time, professional, type, duration, price, status || 'Confirmado']
     );
 
+    await client.query('COMMIT');
+    
     return NextResponse.json(
       { message: "Agendamento criado com sucesso", appointment: result.rows[0] },
       { status: 201 }
     );
   } catch (error: any) {
+    await client.query('ROLLBACK');
     console.error("Erro ao criar agendamento:", error);
     return NextResponse.json(
       { error: "Erro interno ao criar agendamento" },
       { status: 500 }
     );
+  } finally {
+      client.release();
   }
 }
