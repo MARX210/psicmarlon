@@ -109,7 +109,7 @@ export default function ProfissionaisPage() {
 
   async function onFormSubmit(data: ProfessionalFormValues) {
     try {
-      const response = await fetch("/api/profissionais", {
+      const response = await fetch("/api/profissionais/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
