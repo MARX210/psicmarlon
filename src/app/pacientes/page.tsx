@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard } from "lucide-react";
+import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,6 +29,9 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 type Patient = {
   id: string;
@@ -63,6 +67,12 @@ const statusConfig: Record<AppointmentStatus, { label: string; icon: React.Eleme
   Pago: { label: "Pago", icon: CreditCard, color: "text-emerald-500" },
   Cancelado: { label: "Cancelado", icon: XCircle, color: "text-gray-500" },
   Faltou: { label: "Faltou", icon: AlertCircle, color: "text-red-500" },
+};
+
+const messageTemplates = {
+  confirmacao: (nome: string, data: string, hora: string) => `Olá, ${nome}! Tudo bem? Gostaria de confirmar sua consulta para o dia ${data} às ${hora}.`,
+  reagendamento: (nome: string) => `Olá, ${nome}! Tudo bem? Notei que você precisa reagendar sua consulta. Quais dias e horários seriam melhores para você?`,
+  cancelamento: (nome: string) => `Olá, ${nome}. Recebi sua solicitação de cancelamento. Sem problemas! Se precisar, pode me chamar para agendar uma nova data.`,
 };
 
 
@@ -109,6 +119,9 @@ export default function PacientesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
+  const [whatsappMessage, setWhatsappMessage] = useState("");
+
 
   const { toast } = useToast();
   const form = useForm<PatientUpdateFormValues>({
@@ -177,7 +190,6 @@ export default function PacientesPage() {
     const term = searchTerm.toLowerCase();
     if (!term) return patients;
     
-    // Remove formatação de CPF e busca
     const cleanTerm = term.replace(/\D/g, "");
 
     return patients.filter(p => 
@@ -200,6 +212,33 @@ export default function PacientesPage() {
       .filter(app => app.patientId === editingPatient.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [appointments, editingPatient]);
+  
+  const handleTemplateChange = (templateKey: keyof typeof messageTemplates | "custom") => {
+    if (!editingPatient) return;
+    
+    if (templateKey === "custom") {
+        setWhatsappMessage("");
+        return;
+    }
+
+    const nextAppointment = patientAppointments.find(app => new Date(app.date) >= new Date());
+    const date = nextAppointment ? format(parseISO(nextAppointment.date), 'dd/MM/yyyy', { locale: ptBR }) : '[Data da consulta]';
+    const time = nextAppointment ? nextAppointment.time : '[Hora da consulta]';
+
+    const message = messageTemplates[templateKey](editingPatient.name.split(" ")[0], date, time);
+    setWhatsappMessage(message);
+};
+
+  const handleSendWhatsApp = () => {
+    if (!editingPatient || !editingPatient.celular) {
+        toast({ variant: "destructive", title: "Erro", description: "Paciente sem número de celular cadastrado." });
+        return;
+    }
+    const phoneNumber = editingPatient.celular.replace(/\D/g, "");
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+    window.open(`https://wa.me/55${phoneNumber}?text=${encodedMessage}`, '_blank');
+    setIsWhatsAppDialogOpen(false);
+  };
 
   const handleUpdatePatient = async (data: PatientUpdateFormValues) => {
     if (!editingPatient) return;
@@ -285,15 +324,15 @@ export default function PacientesPage() {
             </TableHeader>
             <TableBody>
               {paginatedPatients.length > 0 ? paginatedPatients.map(patient => (
-                <TableRow key={patient.id}>
+                <TableRow key={patient.id} className="cursor-pointer" onClick={() => setEditingPatient(patient)}>
                   <TableCell className="font-medium">{patient.name}</TableCell>
                   <TableCell>{patient.id}</TableCell>
                   <TableCell className="hidden md:table-cell">{formatCpf(patient.cpf)}</TableCell>
                   <TableCell className="hidden sm:table-cell">{formatCelular(patient.celular)}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => setEditingPatient(patient)}>
+                    <Button variant="ghost" size="icon">
                       <Edit className="h-4 w-4" />
-                      <span className="sr-only">Editar</span>
+                      <span className="sr-only">Ver Detalhes</span>
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -331,16 +370,61 @@ export default function PacientesPage() {
         </div>
       )}
 
+      {/* Dialog de Detalhes e Edição */}
       <Dialog open={!!editingPatient} onOpenChange={() => setEditingPatient(null)}>
-        <DialogContent className="sm:max-w-[600px] md:max-w-[800px] max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-[800px] md:max-w-[900px] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Detalhes de {editingPatient?.name}</DialogTitle>
             <DialogDescription>
-              Atualize os dados cadastrais ou visualize o histórico de agendamentos.
+              Visualize, atualize os dados ou entre em contato com o paciente.
             </DialogDescription>
           </DialogHeader>
+          
+          <div className="flex justify-start gap-2 border-b pb-4">
+              <DialogTrigger asChild>
+                 <Button onClick={() => setIsWhatsAppDialogOpen(true)} disabled={!editingPatient?.celular}>
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Enviar WhatsApp
+                 </Button>
+              </DialogTrigger>
+              <Button variant="outline" disabled>
+                 <FileText className="mr-2 h-4 w-4" />
+                 Ver Prontuário
+              </Button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 flex-grow overflow-y-auto pr-4">
-            {/* Coluna de Edição */}
+            {/* Coluna de Histórico */}
+            <div className="space-y-4">
+               <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Agendamentos</h3>
+               {patientAppointments.length > 0 ? (
+                 <ul className="space-y-2">
+                   {patientAppointments.map(app => {
+                      const status = (app.status as AppointmentStatus) || "Confirmado";
+                      const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
+                      const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
+                      const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
+
+                     return(
+                       <li key={app.id} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
+                         <div>
+                           <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
+                           <p className="text-xs text-muted-foreground">{app.type}</p>
+                         </div>
+                         <div className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2 py-1 ${currentStatusColor}`}>
+                            <CurrentStatusIcon className="h-3.5 w-3.5" />
+                            {currentStatusLabel}
+                         </div>
+                       </li>
+                     )
+                   })}
+                 </ul>
+               ) : (
+                 <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>
+               )}
+            </div>
+            
+             {/* Coluna de Edição */}
             <div className="space-y-4">
               <h3 className="font-semibold text-lg border-b pb-2">Dados Cadastrais</h3>
               <Form {...form}>
@@ -381,24 +465,26 @@ export default function PacientesPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="numero" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número</FormLabel>
-                      <FormControl>
-                        <Input placeholder="123" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="complemento" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Complemento</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Apto, Bloco..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
+                   <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="numero" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número</FormLabel>
+                          <FormControl>
+                            <Input placeholder="123" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="complemento" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Complemento</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Apto, Bloco..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                   </div>
                   <FormField control={form.control} name="bairro" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Bairro</FormLabel>
@@ -408,35 +494,28 @@ export default function PacientesPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={form.control} name="cidade" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cidade</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Cidade" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="estado" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estado</FormLabel>
-                      <FormControl>
-                        <Input placeholder="UF" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="pais" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>País</FormLabel>
-                      <FormControl>
-                        <Input placeholder="País" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                   <DialogFooter className="pt-4 sticky bottom-0 bg-background">
-                     <Button type="button" variant="outline" onClick={() => setEditingPatient(null)}>Cancelar</Button>
+                   <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="cidade" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cidade</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Cidade" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="estado" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estado</FormLabel>
+                          <FormControl>
+                            <Input placeholder="UF" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                   </div>
+                   <DialogFooter className="pt-4 sticky bottom-0 bg-background/95 pb-2">
+                     <Button type="button" variant="outline" onClick={() => setEditingPatient(null)}>Fechar</Button>
                      <Button type="submit" disabled={isUpdating}>
                         {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Salvar Alterações
@@ -445,39 +524,46 @@ export default function PacientesPage() {
                 </form>
               </Form>
             </div>
-            
-            {/* Coluna de Histórico */}
-            <div className="space-y-4">
-               <h3 className="font-semibold text-lg border-b pb-2 flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Agendamentos</h3>
-               {patientAppointments.length > 0 ? (
-                 <ul className="space-y-2">
-                   {patientAppointments.map(app => {
-                      const status = (app.status as AppointmentStatus) || "Confirmado";
-                      const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
-                      const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
-                      const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
 
-                     return(
-                       <li key={app.id} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
-                         <div>
-                           <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
-                           <p className="text-xs text-muted-foreground">{app.type}</p>
-                         </div>
-                         <div className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2 py-1 ${currentStatusColor}`}>
-                            <CurrentStatusIcon className="h-3.5 w-3.5" />
-                            {currentStatusLabel}
-                         </div>
-                       </li>
-                     )
-                   })}
-                 </ul>
-               ) : (
-                 <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>
-               )}
-            </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog do WhatsApp */}
+      <Dialog open={isWhatsAppDialogOpen} onOpenChange={setIsWhatsAppDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Enviar Mensagem via WhatsApp</DialogTitle>
+                <DialogDescription>
+                    Selecione um modelo ou escreva uma mensagem personalizada para {editingPatient?.name}.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <Select onValueChange={(value: keyof typeof messageTemplates | "custom") => handleTemplateChange(value)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Selecione um modelo de mensagem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="confirmacao">Confirmar consulta</SelectItem>
+                        <SelectItem value="reagendamento">Sugerir reagendamento</SelectItem>
+                        <SelectItem value="cancelamento">Confirmar cancelamento</SelectItem>
+                        <SelectItem value="custom">Mensagem personalizada</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Textarea 
+                    placeholder="Sua mensagem aqui..."
+                    value={whatsappMessage}
+                    onChange={(e) => setWhatsappMessage(e.target.value)}
+                    rows={5}
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsWhatsAppDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={handleSendWhatsApp}>Enviar no WhatsApp</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
