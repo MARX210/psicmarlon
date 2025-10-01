@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const transactionSchema = z.object({
   description: z.string().min(1),
-  amount: z.number().positive(),
+  amount: z.coerce.number().positive(),
   type: z.enum(['receita_outros', 'despesa']),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
@@ -71,5 +71,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-    
