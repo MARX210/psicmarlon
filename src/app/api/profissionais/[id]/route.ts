@@ -21,9 +21,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
     const body = await req.json();
     const validation = professionalUpdateSchema.safeParse(body);
 
@@ -94,8 +95,9 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     
     const professionalResult = await client.query("SELECT role FROM profissionais WHERE id = $1", [id]);
     if (professionalResult.rowCount === 0) {

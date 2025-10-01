@@ -24,9 +24,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
     const body = await req.json();
     await client.query('BEGIN');
 
@@ -105,7 +106,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     };
     return NextResponse.json({ message: "Agendamento atualizado com sucesso", appointment: responseData }, { status: 200 });
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     console.error("Erro ao atualizar agendamento:", error);
     return NextResponse.json({ error: "Erro interno ao atualizar agendamento" }, { status: 500 });
   } finally {
@@ -120,9 +121,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     
     await client.query('DELETE FROM transacoes WHERE agendamento_id = $1', [id]);
@@ -138,7 +140,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
     return NextResponse.json({ message: "Agendamento e transação associada (se houver) foram excluídos com sucesso" }, { status: 200 });
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     console.error("Erro ao excluir agendamento:", error);
     return NextResponse.json({ error: "Erro interno ao excluir agendamento" }, { status: 500 });
   } finally {

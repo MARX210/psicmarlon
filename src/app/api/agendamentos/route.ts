@@ -16,8 +16,9 @@ const appointmentSchema = z.object({
 
 export async function GET() {
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const result = await client.query(`
       SELECT
         a.id,
@@ -46,8 +47,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
     const pool = getPool();
-    const client = await pool.connect();
+    let client;
   try {
+    client = await pool.connect();
     const body = await req.json();
     const validation = appointmentSchema.safeParse(body);
 
@@ -80,7 +82,7 @@ export async function POST(req: Request) {
     
     return NextResponse.json({ message: "Agendamento criado com sucesso", appointment: result.rows[0] }, { status: 201 });
   } catch (error: any) {
-    await client.query('ROLLBACK');
+    if (client) await client.query('ROLLBACK');
     console.error("Erro ao criar agendamento:", error);
     return NextResponse.json({ error: "Erro interno ao criar agendamento" }, { status: 500 });
   } finally {

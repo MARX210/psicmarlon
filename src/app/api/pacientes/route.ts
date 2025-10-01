@@ -8,9 +8,10 @@ export async function GET(req: Request) {
   const cpf = searchParams.get("cpf");
 
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
       const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular FROM Pacientes WHERE cpf = $1 OR id = $1";
@@ -32,8 +33,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const body = await req.json();
     const validation = patientRegistrationSchema.safeParse(body);
 

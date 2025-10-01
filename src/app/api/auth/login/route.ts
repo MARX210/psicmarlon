@@ -5,9 +5,10 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
     const body = await req.json();
     const { email, password } = body;
 

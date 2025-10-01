@@ -23,9 +23,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
   
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
     const body = await req.json();
     const validation = patientUpdateSchema.safeParse(body);
 

@@ -9,9 +9,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
 
   try {
+    client = await pool.connect();
     const result = await client.query("DELETE FROM transacoes WHERE id = $1 RETURNING *", [id]);
 
     if (result.rowCount === 0) {

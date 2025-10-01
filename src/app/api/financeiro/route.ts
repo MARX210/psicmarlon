@@ -12,8 +12,9 @@ const transactionSchema = z.object({
 
 export async function GET() {
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const result = await client.query(`
       SELECT 
         id::text, to_char(date, 'YYYY-MM-DD') as date, description, 
@@ -32,8 +33,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const body = await req.json();
     const validation = transactionSchema.safeParse(body);
 

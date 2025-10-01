@@ -4,8 +4,9 @@ import getPool from "@/lib/db";
 
 export async function GET() {
   const pool = getPool();
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const result = await client.query('SELECT COUNT(*) FROM profissionais');
     const count = parseInt(result.rows[0].count, 10);
     return NextResponse.json({ count }, { status: 200 });
