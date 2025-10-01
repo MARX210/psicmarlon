@@ -20,7 +20,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -59,7 +58,6 @@ type Professional = {
 
 export default function ProfissionaisPage() {
   const [isClient, setIsClient] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -67,6 +65,7 @@ export default function ProfissionaisPage() {
   const [editingProfessional, setEditingProfessional] = useState<Professional | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [professionalToDelete, setProfessionalToDelete] = useState<Professional | null>(null);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
 
 
   const { toast } = useToast();
@@ -97,14 +96,15 @@ export default function ProfissionaisPage() {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const role = localStorage.getItem("userRole");
 
-    setIsLoggedIn(loggedIn);
     setUserRole(role);
+    setAdminEmail(localStorage.getItem("userEmail")); // Assuming admin email is the logged in user's email if they are admin
 
     if (!loggedIn) {
       window.location.href = "/login";
     } else if (role !== "Admin") {
       window.location.href = "/";
-    } else {
+    }
+     else {
       fetchProfessionals();
     }
   }, []);
@@ -122,7 +122,7 @@ export default function ProfissionaisPage() {
         nome: "",
         email: "",
         password: "",
-        role: "",
+        role: "Psicólogo",
       });
     }
   }, [editingProfessional, form]);
@@ -133,7 +133,6 @@ export default function ProfissionaisPage() {
     const url = isEditing ? `/api/profissionais/${editingProfessional.id}` : '/api/profissionais';
     const method = isEditing ? 'PUT' : 'POST';
 
-    // Se estiver editando e a senha não for alterada, não envie o campo password
     const submissionData: any = { ...data };
     if (isEditing && (!data.password || data.password.trim() === '')) {
         delete submissionData.password;
@@ -141,6 +140,12 @@ export default function ProfissionaisPage() {
         form.setError("password", { message: "A senha é obrigatória para novos profissionais." });
         return;
     }
+    
+    // Prevent changing role of admin user in the form
+    if (isEditing && editingProfessional?.email === adminEmail) {
+        submissionData.role = 'Admin';
+    }
+
 
     try {
       const response = await fetch(url, {
@@ -295,7 +300,7 @@ export default function ProfissionaisPage() {
                 <FormField control={form.control} name="role" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Função</FormLabel>
-                    <FormControl><Input placeholder="Ex: Admin, Nutricionista, Psicólogo" {...field} /></FormControl>
+                    <FormControl><Input placeholder="Ex: Admin, Nutricionista, Psicólogo" {...field} disabled={editingProfessional?.email === adminEmail} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -328,39 +333,43 @@ export default function ProfissionaisPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {professionals.length > 0 ? professionals.map(pro => (
-                <TableRow key={pro.id}>
-                  <TableCell className="font-medium">{pro.nome}</TableCell>
-                  <TableCell>{pro.email}</TableCell>
-                  <TableCell>{pro.role}</TableCell>
-                  <TableCell>
-                    {pro.is_active ? (
-                      <Badge variant="secondary" className="text-green-600 border-green-600/50">
-                        <ShieldCheck className="mr-1 h-3.5 w-3.5" /> Ativo
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive">
-                        <ShieldOff className="mr-1 h-3.5 w-3.5" /> Bloqueado
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right flex items-center justify-end gap-2">
-                    <Switch
-                        checked={pro.is_active}
-                        onCheckedChange={() => handleToggleActive(pro)}
-                        aria-label="Ativar ou bloquear profissional"
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenForm(pro)}>
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Editar</span>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(pro)}>
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Excluir</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )) : (
+              {professionals.length > 0 ? professionals.map(pro => {
+                const isCurrentUserAdmin = pro.email === adminEmail;
+                return (
+                  <TableRow key={pro.id}>
+                    <TableCell className="font-medium">{pro.nome}</TableCell>
+                    <TableCell>{pro.email}</TableCell>
+                    <TableCell>{pro.role}</TableCell>
+                    <TableCell>
+                      {pro.is_active ? (
+                        <Badge variant="secondary" className="text-green-600 border-green-600/50">
+                          <ShieldCheck className="mr-1 h-3.5 w-3.5" /> Ativo
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive">
+                          <ShieldOff className="mr-1 h-3.5 w-3.5" /> Bloqueado
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right flex items-center justify-end gap-2">
+                      <Switch
+                          checked={pro.is_active}
+                          onCheckedChange={() => handleToggleActive(pro)}
+                          aria-label="Ativar ou bloquear profissional"
+                          disabled={isCurrentUserAdmin}
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenForm(pro)}>
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Editar</span>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(pro)} disabled={isCurrentUserAdmin}>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Excluir</span>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              }) : (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center h-24">Nenhum profissional cadastrado.</TableCell>
                 </TableRow>

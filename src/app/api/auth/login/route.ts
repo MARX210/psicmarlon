@@ -37,14 +37,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
     
-    // Opcional: Gerar um token JWT se for usar no futuro
-    // const secret = process.env.JWT_SECRET || 'seu-segredo-super-secreto';
-    // const token = jwt.sign({ id: professional.id, email: professional.email, role: professional.role }, secret, { expiresIn: '1h' });
+    // Define a role com base na variável de ambiente
+    const isAdmin = professional.email === process.env.ADMIN_EMAIL;
+    const userRole = isAdmin ? "Admin" : professional.role;
 
     const user = {
       name: professional.nome,
       email: professional.email,
-      role: professional.role,
+      role: userRole,
     };
 
     return NextResponse.json({ message: "Login bem-sucedido", user }, { status: 200 });
