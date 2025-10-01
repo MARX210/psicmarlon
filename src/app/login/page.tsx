@@ -35,11 +35,12 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || "Credenciais inválidas");
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Credenciais inválidas");
       }
+
+      const data = await res.json();
 
       toast({
         title: "Login bem-sucedido!",
