@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, DollarSign, Banknote, Hourglass, CalendarCheck2, CheckCircle2, TrendingUp, TrendingDown, Landmark, PlusCircle, Trash2, ArrowRightLeft, MoreHorizontal } from "lucide-react";
+import { Loader2, DollarSign, Banknote, Hourglass, CalendarCheck2, CheckCircle2, TrendingUp, TrendingDown, Landmark, PlusCircle, Trash2, ArrowRightLeft, MoreHorizontal, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Table,
@@ -38,6 +38,7 @@ import { Label } from "@/components/ui/label";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 type Appointment = {
@@ -46,6 +47,7 @@ type Appointment = {
   date: string; // YYYY-MM-DD
   price: number;
   status: string;
+  professional: string;
 };
 
 type Transaction = {
@@ -66,7 +68,7 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 
 const chartConfig = {
-  revenue: { label: "Receita", color: "hsl(var(--chart-2))" },
+  revenue: { label: "Receita Clínica", color: "hsl(var(--chart-2))" },
   expenses: { label: "Despesa", color: "hsl(var(--chart-5))" },
 } satisfies ChartConfig;
 
@@ -160,7 +162,18 @@ export default function FinanceiroPage() {
 
     const revenueFromAppointments = appointments
       .filter(app => app.status === "Pago" && isWithinInterval(parseISO(app.date), interval))
-      .reduce((sum, app) => sum + app.price, 0);
+      .reduce((sum, app) => {
+        let clinicShare = 0;
+        if (app.professional !== 'Psicólogo') {
+            clinicShare = app.price * 0.5; // 50% para a clínica
+        } else { // Se for Psicólogo
+            if (app.price > 150) {
+                clinicShare = app.price * 0.2; // 20% para a clínica
+            }
+            // Se for <= 150, a clínica fica com 0%
+        }
+        return sum + clinicShare;
+      }, 0);
 
     const transactionsInPeriod = otherTransactions
       .filter(t => isWithinInterval(parseISO(t.date), interval));
@@ -173,12 +186,15 @@ export default function FinanceiroPage() {
       .filter(t => t.type === 'despesa')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const totalRevenue = revenueFromAppointments + otherRevenue;
-    const netProfit = totalRevenue - totalExpenses;
+    const clinicTotalRevenue = revenueFromAppointments + otherRevenue;
+    const netProfit = clinicTotalRevenue - totalExpenses;
 
-    return { totalRevenue, totalExpenses, netProfit, revenueFromAppointments, otherRevenue };
-  }, [appointments, otherTransactions, selectedMonth, selectedYear]);
+    const totalBilledFromAppointments = appointments
+      .filter(app => app.status === "Pago" && isWithinInterval(parseISO(app.date), interval))
+      .reduce((sum, app) => sum + app.price, 0);
 
+    return { clinicTotalRevenue, totalExpenses, netProfit, totalBilledFromAppointments };
+}, [appointments, otherTransactions, selectedMonth, selectedYear]);
   
   const allTransactionsForPeriod: Transaction[] = useMemo(() => {
     const selectedDate = new Date(selectedYear, selectedMonth);
@@ -189,7 +205,7 @@ export default function FinanceiroPage() {
         .map(app => ({
             id: `apt-${app.id}`,
             date: app.date,
-            description: `Consulta - ${app.patientName}`,
+            description: `Consulta - ${app.patientName} (${app.professional})`,
             amount: app.price,
             type: 'receita_consulta'
         }));
@@ -211,16 +227,22 @@ export default function FinanceiroPage() {
       dataByMonth[monthKey] = { revenue: 0, expenses: 0 };
     }
     
-    // Process all paid appointments
     appointments.filter(a => a.status === 'Pago').forEach(app => {
       const date = parseISO(app.date);
       const monthKey = format(date, 'MMM/yy', { locale: ptBR });
       if (dataByMonth[monthKey]) {
-        dataByMonth[monthKey].revenue += app.price;
+          let clinicShare = 0;
+          if (app.professional !== 'Psicólogo') {
+              clinicShare = app.price * 0.5;
+          } else {
+              if (app.price > 150) {
+                  clinicShare = app.price * 0.2;
+              }
+          }
+          dataByMonth[monthKey].revenue += clinicShare;
       }
     });
     
-    // Process all other transactions
     otherTransactions.forEach(t => {
       const date = parseISO(t.date);
       const monthKey = format(date, 'MMM/yy', { locale: ptBR });
@@ -299,14 +321,26 @@ export default function FinanceiroPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Bruta do Mês</CardTitle>
+             <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                Lucro Bruto (Receita Clínica)
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger>
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p className="max-w-xs">Soma das comissões de consultas e outras receitas.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+             </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {financialSummary.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {financialSummary.clinicTotalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <p className="text-xs text-muted-foreground">Consultas + Outras receitas</p>
+             <p className="text-xs text-muted-foreground">Total faturado no mês: {financialSummary.totalBilledFromAppointments.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
           </CardContent>
         </Card>
         <Card>
@@ -330,7 +364,7 @@ export default function FinanceiroPage() {
             <div className="text-2xl font-bold">
               {financialSummary.netProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <p className="text-xs text-muted-foreground">Receita Bruta - Despesas.</p>
+            <p className="text-xs text-muted-foreground">Lucro Bruto - Despesas.</p>
           </CardContent>
         </Card>
       </div>
@@ -340,7 +374,7 @@ export default function FinanceiroPage() {
         <div className="lg:col-span-3 space-y-8">
             <Card>
                 <CardHeader>
-                    <CardTitle>Receita vs. Despesa (Últimos 6 meses)</CardTitle>
+                    <CardTitle>Receita Clínica vs. Despesa (Últimos 6 meses)</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="w-full h-[250px]">
@@ -359,7 +393,7 @@ export default function FinanceiroPage() {
                         content={<ChartTooltipContent indicator="dot" />}
                         />
                         <Legend />
-                        <Bar dataKey="revenue" name="Receita" fill="var(--color-revenue)" radius={4} />
+                        <Bar dataKey="revenue" name="Receita Clínica" fill="var(--color-revenue)" radius={4} />
                         <Bar dataKey="expenses" name="Despesa" fill="var(--color-expenses)" radius={4} />
                     </BarChart>
                     </ChartContainer>
@@ -444,7 +478,7 @@ export default function FinanceiroPage() {
                           </div>
                         </TableCell>
                         <TableCell className={`text-right font-semibold ${t.type.startsWith('receita') ? 'text-green-600' : 'text-red-600'}`}>
-                          {t.type.startsWith('receita') ? '+' : '-'} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                           {t.type === 'receita_consulta' ? '' : (t.type === 'receita_outros' ? '+' : '-')} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </TableCell>
                          <TableCell className="text-right">
                            {t.id.startsWith('manual-') && (
@@ -468,5 +502,3 @@ export default function FinanceiroPage() {
     </div>
   );
 }
-
-  
