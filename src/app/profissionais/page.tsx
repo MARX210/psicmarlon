@@ -211,17 +211,15 @@ export default function ProfissionaisPage() {
         const response = await fetch(`/api/profissionais/${professionalToDelete.id}`, {
             method: 'DELETE',
         });
-        if(!response.ok) {
-            // Since 204 No Content has no body, we only parse JSON if it's an error response
-            if (response.status !== 204) {
-              const result = await response.json();
-              throw new Error(result.error || "Erro ao excluir profissional.");
-            }
+        if (response.status === 204) {
+             toast({
+                title: "Profissional Excluído!",
+                description: "O registro foi removido permanentemente.",
+            });
+        } else if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || "Erro ao excluir profissional.");
         }
-        toast({
-            title: "Profissional Excluído!",
-            description: "O registro foi removido permanentemente.",
-        });
         fetchProfessionals();
     } catch (error) {
         toast({
