@@ -239,7 +239,7 @@ export default function FinanceiroPage() {
     
     const netProfit = clinicTotalRevenue + totalExpenses; // expenses are already negative
 
-    return { clinicTotalRevenue, totalExpenses: Math.abs(totalExpenses), netProfit, totalBilledFromAppointments };
+    return { clinicTotalRevenue, totalExpenses: totalExpenses, netProfit, totalBilledFromAppointments };
 }, [transactionsForPeriod, appointments]);
   
   
@@ -368,7 +368,7 @@ export default function FinanceiroPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {financialSummary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {Math.abs(financialSummary.totalExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
             <p className="text-xs text-muted-foreground">Custos fixos e variáveis.</p>
           </CardContent>
@@ -524,3 +524,5 @@ export default function FinanceiroPage() {
     </div>
   );
 }
+
+    
