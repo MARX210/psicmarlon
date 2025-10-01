@@ -65,16 +65,22 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         if (status === 'Pago') {
             const agendamentoResult = await client.query('SELECT * FROM agendamentos WHERE id = $1', [id]);
             const agendamento = agendamentoResult.rows[0];
-
+            
+            // Verifica se o agendamento existe e se o status anterior não era 'Pago'
             if (agendamento && agendamento.status !== 'Pago') {
-                 // Busca o nome do paciente
-                const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [agendamento.patient_id]);
-                const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
+                // Verifica se já não existe uma transação para este agendamento
+                const transacaoExistente = await client.query('SELECT id FROM transacoes WHERE agendamento_id = $1', [id]);
+                
+                if (transacaoExistente.rowCount === 0) {
+                    // Busca o nome do paciente
+                    const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [agendamento.patient_id]);
+                    const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
 
-                await client.query(
-                    `INSERT INTO transacoes (date, description, amount, type) VALUES ($1, $2, $3, $4)`,
-                    [agendamento.date, `Consulta - ${patientName} (${agendamento.professional})`, agendamento.price, 'receita_consulta']
-                );
+                    await client.query(
+                        `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5)`,
+                        [agendamento.date, `Consulta - ${patientName}`, agendamento.price, 'receita_consulta', id]
+                    );
+                }
             }
         }
         
@@ -131,21 +137,34 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (!id) {
     return NextResponse.json({ error: "ID do agendamento não fornecido" }, { status: 400 });
   }
+  const pool = getPool();
+  const client = await pool.connect();
 
   try {
-    const pool = getPool();
-    const result = await pool.query("DELETE FROM agendamentos WHERE id = $1 RETURNING *", [id]);
+    await client.query('BEGIN');
+    
+    // Excluir a transação associada, se existir
+    await client.query('DELETE FROM transacoes WHERE agendamento_id = $1', [id]);
+    
+    // Excluir o agendamento
+    const result = await client.query("DELETE FROM agendamentos WHERE id = $1 RETURNING *", [id]);
 
     if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
       return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
     }
+    
+    await client.query('COMMIT');
 
-    return NextResponse.json({ message: "Agendamento excluído com sucesso" }, { status: 200 });
+    return NextResponse.json({ message: "Agendamento e transação associada foram excluídos com sucesso" }, { status: 200 });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error("Erro ao excluir agendamento:", error);
     return NextResponse.json(
       { error: "Erro interno ao excluir agendamento" },
       { status: 500 }
     );
+  } finally {
+      client.release();
   }
 }

@@ -38,7 +38,7 @@ import { Label } from "@/components/ui/label";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 
 type Transaction = {
@@ -47,7 +47,14 @@ type Transaction = {
   description: string;
   amount: number;
   type: 'receita_consulta' | 'receita_outros' | 'despesa';
+  agendamento_id?: string;
 };
+
+type Appointment = {
+  id: number;
+  professional: string;
+  price: number;
+}
 
 const transactionSchema = z.object({
   description: z.string().min(1, "Descrição é obrigatória."),
@@ -77,6 +84,7 @@ export default function FinanceiroPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   
   const [selectedMonth, setSelectedMonth] = useState(getMonth(new Date()));
   const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
@@ -97,16 +105,26 @@ export default function FinanceiroPage() {
   const fetchFinancialData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/financeiro");
-      if (!res.ok) throw new Error("Erro ao buscar lançamentos financeiros");
-      const data: Transaction[] = await res.json();
-      setTransactions(data);
+      const [transRes, appRes] = await Promise.all([
+         fetch("/api/financeiro"),
+         fetch("/api/agendamentos"),
+      ]);
+
+      if (!transRes.ok) throw new Error("Erro ao buscar lançamentos financeiros");
+      if (!appRes.ok) throw new Error("Erro ao buscar agendamentos");
+
+      const transData: Transaction[] = await transRes.json();
+      const appData: Appointment[] = await appRes.json();
+      
+      setTransactions(transData);
+      setAppointments(appData);
+
     } catch (error) {
       console.error("Erro no fetchFinancialData:", error);
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Não foi possível carregar os lançamentos financeiros.",
+        description: "Não foi possível carregar os dados financeiros.",
       });
     } finally {
         setIsLoading(false);
@@ -197,16 +215,21 @@ export default function FinanceiroPage() {
           if (t.type === 'receita_outros') return t.amount;
 
           // Lógica de comissão para 'receita_consulta'
-          const professional = t.description.substring(t.description.indexOf('(') + 1, t.description.indexOf(')'));
-          if (professional === 'Psicólogo') {
-              return t.amount; // 100% para a clínica
-          } else {
-              if (t.amount > 150) {
-                  return t.amount * 0.2; // 20% para a clínica
+          if (t.type === 'receita_consulta' && t.agendamento_id) {
+              const appointment = appointments.find(a => String(a.id) === t.agendamento_id);
+              if (!appointment) return 0;
+
+              if (appointment.professional === 'Psicólogo') {
+                  return appointment.price; // 100% para a clínica
               } else {
-                  return 50; // R$50 fixo para a clínica
+                  if (appointment.price > 150) {
+                      return appointment.price * 0.2; // 20% para a clínica
+                  } else {
+                      return 50; // R$50 fixo para a clínica
+                  }
               }
           }
+          return 0;
       })
       .reduce((sum, value) => sum + value, 0);
     
@@ -217,7 +240,7 @@ export default function FinanceiroPage() {
     const netProfit = clinicTotalRevenue + totalExpenses; // expenses are already negative
 
     return { clinicTotalRevenue, totalExpenses: Math.abs(totalExpenses), netProfit, totalBilledFromAppointments };
-}, [transactionsForPeriod]);
+}, [transactionsForPeriod, appointments]);
   
   
   const monthlyChartData = useMemo(() => {
@@ -238,14 +261,16 @@ export default function FinanceiroPage() {
             dataByMonth[monthKey].expenses += Math.abs(t.amount);
         } else if (t.type === 'receita_outros') {
             dataByMonth[monthKey].revenue += t.amount;
-        } else if (t.type === 'receita_consulta') {
-            const professional = t.description.substring(t.description.indexOf('(') + 1, t.description.indexOf(')'));
+        } else if (t.type === 'receita_consulta' && t.agendamento_id) {
+            const appointment = appointments.find(a => String(a.id) === t.agendamento_id);
+            if (!appointment) return;
+            
             let clinicShare = 0;
-            if (professional === 'Psicólogo') {
-                clinicShare = t.amount;
+            if (appointment.professional === 'Psicólogo') {
+                clinicShare = appointment.price;
             } else {
-                if (t.amount > 150) {
-                    clinicShare = t.amount * 0.2;
+                if (appointment.price > 150) {
+                    clinicShare = appointment.price * 0.2;
                 } else {
                     clinicShare = 50;
                 }
@@ -259,7 +284,7 @@ export default function FinanceiroPage() {
       month,
       ...values
     }));
-  }, [transactions]);
+  }, [transactions, appointments]);
 
 
   if (!isClient || isLoading) {
@@ -318,8 +343,8 @@ export default function FinanceiroPage() {
                 Lucro Bruto (Receita Clínica)
                 <TooltipProvider>
                     <Tooltip>
-                        <TooltipTrigger>
-                            <Info className="h-3 w-3 text-muted-foreground" />
+                        <TooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
                         </TooltipTrigger>
                         <TooltipContent>
                             <p className="max-w-xs">Soma das comissões de consultas e outras receitas.</p>

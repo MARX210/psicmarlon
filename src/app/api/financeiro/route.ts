@@ -20,7 +20,8 @@ export async function GET() {
         to_char(date, 'YYYY-MM-DD') as date, 
         description, 
         amount::float, 
-        type
+        type,
+        agendamento_id::text
       FROM transacoes 
       ORDER BY date DESC, id DESC
     `);
