@@ -88,13 +88,6 @@ export async function POST(req: Request) {
     );
   } catch (error: any) {
     console.error("Erro ao criar agendamento:", error);
-     // Adicionando verificação para o erro específico do campo 'professional'
-    if (error.code === '42703' && error.message.includes('column "professional"')) {
-        return NextResponse.json(
-            { error: "A coluna 'professional' não existe na tabela 'agendamentos'. É necessário atualizar o banco de dados." },
-            { status: 500 }
-        );
-    }
     return NextResponse.json(
       { error: "Erro interno ao criar agendamento" },
       { status: 500 }
