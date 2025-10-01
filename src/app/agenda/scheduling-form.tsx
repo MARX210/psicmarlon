@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock, CreditCard } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock, CreditCard, Stethoscope } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -63,10 +63,18 @@ const defaultTimeSlots = [
   "14:00", "15:00", "16:00", "17:00", "18:00",
 ];
 
+const professionals = [
+    "Psicopedagogo",
+    "Psicólogo",
+    "Neuropsicólogo",
+    "Nutricionista",
+];
+
 const appointmentSchema = z.object({
   patientId: z.string().nonempty("Selecione um paciente."),
   date: z.date({ required_error: "A data é obrigatória."}),
   time: z.string().nonempty("O horário é obrigatório."),
+  professional: z.string().nonempty("O profissional é obrigatório."),
   type: z.enum(["Online", "Presencial"]),
   duration: z.string().nonempty("A duração é obrigatória."),
   price: z.string().nonempty("O valor é obrigatório."),
@@ -86,6 +94,7 @@ type Appointment = {
   patientName: string;
   date: string; // YYY-MM-DD
   time: string; // HH:mm
+  professional: string;
   type: string;
   duration: number;
   price: number;
@@ -131,6 +140,7 @@ export function SchedulingForm() {
     defaultValues: {
       patientId: "",
       time: "",
+      professional: "",
       type: "Online",
       duration: "50",
       price: "0",
@@ -321,6 +331,7 @@ export function SchedulingForm() {
       patientId: "",
       time: "",
       date: selectedDate,
+      professional: "",
       type: "Online",
       duration: "50",
       price: "0",
@@ -353,6 +364,7 @@ export function SchedulingForm() {
         patientId: appointment.patientId,
         date: appointmentDate,
         time: appointment.time,
+        professional: appointment.professional,
         type: appointment.type as "Online" | "Presencial",
         duration: String(appointment.duration),
         price: String(appointment.price),
@@ -419,6 +431,7 @@ export function SchedulingForm() {
       patientId: selectedPatient.id,
       date: format(data.date, "yyyy-MM-dd"),
       time: data.time,
+      professional: data.professional,
       type: data.type,
       duration: parseInt(data.duration, 10),
       price: parseFloat(data.price),
@@ -561,8 +574,7 @@ export function SchedulingForm() {
                 )}
 
 
-                {/* Horário */}
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="time"
@@ -593,6 +605,34 @@ export function SchedulingForm() {
                         {isDayUnavailable && (
                           <p className="text-xs text-destructive pt-1">Dia indisponível para agendamentos.</p>
                         )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="professional"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Profissional</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          disabled={isFormDisabled || isDayUnavailable}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {professionals.map((prof) => (
+                              <SelectItem key={prof} value={prof}>
+                                {prof}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -715,22 +755,24 @@ export function SchedulingForm() {
                 </div>
               ) : (
                 <div className="w-full xl:max-w-sm">
+                  <div className="[&>div]:w-full">
                     <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={handleDayClick}
-                        locale={ptBR}
-                        disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
-                        modifiers={{
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={handleDayClick}
+                      locale={ptBR}
+                      disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
+                      modifiers={{
                         booked: appointmentDates,
                         unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
-                        }}
-                        modifiersClassNames={{
-                        booked: "bg-primary/20 text-primary-foreground font-bold rounded-full",
+                      }}
+                      modifiersClassNames={{
+                        booked: "day-booked",
                         unavailable: "text-muted-foreground opacity-50",
-                        }}
-                        className="border rounded-lg p-3"
+                      }}
+                      className="border rounded-lg p-3"
                     />
+                  </div>
                 </div>
               )}
 
@@ -764,6 +806,7 @@ export function SchedulingForm() {
                             <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between gap-2">
                               <div className="flex-grow">
                                 <p className="flex items-center gap-2"><Clock className="h-4 w-4" /> <span className="font-bold">{app.time}</span> - {app.patientName}</p>
+                                <p className="text-xs text-muted-foreground pl-6 flex items-center gap-1.5"><Stethoscope className="h-3 w-3" /> {app.professional}</p>
                                 <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min - R$ {app.price.toFixed(2)}</p>
                               </div>
                               <div className="flex gap-2 self-end sm:self-center">
@@ -831,7 +874,3 @@ export function SchedulingForm() {
     </div>
   );
 }
-
-    
-
-    

@@ -7,6 +7,7 @@ const appointmentSchema = z.object({
   patientId: z.string(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
   time: z.string().regex(/^\d{2}:\d{2}$/), // HH:mm
+  professional: z.string(),
   type: z.enum(["Online", "Presencial"]),
   duration: z.number().positive(),
   price: z.number().nonnegative(),
@@ -25,6 +26,7 @@ export async function GET() {
         p.nome AS "patientName",
         to_char(a.date, 'YYYY-MM-DD') AS date,
         a.time,
+        a.professional,
         a.type,
         a.duration,
         a.price::float,
@@ -56,7 +58,7 @@ export async function POST(req: Request) {
       );
     }
     
-    const { patientId, date, time, type, duration, price, status } = validation.data;
+    const { patientId, date, time, professional, type, duration, price, status } = validation.data;
 
     const pool = getPool();
 
@@ -64,27 +66,35 @@ export async function POST(req: Request) {
 
     const result = await pool.query(
       `
-      INSERT INTO agendamentos (patient_id, date, time, type, duration, price, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO agendamentos (patient_id, date, time, professional, type, duration, price, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING 
         id, 
         patient_id AS "patientId", 
         to_char(date, 'YYYY-MM-DD') AS date,
-        time, 
+        time,
+        professional,
         type, 
         duration, 
         price,
         status
       `,
-      [patientId, date, time, type, duration, price, status || 'Confirmado']
+      [patientId, date, time, professional, type, duration, price, status || 'Confirmado']
     );
 
     return NextResponse.json(
       { message: "Agendamento criado com sucesso", appointment: result.rows[0] },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao criar agendamento:", error);
+     // Adicionando verificação para o erro específico do campo 'professional'
+    if (error.code === '42703' && error.message.includes('column "professional"')) {
+        return NextResponse.json(
+            { error: "A coluna 'professional' não existe na tabela 'agendamentos'. É necessário atualizar o banco de dados." },
+            { status: 500 }
+        );
+    }
     return NextResponse.json(
       { error: "Erro interno ao criar agendamento" },
       { status: 500 }

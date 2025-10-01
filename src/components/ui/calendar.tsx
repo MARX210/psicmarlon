@@ -41,7 +41,6 @@ function Calendar({
           buttonVariants({ variant: "ghost" }),
           "h-full w-full p-0 font-normal aria-selected:opacity-100 sm:h-10 sm:w-10"
         ),
-        day_range_end: "day-range-end",
         day_selected:
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         day_today: "bg-accent text-accent-foreground",
@@ -51,6 +50,7 @@ function Calendar({
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
+        day_booked: "bg-primary/20 text-primary-foreground font-bold rounded-full",
         ...classNames,
       }}
       components={{

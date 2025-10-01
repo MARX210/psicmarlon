@@ -7,6 +7,7 @@ import { z } from "zod";
 const appointmentUpdateSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
+  professional: z.string(),
   type: z.enum(["Online", "Presencial"]),
   duration: z.number().positive(),
   price: z.number().nonnegative(),
@@ -37,15 +38,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         if (!validation.success) {
             return NextResponse.json({ error: "Dados de atualização completa inválidos", details: validation.error.flatten() }, { status: 400 });
         }
-        const { date, time, type, duration, price, status } = validation.data;
+        const { date, time, professional, type, duration, price, status } = validation.data;
         result = await pool.query(
             `
             UPDATE agendamentos
-            SET date = $1, time = $2, type = $3, duration = $4, price = $5, status = $7
+            SET date = $1, time = $2, type = $3, duration = $4, price = $5, status = $7, professional = $8
             WHERE id = $6
             RETURNING *
             `,
-            [date, time, type, duration, price, id, status]
+            [date, time, type, duration, price, id, status, professional]
         );
     } else { // Caso contrário, é apenas uma atualização de status
         const validation = statusUpdateSchema.safeParse(body);
@@ -76,6 +77,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         patientId: updatedAppointment.patient_id,
         date: new Date(updatedAppointment.date).toISOString().split('T')[0], // Formato YYYY-MM-DD
         time: updatedAppointment.time,
+        professional: updatedAppointment.professional,
         type: updatedAppointment.type,
         duration: updatedAppointment.duration,
         price: parseFloat(updatedAppointment.price),
