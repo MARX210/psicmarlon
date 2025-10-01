@@ -209,30 +209,30 @@ export default function FinanceiroPage() {
         .filter(t => t.type === 'receita_consulta')
         .reduce((sum, t) => sum + t.amount, 0);
 
-    const clinicTotalRevenue = transactionsForPeriod
+    const otherRevenues = transactionsForPeriod
+        .filter(t => t.type === 'receita_outros')
+        .reduce((sum, t) => sum + t.amount, 0);
+    
+    const clinicRevenueFromAppointments = transactionsForPeriod
+      .filter(t => t.type === 'receita_consulta' && t.agendamento_id)
       .map(t => {
-          if (t.type === 'despesa') return 0;
-          if (t.type === 'receita_outros') return t.amount;
+          const appointment = appointments.find(a => String(a.id) === t.agendamento_id);
+          if (!appointment) return 0; // Não deveria acontecer se os dados estiverem sincronizados
 
-          // Lógica de comissão para 'receita_consulta'
-          if (t.type === 'receita_consulta' && t.agendamento_id) {
-              const appointment = appointments.find(a => String(a.id) === t.agendamento_id);
-              if (!appointment) return 0;
-
-              if (appointment.professional === 'Psicólogo') {
-                  return appointment.price; // 100% para a clínica
+          if (appointment.professional === 'Psicólogo') {
+              return appointment.price; // 100% para a clínica
+          } else {
+              if (appointment.price > 150) {
+                  return appointment.price * 0.2; // 20% para a clínica
               } else {
-                  if (appointment.price > 150) {
-                      return appointment.price * 0.2; // 20% para a clínica
-                  } else {
-                      return 50; // R$50 fixo para a clínica
-                  }
+                  return 50; // R$50 fixo para a clínica
               }
           }
-          return 0;
       })
       .reduce((sum, value) => sum + value, 0);
     
+    const clinicTotalRevenue = clinicRevenueFromAppointments + otherRevenues;
+
     const totalExpenses = transactionsForPeriod
         .filter(t => t.type === 'despesa')
         .reduce((sum, t) => sum + t.amount, 0);

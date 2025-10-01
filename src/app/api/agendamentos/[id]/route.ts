@@ -45,6 +45,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const currentAppointment = currentAppointmentResult.rows[0];
     const oldStatus = currentAppointment.status;
 
+    // Busca o nome do paciente para usar na descrição da transação
+    const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [currentAppointment.patient_id]);
+    const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
 
     // Se o corpo contiver mais do que apenas o status, é uma edição completa
     if (Object.keys(body).length > 1) {
@@ -57,9 +60,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         
         // Lógica de transação para edição completa
         if (newStatus === 'Pago' && oldStatus !== 'Pago') {
-            // Cria transação
-             const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [currentAppointment.patient_id]);
-             const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
+            // Cria transação com a descrição simplificada
              await client.query(
                 `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (agendamento_id) DO NOTHING`,
                 [date, `Consulta - ${patientName}`, price, 'receita_consulta', id]
@@ -88,9 +89,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
         // Lógica de transação para atualização de status
         if (newStatus === 'Pago' && oldStatus !== 'Pago') {
-            // Cria transação se não existir
-            const pacienteResult = await client.query('SELECT nome FROM pacientes WHERE id = $1', [currentAppointment.patient_id]);
-            const patientName = pacienteResult.rows[0]?.nome || 'Paciente';
+            // Cria transação se não existir com a descrição simplificada
             await client.query(
                 `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (agendamento_id) DO NOTHING`,
                 [currentAppointment.date, `Consulta - ${patientName}`, currentAppointment.price, 'receita_consulta', id]
