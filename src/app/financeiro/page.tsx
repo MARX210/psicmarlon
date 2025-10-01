@@ -143,17 +143,11 @@ export default function FinanceiroPage() {
   }, [fetchFinancialData]);
 
   const onTransactionSubmit = async (data: TransactionFormValues) => {
-    // Para despesas, o valor deve ser negativo
-    const submissionData = {
-        ...data,
-        amount: data.type === 'despesa' ? -Math.abs(data.amount) : Math.abs(data.amount),
-    };
-
     try {
         const response = await fetch('/api/financeiro', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(submissionData),
+            body: JSON.stringify(data),
         });
 
         if (!response.ok) {
@@ -217,7 +211,7 @@ export default function FinanceiroPage() {
       .filter(t => t.type === 'receita_consulta' && t.agendamento_id)
       .map(t => {
           const appointment = appointments.find(a => String(a.id) === t.agendamento_id);
-          if (!appointment) return 0; // Não deveria acontecer se os dados estiverem sincronizados
+          if (!appointment) return 0;
 
           if (appointment.professional === 'Psicólogo') {
               return appointment.price; // 100% para a clínica
@@ -237,9 +231,9 @@ export default function FinanceiroPage() {
         .filter(t => t.type === 'despesa')
         .reduce((sum, t) => sum + t.amount, 0);
     
-    const netProfit = clinicTotalRevenue + totalExpenses; // expenses are already negative
+    const netProfit = clinicTotalRevenue - totalExpenses;
 
-    return { clinicTotalRevenue, totalExpenses: totalExpenses, netProfit, totalBilledFromAppointments };
+    return { clinicTotalRevenue, totalExpenses, netProfit, totalBilledFromAppointments };
 }, [transactionsForPeriod, appointments]);
   
   
@@ -258,7 +252,7 @@ export default function FinanceiroPage() {
       const monthKey = format(date, 'MMM/yy', { locale: ptBR });
       if(dataByMonth[monthKey]) {
         if(t.type === 'despesa') {
-            dataByMonth[monthKey].expenses += Math.abs(t.amount);
+            dataByMonth[monthKey].expenses += t.amount;
         } else if (t.type === 'receita_outros') {
             dataByMonth[monthKey].revenue += t.amount;
         } else if (t.type === 'receita_consulta' && t.agendamento_id) {
@@ -368,7 +362,7 @@ export default function FinanceiroPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {Math.abs(financialSummary.totalExpenses).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {financialSummary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
             <p className="text-xs text-muted-foreground">Custos fixos e variáveis.</p>
           </CardContent>
@@ -499,8 +493,8 @@ export default function FinanceiroPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className={`text-right font-semibold ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                           {t.amount >= 0 ? '+' : ''} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <TableCell className={`text-right font-semibold ${t.type === 'despesa' ? 'text-red-600' : 'text-green-600'}`}>
+                           {t.type === 'despesa' ? '-' : '+'} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </TableCell>
                          <TableCell className="text-right">
                            {t.type === 'receita_consulta' ? null : (
@@ -524,5 +518,7 @@ export default function FinanceiroPage() {
     </div>
   );
 }
+
+    
 
     

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const transactionSchema = z.object({
   description: z.string().min(1),
-  amount: z.coerce.number(), // Pode ser negativo para despesa
+  amount: z.coerce.number(), // Será sempre positivo
   type: z.enum(['receita_outros', 'despesa']),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
@@ -50,6 +50,9 @@ export async function POST(req: Request) {
 
     const { description, amount, type, date } = validation.data;
     const pool = getPool();
+    
+    // Garantir que o valor seja sempre positivo no banco de dados
+    const finalAmount = Math.abs(amount);
 
     const result = await pool.query(
       `
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
       VALUES ($1, $2, $3, $4)
       RETURNING id, to_char(date, 'YYYY-MM-DD') as date, description, amount, type
       `,
-      [date, description, amount, type]
+      [date, description, finalAmount, type]
     );
 
     return NextResponse.json(
@@ -72,3 +75,5 @@ export async function POST(req: Request) {
     );
   }
 }
+
+    
