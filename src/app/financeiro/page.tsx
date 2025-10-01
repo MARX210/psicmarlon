@@ -81,6 +81,7 @@ const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 export default function FinanceiroPage() {
   const [isClient, setIsClient] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -134,9 +135,15 @@ export default function FinanceiroPage() {
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    const role = localStorage.getItem("userRole");
+
     setIsLoggedIn(loggedIn);
+    setUserRole(role);
+
     if (!loggedIn) {
       window.location.href = "/login";
+    } else if (role !== "Admin") {
+      window.location.href = "/";
     } else {
       fetchFinancialData();
     }
@@ -281,7 +288,7 @@ export default function FinanceiroPage() {
   }, [transactions, appointments]);
 
 
-  if (!isClient || !isLoggedIn) {
+  if (!isClient || !isLoggedIn || userRole !== 'Admin') {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />

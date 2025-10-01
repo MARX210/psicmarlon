@@ -60,6 +60,7 @@ type Professional = {
 export default function ProfissionaisPage() {
   const [isClient, setIsClient] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -94,9 +95,15 @@ export default function ProfissionaisPage() {
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    const role = localStorage.getItem("userRole");
+
     setIsLoggedIn(loggedIn);
+    setUserRole(role);
+
     if (!loggedIn) {
       window.location.href = "/login";
+    } else if (role !== "Admin") {
+      window.location.href = "/";
     } else {
       fetchProfessionals();
     }
@@ -226,7 +233,7 @@ export default function ProfissionaisPage() {
   }
 
 
-  if (!isClient || !isLoggedIn) {
+  if (!isClient || !isLoggedIn || userRole !== "Admin") {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -288,7 +295,7 @@ export default function ProfissionaisPage() {
                 <FormField control={form.control} name="role" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Função</FormLabel>
-                    <FormControl><Input placeholder="Ex: Nutricionista, Psicólogo" {...field} /></FormControl>
+                    <FormControl><Input placeholder="Ex: Admin, Nutricionista, Psicólogo" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

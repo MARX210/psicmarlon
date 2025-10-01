@@ -41,7 +41,13 @@ export async function POST(req: Request) {
     // const secret = process.env.JWT_SECRET || 'seu-segredo-super-secreto';
     // const token = jwt.sign({ id: professional.id, email: professional.email, role: professional.role }, secret, { expiresIn: '1h' });
 
-    return NextResponse.json({ message: "Login bem-sucedido" }, { status: 200 });
+    const user = {
+      name: professional.nome,
+      email: professional.email,
+      role: professional.role,
+    };
+
+    return NextResponse.json({ message: "Login bem-sucedido", user }, { status: 200 });
 
   } catch (error) {
     console.error("Erro crítico na API de login:", error);

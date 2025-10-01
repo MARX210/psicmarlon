@@ -8,17 +8,24 @@ import { Loader2 } from "lucide-react";
 export default function CadastroPage() {
   const [isClient, setIsClient] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    const role = localStorage.getItem("userRole");
+    
     setIsLoggedIn(loggedIn);
+    setUserRole(role);
+
     if (!loggedIn) {
       window.location.href = "/login";
+    } else if (role !== "Admin") {
+      window.location.href = "/";
     }
   }, []);
 
-  if (!isClient || !isLoggedIn) {
+  if (!isClient || !isLoggedIn || userRole !== "Admin") {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -26,6 +33,7 @@ export default function CadastroPage() {
       </div>
     );
   }
+
 
   return (
     <div className="max-w-6xl mx-auto">

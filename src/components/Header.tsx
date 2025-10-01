@@ -20,26 +20,36 @@ import { useEffect, useState } from "react";
 export function Header() {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
+    setUserRole(localStorage.getItem("userRole"));
   }, []);
 
   const isLoggedIn = isMounted ? localStorage.getItem("isLoggedIn") === "true" : false;
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userRole");
     window.location.href = "/login";
   };
 
   const navLinks = [
-    { href: "/", label: "Início" },
-    { href: "/cadastro", label: "Cadastro" },
-    { href: "/agenda", label: "Agenda" },
-    { href: "/pacientes", label: "Pacientes" },
-    { href: "/profissionais", label: "Profissionais" },
-    { href: "/financeiro", label: "Financeiro" },
+    { href: "/", label: "Início", adminOnly: false },
+    { href: "/cadastro", label: "Cadastro", adminOnly: true },
+    { href: "/agenda", label: "Agenda", adminOnly: false },
+    { href: "/pacientes", label: "Pacientes", adminOnly: true },
+    { href: "/profissionais", label: "Profissionais", adminOnly: true },
+    { href: "/financeiro", label: "Financeiro", adminOnly: true },
   ];
+  
+  const visibleLinks = navLinks.filter(link => !link.adminOnly || (isLoggedIn && userRole === 'Admin'));
+
+  const firstHalfLinks = visibleLinks.slice(0, Math.ceil(visibleLinks.length / 2));
+  const secondHalfLinks = visibleLinks.slice(Math.ceil(visibleLinks.length / 2));
 
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
@@ -72,7 +82,7 @@ export function Header() {
                 <nav className="flex flex-col space-y-4 mt-8">
                   {isMounted && isLoggedIn ? (
                     <>
-                      {navLinks.map((link) => (
+                      {visibleLinks.map((link) => (
                         <SheetClose asChild key={link.href}>
                           <Link
                             href={link.href}
@@ -101,7 +111,7 @@ export function Header() {
           </div>
 
           <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2">
-             {navLinks.slice(0, 2).map((link) => (
+             {firstHalfLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -145,7 +155,7 @@ export function Header() {
         {/* Right side */}
         <div className="flex items-center justify-end gap-2 w-1/4">
           <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2">
-             {navLinks.slice(2).map((link) => (
+             {secondHalfLinks.map((link) => (
                <Link
                 key={link.href}
                 href={link.href}

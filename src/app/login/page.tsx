@@ -46,7 +46,13 @@ export default function LoginPage() {
         description: "Você será redirecionado para a página inicial.",
       });
 
+      // Armazenar os dados do usuário no localStorage
       localStorage.setItem("isLoggedIn", "true");
+      if (data.user) {
+          localStorage.setItem("userName", data.user.name);
+          localStorage.setItem("userEmail", data.user.email);
+          localStorage.setItem("userRole", data.user.role);
+      }
       
       // Redirecionamento para a página inicial.
       window.location.href = "/";
