@@ -44,7 +44,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const { nome, email, password, role } = validation.data;
+    await client.query('BEGIN');
+
+    // Verifica se já existem profissionais cadastrados
+    const countResult = await client.query('SELECT COUNT(*) FROM profissionais');
+    const professionalCount = parseInt(countResult.rows[0].count, 10);
+    
+    let { nome, email, password, role } = validation.data;
+
+    // Se for o primeiro profissional, força a role para 'Admin'
+    if (professionalCount === 0) {
+      role = 'Admin';
+    }
     
     const password_hash = await bcrypt.hash(password, saltRounds);
 
@@ -57,11 +68,14 @@ export async function POST(req: Request) {
       [nome, email, password_hash, role]
     );
 
+    await client.query('COMMIT');
+
     return NextResponse.json(
       { message: "Profissional adicionado com sucesso", professional: result.rows[0] },
       { status: 201 }
     );
   } catch (error: any) {
+    await client.query('ROLLBACK');
     console.error("ERRO NO POST de profissionais:", error);
     if (error.code === '23505') { 
         return NextResponse.json({ error: 'Já existe um profissional com este e-mail.' }, { status: 409 });
