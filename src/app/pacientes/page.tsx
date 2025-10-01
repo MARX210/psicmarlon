@@ -234,9 +234,12 @@ export default function PacientesPage() {
         toast({ variant: "destructive", title: "Erro", description: "Paciente sem número de celular cadastrado." });
         return;
     }
-    const phoneNumber = editingPatient.celular.replace(/\D/g, "");
+    let phoneNumber = editingPatient.celular.replace(/\D/g, "");
+    if (!phoneNumber.startsWith('55')) {
+        phoneNumber = '55' + phoneNumber;
+    }
     const encodedMessage = encodeURIComponent(whatsappMessage);
-    window.open(`https://wa.me/55${phoneNumber}?text=${encodedMessage}`, '_blank');
+    window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
     setIsWhatsAppDialogOpen(false);
   };
 
