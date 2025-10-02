@@ -34,6 +34,7 @@ export function Header() {
     localStorage.removeItem("userName");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("userRole");
+    localStorage.removeItem("userId");
     window.location.href = "/login";
   };
 

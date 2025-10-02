@@ -11,11 +11,14 @@ import { useEffect, useState } from "react";
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedIn);
+    setUserRole(localStorage.getItem("userRole"));
+
     if (!loggedIn) {
       window.location.href = "/login";
     }
@@ -29,6 +32,8 @@ export default function Home() {
       </div>
     );
   }
+
+  const isAdmin = userRole === 'Admin';
 
   return (
     <div className="space-y-16 md:space-y-24">
@@ -54,12 +59,14 @@ export default function Home() {
               <span className="font-bold">Ver Agenda</span>
             </Link>
           </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/cadastro">
-              <UserPlus className="mr-2 h-5 w-5" />
-              Cadastrar Paciente
-            </Link>
-          </Button>
+          {isAdmin && (
+            <Button asChild size="lg" variant="outline">
+              <Link href="/cadastro">
+                <UserPlus className="mr-2 h-5 w-5" />
+                Cadastrar Paciente
+              </Link>
+            </Button>
+          )}
         </div>
       </section>
 
@@ -125,9 +132,11 @@ export default function Home() {
             >
               <Link href="/agenda">Ver Agenda</Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/cadastro">Novo Paciente</Link>
-            </Button>
+            {isAdmin && (
+              <Button asChild size="lg" variant="outline">
+                <Link href="/cadastro">Novo Paciente</Link>
+              </Button>
+            )}
           </div>
         </div>
         <div className="w-full md:w-1/3 mt-6 md:mt-0">

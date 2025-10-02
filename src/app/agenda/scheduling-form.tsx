@@ -133,6 +133,9 @@ export function SchedulingForm() {
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [newTimeSlot, setNewTimeSlot] = useState("");
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  const isAdmin = userRole === 'Admin';
 
 
   const form = useForm<AppointmentFormValues>({
@@ -178,6 +181,8 @@ export function SchedulingForm() {
 
   useEffect(() => {
     setIsClient(true);
+    setUserRole(localStorage.getItem("userRole"));
+
     const today = new Date();
     setSelectedDate(today);
     form.setValue("date", today);
@@ -195,9 +200,11 @@ export function SchedulingForm() {
     }
 
     fetchAppointments();
-    fetchAllPatients();
+    if (userRole === 'Admin') {
+      fetchAllPatients();
+    }
 
-  }, [form, fetchAppointments, fetchAllPatients]);
+  }, [form, fetchAppointments, fetchAllPatients, userRole]);
   
   const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus) => {
     try {
@@ -499,238 +506,240 @@ export function SchedulingForm() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
       {/* Coluna Esquerda: Formulários */}
-      <div className="xl:col-span-2 space-y-8">
-         {/* Formulário de agendamento */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{isEditing ? 'Editar Consulta' : 'Nova Consulta'}</CardTitle>
-            <CardDescription>
-              {isEditing ? 'Altere os dados do agendamento abaixo.' : 'Busque o paciente por CPF ou Nº ID e preencha os dados.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Busca de paciente */}
-                <div className="space-y-2">
-                  <FormLabel htmlFor="cpf">Buscar Paciente por CPF ou Nº ID</FormLabel>
-                  <div className="flex gap-2">
-                    <Input
-                      id="cpf"
-                      placeholder="000.000.000-00 ou ID"
-                      value={cpfInput}
-                      onChange={(e) => setCpfInput(e.target.value)}
-                      disabled={!!selectedPatient}
-                    />
-                    <Button type="button" onClick={handleSearchPatient} disabled={!!selectedPatient || !cpfInput}>
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Paciente selecionado */}
-                {selectedPatient && (
-                  <div className="p-3 bg-muted rounded-lg text-sm space-y-3">
-                    <div className="flex justify-between items-start">
-                       <div className="flex items-center gap-2 font-bold">
-                         <User className="w-4 h-4 mt-0.5" />
-                         <span>Paciente Selecionado</span>
-                       </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearPatient}>
-                        <XCircle className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <div className="pl-6 space-y-1">
-                      <p><span className="font-semibold">Nome:</span> {selectedPatient.name}</p>
-                      <p><span className="font-semibold">Idade:</span> {calculateAge(selectedPatient.nascimento) ?? 'N/A'} anos</p>
-                      <p><span className="font-semibold">Nº ID:</span> {selectedPatient.id}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Paciente não encontrado */}
-                {patientNotFound && (
-                  <div className="text-sm text-center my-4 text-muted-foreground">
-                    <span>Paciente não encontrado. </span>
-                    <Button variant="link" asChild className="p-0 h-auto">
-                      <Link href="/cadastro">
-                        Cadastre um novo aqui.
-                      </Link>
-                    </Button>
-                  </div>
-                )}
-                
-                {isDayInPast && !isEditing && (
-                    <p className="text-xs text-destructive pt-1 flex items-center gap-2"><BadgeAlert className="h-4 w-4" /> Não é possível criar agendamentos em datas passadas.</p>
-                )}
-
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Horário</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          disabled={isFormDisabled || timeSlotsForSelectedDay.length === 0 || isDayUnavailable}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {timeSlotsForSelectedDay.map((slot) => (
-                              <SelectItem key={slot} value={slot}>
-                                {slot}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && !isDayInPast &&(
-                          <p className="text-xs text-muted-foreground pt-1">Não há horários disponíveis.</p>
-                        )}
-                        {isDayUnavailable && (
-                          <p className="text-xs text-destructive pt-1">Dia indisponível para agendamentos.</p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="professional"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Profissional</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          disabled={isFormDisabled || isDayUnavailable}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {professionals.map((prof) => (
-                              <SelectItem key={prof} value={prof}>
-                                {prof}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Duração e preço */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="duration"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Duração (min)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="Ex: 50" {...field} disabled={isFormDisabled || isDayUnavailable} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor (R$)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="Ex: 150" {...field} disabled={isFormDisabled || isDayUnavailable} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Tipo de consulta */}
-                <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Tipo de Consulta</FormLabel>
-                      <FormControl>
-                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4" disabled={isFormDisabled || isDayUnavailable}>
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl><RadioGroupItem value="Online" /></FormControl>
-                            <FormLabel className="font-normal">Online</FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl><RadioGroupItem value="Presencial" /></FormControl>
-                            <FormLabel className="font-normal">Presencial</FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end pt-4">
-                  <Button type="submit" size="lg" disabled={isFormDisabled || isDayUnavailable}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isSubmitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Agendar Consulta'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        {/* Gerenciador de Horários */}
-        {isClient && (
+      {isAdmin && (
+        <div className="xl:col-span-2 space-y-8">
+          {/* Formulário de agendamento */}
           <Card>
             <CardHeader>
-              <CardTitle>Meus Horários</CardTitle>
-              <CardDescription>Adicione ou remova os horários disponíveis para agendamento.</CardDescription>
+              <CardTitle>{isEditing ? 'Editar Consulta' : 'Nova Consulta'}</CardTitle>
+              <CardDescription>
+                {isEditing ? 'Altere os dados do agendamento abaixo.' : 'Busque o paciente por CPF ou Nº ID e preencha os dados.'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2 mb-4">
-                <Input
-                  type="time"
-                  value={newTimeSlot}
-                  onChange={(e) => setNewTimeSlot(e.target.value)}
-                  placeholder="HH:mm"
-                />
-                <Button onClick={handleAddTimeSlot}><PlusCircle /> Adicionar</Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {timeSlots.length > 0 ? timeSlots.map(slot => (
-                  <Badge key={slot} variant="secondary" className="text-base">
-                    {slot}
-                    <button onClick={() => handleRemoveTimeSlot(slot)} className="ml-2 p-0.5 rounded-full hover:bg-destructive/20 text-destructive">
-                       <XCircle className="h-4 w-4"/>
-                    </button>
-                  </Badge>
-                )) : (
-                  <p className="text-sm text-muted-foreground">Nenhum horário definido.</p>
-                )}
-              </div>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  {/* Busca de paciente */}
+                  <div className="space-y-2">
+                    <FormLabel htmlFor="cpf">Buscar Paciente por CPF ou Nº ID</FormLabel>
+                    <div className="flex gap-2">
+                      <Input
+                        id="cpf"
+                        placeholder="000.000.000-00 ou ID"
+                        value={cpfInput}
+                        onChange={(e) => setCpfInput(e.target.value)}
+                        disabled={!!selectedPatient}
+                      />
+                      <Button type="button" onClick={handleSearchPatient} disabled={!!selectedPatient || !cpfInput}>
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Paciente selecionado */}
+                  {selectedPatient && (
+                    <div className="p-3 bg-muted rounded-lg text-sm space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-2 font-bold">
+                          <User className="w-4 h-4 mt-0.5" />
+                          <span>Paciente Selecionado</span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearPatient}>
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="pl-6 space-y-1">
+                        <p><span className="font-semibold">Nome:</span> {selectedPatient.name}</p>
+                        <p><span className="font-semibold">Idade:</span> {calculateAge(selectedPatient.nascimento) ?? 'N/A'} anos</p>
+                        <p><span className="font-semibold">Nº ID:</span> {selectedPatient.id}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Paciente não encontrado */}
+                  {patientNotFound && (
+                    <div className="text-sm text-center my-4 text-muted-foreground">
+                      <span>Paciente não encontrado. </span>
+                      <Button variant="link" asChild className="p-0 h-auto">
+                        <Link href="/cadastro">
+                          Cadastre um novo aqui.
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {isDayInPast && !isEditing && (
+                      <p className="text-xs text-destructive pt-1 flex items-center gap-2"><BadgeAlert className="h-4 w-4" /> Não é possível criar agendamentos em datas passadas.</p>
+                  )}
+
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="time"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Horário</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={isFormDisabled || timeSlotsForSelectedDay.length === 0 || isDayUnavailable}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {timeSlotsForSelectedDay.map((slot) => (
+                                <SelectItem key={slot} value={slot}>
+                                  {slot}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && !isDayInPast &&(
+                            <p className="text-xs text-muted-foreground pt-1">Não há horários disponíveis.</p>
+                          )}
+                          {isDayUnavailable && (
+                            <p className="text-xs text-destructive pt-1">Dia indisponível para agendamentos.</p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="professional"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Profissional</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={isFormDisabled || isDayUnavailable}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {professionals.map((prof) => (
+                                <SelectItem key={prof} value={prof}>
+                                  {prof}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Duração e preço */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="duration"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Duração (min)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="Ex: 50" {...field} disabled={isFormDisabled || isDayUnavailable} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor (R$)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="Ex: 150" {...field} disabled={isFormDisabled || isDayUnavailable} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Tipo de consulta */}
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>Tipo de Consulta</FormLabel>
+                        <FormControl>
+                          <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4" disabled={isFormDisabled || isDayUnavailable}>
+                            <FormItem className="flex items-center space-x-2">
+                              <FormControl><RadioGroupItem value="Online" /></FormControl>
+                              <FormLabel className="font-normal">Online</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2">
+                              <FormControl><RadioGroupItem value="Presencial" /></FormControl>
+                              <FormLabel className="font-normal">Presencial</FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end pt-4">
+                    <Button type="submit" size="lg" disabled={isFormDisabled || isDayUnavailable}>
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isSubmitting ? 'Salvando...' : isEditing ? 'Salvar Alterações' : 'Agendar Consulta'}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
             </CardContent>
           </Card>
-        )}
-      </div>
+
+          {/* Gerenciador de Horários */}
+          {isClient && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Meus Horários</CardTitle>
+                <CardDescription>Adicione ou remova os horários disponíveis para agendamento.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2 mb-4">
+                  <Input
+                    type="time"
+                    value={newTimeSlot}
+                    onChange={(e) => setNewTimeSlot(e.target.value)}
+                    placeholder="HH:mm"
+                  />
+                  <Button onClick={handleAddTimeSlot}><PlusCircle /> Adicionar</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {timeSlots.length > 0 ? timeSlots.map(slot => (
+                    <Badge key={slot} variant="secondary" className="text-base">
+                      {slot}
+                      <button onClick={() => handleRemoveTimeSlot(slot)} className="ml-2 p-0.5 rounded-full hover:bg-destructive/20 text-destructive">
+                        <XCircle className="h-4 w-4"/>
+                      </button>
+                    </Badge>
+                  )) : (
+                    <p className="text-sm text-muted-foreground">Nenhum horário definido.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Calendário e agenda */}
-      <div className="xl:col-span-3">
+      <div className={isAdmin ? "xl:col-span-3" : "xl:col-span-5 w-full"}>
         <Card>
           <CardHeader>
             <CardTitle>Calendário e Agenda</CardTitle>
@@ -800,35 +809,37 @@ export function SchedulingForm() {
                                 <p className="text-xs text-muted-foreground pl-6 flex items-center gap-1.5"><Stethoscope className="h-3 w-3" /> {app.professional}</p>
                                 <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min - R$ {app.price.toFixed(2)}</p>
                               </div>
-                              <div className="flex gap-2 self-end sm:self-center">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className={`flex items-center gap-1 h-auto px-2 py-1 text-xs rounded-full ${currentStatusColor}`}>
-                                      <CurrentStatusIcon className="h-3.5 w-3.5" />
-                                      {currentStatusLabel}
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent>
-                                    {Object.keys(statusConfig).map(key => {
-                                      const statusKey = key as AppointmentStatus;
-                                      const itemConfig = statusConfig[statusKey];
-                                      const ItemIcon = itemConfig.icon;
-                                      return (
-                                        <DropdownMenuItem key={statusKey} onSelect={() => handleUpdateStatus(app.id, statusKey)}>
-                                          <ItemIcon className={`mr-2 h-4 w-4 ${itemConfig.color}`} />
-                                          <span>{itemConfig.label}</span>
-                                        </DropdownMenuItem>
-                                      );
-                                    })}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(app)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteClick(app)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              {isAdmin && (
+                                <div className="flex gap-2 self-end sm:self-center">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className={`flex items-center gap-1 h-auto px-2 py-1 text-xs rounded-full ${currentStatusColor}`}>
+                                        <CurrentStatusIcon className="h-3.5 w-3.5" />
+                                        {currentStatusLabel}
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                      {Object.keys(statusConfig).map(key => {
+                                        const statusKey = key as AppointmentStatus;
+                                        const itemConfig = statusConfig[statusKey];
+                                        const ItemIcon = itemConfig.icon;
+                                        return (
+                                          <DropdownMenuItem key={statusKey} onSelect={() => handleUpdateStatus(app.id, statusKey)}>
+                                            <ItemIcon className={`mr-2 h-4 w-4 ${itemConfig.color}`} />
+                                            <span>{itemConfig.label}</span>
+                                          </DropdownMenuItem>
+                                        );
+                                      })}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(app)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteClick(app)}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
                             </li>
                           )
                         })}
