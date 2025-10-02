@@ -58,6 +58,7 @@ type Professional = {
 
 export default function ProfissionaisPage() {
   const [isClient, setIsClient] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,6 +101,7 @@ export default function ProfissionaisPage() {
     const role = localStorage.getItem("userRole");
     const id = localStorage.getItem("userId");
 
+    setIsLoggedIn(loggedIn);
     setUserRole(role);
     setUserId(id);
 
@@ -401,3 +403,5 @@ export default function ProfissionaisPage() {
     </div>
   );
 }
+
+    

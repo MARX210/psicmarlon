@@ -222,7 +222,7 @@ export default function PacientesPage() {
   }, [appointments, editingPatient]);
   
   const handleTemplateChange = (templateKey: keyof typeof messageTemplates | "custom") => {
-    if (!editingPatient || !editingPatient.nome) return;
+    if (!editingPatient?.nome) return;
     
     if (templateKey === "custom") {
         setWhatsappMessage("");
@@ -581,3 +581,5 @@ export default function PacientesPage() {
     </div>
   );
 }
+
+    
