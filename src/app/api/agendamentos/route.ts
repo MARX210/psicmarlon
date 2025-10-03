@@ -1,5 +1,5 @@
 
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import getPool from "@/lib/db";
 import { z } from "zod";
 
@@ -14,12 +14,16 @@ const appointmentSchema = z.object({
   status: z.string().optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const professional = searchParams.get("professional");
+
   const pool = getPool();
   let client;
   try {
     client = await pool.connect();
-    const result = await client.query(`
+    
+    let query = `
       SELECT
         a.id,
         a.patient_id AS "patientId",
@@ -33,8 +37,17 @@ export async function GET() {
         a.status
       FROM agendamentos a
       JOIN pacientes p ON a.patient_id = p.id
-      ORDER BY a.date, a.time
-    `);
+    `;
+    const queryParams: string[] = [];
+
+    if (professional) {
+      query += ` WHERE a.professional = $1`;
+      queryParams.push(professional);
+    }
+    
+    query += ` ORDER BY a.date, a.time`;
+
+    const result = await client.query(query, queryParams);
 
     return NextResponse.json(result.rows, { status: 200 });
   } catch (error) {

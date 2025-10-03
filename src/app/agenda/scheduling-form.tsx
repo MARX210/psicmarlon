@@ -134,6 +134,8 @@ export function SchedulingForm() {
   const [newTimeSlot, setNewTimeSlot] = useState("");
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoadingRole, setIsLoadingRole] = useState(true);
+
 
   const isAdmin = userRole === 'Admin';
 
@@ -162,26 +164,30 @@ export function SchedulingForm() {
     }
   }, []);
 
-  const fetchAppointments = useCallback(async () => {
+  const fetchAppointments = useCallback(async (role: string | null) => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/agendamentos");
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Erro ao buscar agendamentos: ${text}`);
-      }
-      const data: Appointment[] = await res.json();
-      setAppointments(data);
+        const professionalFilter = role && role !== 'Admin' ? `?professional=${encodeURIComponent(role)}` : '';
+        const res = await fetch(`/api/agendamentos${professionalFilter}`);
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Erro ao buscar agendamentos: ${text}`);
+        }
+        const data: Appointment[] = await res.json();
+        setAppointments(data);
     } catch (error) {
-      console.error("Erro no fetchAppointments:", error);
+        console.error("Erro no fetchAppointments:", error);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  }, []);
+}, []);
 
   useEffect(() => {
     setIsClient(true);
-    setUserRole(localStorage.getItem("userRole"));
+    const role = localStorage.getItem("userRole");
+    setUserRole(role);
+    setIsLoadingRole(false);
+
 
     const today = new Date();
     setSelectedDate(today);
@@ -199,13 +205,24 @@ export function SchedulingForm() {
       setTimeSlots(defaultTimeSlots);
     }
 
-    fetchAppointments();
-    if (userRole === 'Admin') {
-      fetchAllPatients();
+    if (role) {
+      fetchAppointments(role);
+      if (role === 'Admin') {
+        fetchAllPatients();
+      }
     }
 
-  }, [form, fetchAppointments, fetchAllPatients, userRole]);
+  }, [form, fetchAppointments, fetchAllPatients]);
   
+  useEffect(() => {
+    if (!isLoadingRole && userRole) {
+        fetchAppointments(userRole);
+        if (userRole === 'Admin') {
+            fetchAllPatients();
+        }
+    }
+  }, [userRole, isLoadingRole, fetchAppointments, fetchAllPatients]);
+
   const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus) => {
     try {
       const response = await fetch(`/api/agendamentos/${appointmentId}`, {
@@ -219,7 +236,7 @@ export function SchedulingForm() {
         throw new Error(result.error || 'Erro ao atualizar status');
       }
       
-      await fetchAppointments(); 
+      await fetchAppointments(userRole);
 
       toast({
         title: "Status Atualizado!",
@@ -391,7 +408,7 @@ export function SchedulingForm() {
         title: "Agendamento Excluído!",
         description: "A consulta foi removida da sua agenda.",
       });
-      await fetchAppointments();
+      await fetchAppointments(userRole);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -456,7 +473,7 @@ export function SchedulingForm() {
             description: `Consulta para ${selectedPatient.name} foi ${isEditing ? 'atualizada' : 'marcada'} com sucesso.`,
         });
         
-        await fetchAppointments();
+        await fetchAppointments(userRole);
         handleClearPatient();
 
     } catch (error) {
@@ -501,6 +518,15 @@ export function SchedulingForm() {
       </DropdownMenu>
     );
   };
+
+    if (isLoadingRole) {
+    return (
+      <div className="flex justify-center items-center h-[calc(100vh-200px)]">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <p className="ml-4">Carregando permissões...</p>
+      </div>
+    );
+  }
 
 
   return (
