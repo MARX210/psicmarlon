@@ -16,7 +16,7 @@ const appointmentSchema = z.object({
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const professional = searchParams.get("professional");
+  const professionalRoles = searchParams.get("professional");
 
   const pool = getPool();
   let client;
@@ -40,9 +40,12 @@ export async function GET(req: NextRequest) {
     `;
     const queryParams: string[] = [];
 
-    if (professional) {
-      query += ` WHERE a.professional = $1`;
-      queryParams.push(professional);
+    if (professionalRoles) {
+      const roles = professionalRoles.split(',').map(role => role.trim());
+      if (roles.length > 0) {
+        query += ` WHERE a.professional = ANY($1)`;
+        queryParams.push(roles);
+      }
     }
     
     query += ` ORDER BY a.date, a.time`;

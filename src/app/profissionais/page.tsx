@@ -58,6 +58,7 @@ type Professional = {
 
 export default function ProfissionaisPage() {
   const [isClient, setIsClient] = useState(false);
+  const [isLoadingRole, setIsLoadingRole] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -100,17 +101,17 @@ export default function ProfissionaisPage() {
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const role = localStorage.getItem("userRole");
     const id = localStorage.getItem("userId");
-
+    
     setIsLoggedIn(loggedIn);
     setUserRole(role);
     setUserId(id);
+    setIsLoadingRole(false);
 
     if (!loggedIn) {
       window.location.href = "/login";
     } else if (role !== "Admin") {
       window.location.href = "/";
-    }
-     else {
+    } else {
       fetchProfessionals();
     }
   }, []);
@@ -241,7 +242,7 @@ export default function ProfissionaisPage() {
   }
 
 
-  if (!isClient || !isLoggedIn || userRole !== "Admin") {
+  if (!isClient || isLoadingRole || !isLoggedIn || userRole !== "Admin") {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -302,8 +303,8 @@ export default function ProfissionaisPage() {
                 )} />
                 <FormField control={form.control} name="role" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Função</FormLabel>
-                    <FormControl><Input placeholder="Ex: Admin, Nutricionista, Psicólogo" {...field} disabled={editingProfessional?.id === Number(userId) && adminCount <= 1} /></FormControl>
+                    <FormLabel>Função (separe com vírgulas)</FormLabel>
+                    <FormControl><Input placeholder="Ex: Psicólogo,Nutricionista" {...field} disabled={editingProfessional?.id === Number(userId) && adminCount <= 1} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -403,5 +404,3 @@ export default function ProfissionaisPage() {
     </div>
   );
 }
-
-    

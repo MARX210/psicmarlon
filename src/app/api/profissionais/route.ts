@@ -13,11 +13,23 @@ const professionalSchema = z.object({
   role: z.string().min(1),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const distinctRoles = searchParams.get("distinctRoles");
+
   const pool = getPool();
   let client;
   try {
     client = await pool.connect();
+
+    if (distinctRoles === 'true') {
+        const result = await client.query(
+            "SELECT DISTINCT unnest(string_to_array(role, ',')) as role FROM profissionais WHERE role IS NOT NULL AND role != 'Admin' AND role != ''"
+        );
+        const roles = result.rows.map(row => row.role.trim());
+        return NextResponse.json([...new Set(roles)], { status: 200 }); // Use Set to ensure unique roles
+    }
+
     const result = await client.query("SELECT id, nome, email, role, is_active FROM profissionais ORDER BY nome");
     return NextResponse.json(result.rows, { status: 200 });
   } catch (error) {

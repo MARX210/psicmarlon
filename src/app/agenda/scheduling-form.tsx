@@ -63,13 +63,6 @@ const defaultTimeSlots = [
   "14:00", "15:00", "16:00", "17:00", "18:00",
 ];
 
-const professionals = [
-    "Psicopedagogo",
-    "Psicólogo",
-    "Neuropsicólogo",
-    "Nutricionista",
-];
-
 const appointmentSchema = z.object({
   patientId: z.string().nonempty("Selecione um paciente."),
   date: z.date({ required_error: "A data é obrigatória."}),
@@ -135,6 +128,7 @@ export function SchedulingForm() {
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoadingRole, setIsLoadingRole] = useState(true);
+  const [professionalRoles, setProfessionalRoles] = useState<string[]>([]);
 
 
   const isAdmin = userRole === 'Admin';
@@ -164,6 +158,22 @@ export function SchedulingForm() {
     }
   }, []);
 
+  const fetchProfessionalRoles = useCallback(async () => {
+    try {
+        const res = await fetch(`/api/profissionais?distinctRoles=true`);
+        if (!res.ok) throw new Error("Erro ao buscar funções dos profissionais");
+        const data: string[] = await res.json();
+        setProfessionalRoles(data);
+    } catch (error) {
+        console.error(error);
+        toast({
+            variant: "destructive",
+            title: "Erro de Configuração",
+            description: "Não foi possível carregar as especialidades dos profissionais."
+        });
+    }
+  }, [toast]);
+
   const fetchAppointments = useCallback(async (role: string | null) => {
     setIsLoading(true);
     try {
@@ -188,7 +198,6 @@ export function SchedulingForm() {
     setUserRole(role);
     setIsLoadingRole(false);
 
-
     const today = new Date();
     setSelectedDate(today);
     form.setValue("date", today);
@@ -204,24 +213,17 @@ export function SchedulingForm() {
       console.error("Failed to parse timeSlots from localStorage", error);
       setTimeSlots(defaultTimeSlots);
     }
-
-    if (role) {
-      fetchAppointments(role);
-      if (role === 'Admin') {
-        fetchAllPatients();
-      }
-    }
-
-  }, [form, fetchAppointments, fetchAllPatients]);
+  }, [form]);
   
   useEffect(() => {
     if (!isLoadingRole && userRole) {
         fetchAppointments(userRole);
         if (userRole === 'Admin') {
             fetchAllPatients();
+            fetchProfessionalRoles();
         }
     }
-  }, [userRole, isLoadingRole, fetchAppointments, fetchAllPatients]);
+  }, [userRole, isLoadingRole, fetchAppointments, fetchAllPatients, fetchProfessionalRoles]);
 
   const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus) => {
     try {
@@ -519,7 +521,7 @@ export function SchedulingForm() {
     );
   };
 
-    if (isLoadingRole) {
+  if (isLoadingRole) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -651,7 +653,7 @@ export function SchedulingForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {professionals.map((prof) => (
+                              {professionalRoles.map((prof) => (
                                 <SelectItem key={prof} value={prof}>
                                   {prof}
                                 </SelectItem>
