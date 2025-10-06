@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText } from "lucide-react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 type Patient = {
@@ -58,6 +59,14 @@ type Appointment = {
   type: string;
   status: string;
 };
+
+type Prontuario = {
+  id: number;
+  data_registro: string;
+  conteudo: string;
+  profissional_nome: string;
+};
+
 
 type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou" | "Pago";
 
@@ -89,7 +98,12 @@ const patientUpdateSchema = z.object({
   pais: z.string().optional().or(z.literal('')),
 });
 
+const prontuarioSchema = z.object({
+  conteudo: z.string().min(10, "A anotação deve ter pelo menos 10 caracteres."),
+});
+
 type PatientUpdateFormValues = z.infer<typeof patientUpdateSchema>;
+type ProntuarioFormValues = z.infer<typeof prontuarioSchema>;
 
 const formatCpf = (cpf: string) => {
   if (!cpf) return "";
@@ -114,6 +128,8 @@ export default function PacientesPage() {
   const [isLoadingRole, setIsLoadingRole] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -123,16 +139,24 @@ export default function PacientesPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState("");
+  const [isProntuarioOpen, setIsProntuarioOpen] = useState(false);
+  const [prontuarios, setProntuarios] = useState<Prontuario[]>([]);
+  const [isLoadingProntuario, setIsLoadingProntuario] = useState(false);
 
 
   const { toast } = useToast();
   const form = useForm<PatientUpdateFormValues>({
     resolver: zodResolver(patientUpdateSchema),
   });
+
+  const prontuarioForm = useForm<ProntuarioFormValues>({
+    resolver: zodResolver(prontuarioSchema),
+    defaultValues: { conteudo: "" },
+  });
   
   const ITEMS_PER_PAGE = 10;
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     try {
       const res = await fetch('/api/pacientes');
       if (!res.ok) throw new Error('Erro ao buscar pacientes');
@@ -145,9 +169,9 @@ export default function PacientesPage() {
         description: "Não foi possível carregar a lista de pacientes.",
       });
     }
-  };
+  }, [toast]);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       const res = await fetch("/api/agendamentos");
       if (!res.ok) throw new Error("Erro ao buscar agendamentos");
@@ -156,26 +180,50 @@ export default function PacientesPage() {
     } catch (error) {
       console.error("Erro no fetchAppointments:", error);
     }
-  };
+  }, []);
+
+  const fetchProntuarios = useCallback(async (pacienteId: string) => {
+    if (!pacienteId) return;
+    setIsLoadingProntuario(true);
+    try {
+        const profissionalId = userRole !== 'Admin' ? userId : '';
+        const res = await fetch(`/api/prontuarios?pacienteId=${pacienteId}&profissionalId=${profissionalId}`);
+        if (!res.ok) throw new Error('Erro ao buscar prontuário');
+        const data: Prontuario[] = await res.json();
+        setProntuarios(data);
+    } catch (error) {
+         toast({
+            variant: "destructive",
+            title: "Erro",
+            description: "Não foi possível carregar os registros do prontuário.",
+        });
+        setProntuarios([]);
+    } finally {
+        setIsLoadingProntuario(false);
+    }
+  }, [toast, userId, userRole]);
+
 
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const role = localStorage.getItem("userRole");
+    const id = localStorage.getItem("userId");
+    const name = localStorage.getItem("userName");
     
     setIsLoggedIn(loggedIn);
     setUserRole(role);
+    setUserId(id);
+    setUserName(name);
     setIsLoadingRole(false);
 
     if (!loggedIn) {
       window.location.href = "/login";
-    } else if (role !== "Admin") {
-      window.location.href = "/";
     } else {
       setIsLoading(true);
       Promise.all([fetchPatients(), fetchAppointments()]).finally(() => setIsLoading(false));
     }
-  }, []);
+  }, [fetchPatients, fetchAppointments]);
   
   useEffect(() => {
     if (editingPatient) {
@@ -193,6 +241,12 @@ export default function PacientesPage() {
       });
     }
   }, [editingPatient, form]);
+
+  useEffect(() => {
+    if(isProntuarioOpen && editingPatient) {
+        fetchProntuarios(editingPatient.id);
+    }
+  }, [isProntuarioOpen, editingPatient, fetchProntuarios]);
 
 
   const filteredPatients = useMemo(() => {
@@ -237,7 +291,7 @@ export default function PacientesPage() {
 
     const message = messageTemplates[templateKey](editingPatient.nome.split(" ")[0], date, time);
     setWhatsappMessage(message);
-};
+  };
 
   const handleSendWhatsApp = () => {
     if (!editingPatient || !editingPatient.celular) {
@@ -256,7 +310,7 @@ export default function PacientesPage() {
         description: "A mensagem foi copiada. Agora, cole no WhatsApp.",
       });
 
-      let phoneNumber = editingPatient.celular.replace(/\D/g, "");
+      let phoneNumber = editingPatient.celular!.replace(/\D/g, "");
       if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) {
         phoneNumber = '55' + phoneNumber;
       }
@@ -303,9 +357,42 @@ export default function PacientesPage() {
         setIsUpdating(false);
     }
   };
+  
+  const handleSaveProntuario = async (data: ProntuarioFormValues) => {
+    if (!editingPatient || !userId) return;
+
+    prontuarioForm.formState.isSubmitting;
+    try {
+      const response = await fetch('/api/prontuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paciente_id: editingPatient.id,
+          profissional_id: userId,
+          conteudo: data.conteudo,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao salvar anotação.');
+      }
+      
+      toast({ title: 'Anotação salva com sucesso!' });
+      prontuarioForm.reset();
+      fetchProntuarios(editingPatient.id);
+
+    } catch (error) {
+       toast({
+          variant: "destructive",
+          title: "Erro ao Salvar",
+          description: error instanceof Error ? error.message : "Ocorreu um erro.",
+        });
+    }
+  };
 
 
-  if (!isClient || isLoadingRole || !isLoggedIn || userRole !== 'Admin') {
+  if (!isClient || isLoadingRole) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -313,6 +400,9 @@ export default function PacientesPage() {
       </div>
     );
   }
+
+  const isAdmin = userRole === 'Admin';
+
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -324,21 +414,23 @@ export default function PacientesPage() {
           Gerencie as informações dos seus pacientes em um só lugar.
         </p>
       </div>
-
-      <div className="flex justify-center">
-        <div className="relative w-full max-w-md">
-          <Input 
-            placeholder="Buscar por Nome, CPF ou Nº ID..."
-            value={searchTerm}
-            onChange={e => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="pl-10"
-          />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+      
+      {isAdmin && (
+        <div className="flex justify-center">
+          <div className="relative w-full max-w-md">
+            <Input 
+              placeholder="Buscar por Nome, CPF ou Nº ID..."
+              value={searchTerm}
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="border rounded-lg overflow-hidden">
         {isLoading ? (
@@ -380,7 +472,7 @@ export default function PacientesPage() {
         )}
       </div>
 
-      {totalPages > 1 && (
+      {totalPages > 1 && isAdmin && (
         <div className="flex items-center justify-center space-x-2">
           <Button
             variant="outline"
@@ -415,18 +507,17 @@ export default function PacientesPage() {
           </DialogHeader>
           
           <div className="flex justify-start gap-2 border-b pb-4">
-              <DialogTrigger asChild>
-                 <Button onClick={() => {
-                    setEditingPatient(editingPatient);
-                    setIsWhatsAppDialogOpen(true);
-                 }} disabled={!editingPatient?.celular}>
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Enviar WhatsApp
-                 </Button>
-              </DialogTrigger>
-              <Button variant="outline" disabled>
-                 <FileText className="mr-2 h-4 w-4" />
-                 Ver Prontuário
+              <Button onClick={() => {
+                  if (!editingPatient) return;
+                  setEditingPatient(editingPatient);
+                  setIsWhatsAppDialogOpen(true);
+              }} disabled={!editingPatient?.celular}>
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Enviar WhatsApp
+              </Button>
+              <Button variant="outline" onClick={() => setIsProntuarioOpen(true)}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Ver Prontuário
               </Button>
           </div>
 
@@ -600,9 +691,70 @@ export default function PacientesPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog do Prontuário */}
+      <Dialog open={isProntuarioOpen} onOpenChange={setIsProntuarioOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+              <DialogHeader>
+                  <DialogTitle>Prontuário de {editingPatient?.nome}</DialogTitle>
+                  <DialogDescription>
+                      {isAdmin ? "Visualize e adicione anotações de todos os profissionais." : "Visualize e adicione suas anotações ao prontuário."}
+                  </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex-grow space-y-4 overflow-y-hidden flex flex-col">
+                  <h3 className="font-semibold text-md">Anotações Anteriores</h3>
+                  <ScrollArea className="flex-grow border rounded-lg p-2">
+                        {isLoadingProntuario ? (
+                            <div className="flex justify-center items-center h-32">
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                            </div>
+                        ) : prontuarios.length > 0 ? (
+                            <div className="space-y-4 p-2">
+                                {prontuarios.map(p => (
+                                    <div key={p.id} className="text-sm p-3 bg-muted rounded-lg">
+                                        <p className="whitespace-pre-wrap">{p.conteudo}</p>
+                                        <p className="text-xs text-muted-foreground mt-2 pt-2 border-t text-right">
+                                            Por <span className="font-bold">{p.profissional_nome}</span> em {format(parseISO(p.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-10">Nenhuma anotação encontrada.</p>
+                        )}
+                  </ScrollArea>
+
+                  <Form {...prontuarioForm}>
+                      <form onSubmit={prontuarioForm.handleSubmit(handleSaveProntuario)} className="space-y-4 pt-4">
+                          <FormField
+                              control={prontuarioForm.control}
+                              name="conteudo"
+                              render={({ field }) => (
+                                  <FormItem>
+                                      <FormLabel className="font-semibold">Nova Anotação</FormLabel>
+                                      <FormControl>
+                                          <Textarea 
+                                              placeholder={`Anote aqui a evolução do paciente... (Registrando como ${userName})`} 
+                                              rows={4} 
+                                              {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                  </FormItem>
+                              )}
+                          />
+                          <DialogFooter>
+                              <Button type="submit" disabled={prontuarioForm.formState.isSubmitting}>
+                                  {prontuarioForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                  Salvar Anotação
+                              </Button>
+                          </DialogFooter>
+                      </form>
+                  </Form>
+              </div>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
-    
-
     
