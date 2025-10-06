@@ -177,8 +177,13 @@ export function SchedulingForm() {
   const fetchAppointments = useCallback(async (role: string | null) => {
     setIsLoading(true);
     try {
-        const professionalFilter = role && role !== 'Admin' ? `?professional=${encodeURIComponent(role)}` : '';
-        const res = await fetch(`/api/agendamentos${professionalFilter}`);
+        let url = '/api/agendamentos';
+        if (role && !role.includes('Admin')) {
+            const rolesArray = role.split(',').map(r => r.trim());
+            url += `?professional=${encodeURIComponent(rolesArray.join(','))}`;
+        }
+
+        const res = await fetch(url);
         if (!res.ok) {
             const text = await res.text();
             throw new Error(`Erro ao buscar agendamentos: ${text}`);
@@ -218,19 +223,19 @@ export function SchedulingForm() {
   useEffect(() => {
     if (!isLoadingRole && userRole) {
         fetchAppointments(userRole);
-        if (userRole === 'Admin') {
+        if (isAdmin) {
             fetchAllPatients();
             fetchProfessionalRoles();
         }
     }
-  }, [userRole, isLoadingRole, fetchAppointments, fetchAllPatients, fetchProfessionalRoles]);
+  }, [userRole, isLoadingRole, fetchAppointments, fetchAllPatients, fetchProfessionalRoles, isAdmin]);
 
   const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus) => {
     try {
       const response = await fetch(`/api/agendamentos/${appointmentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, userRole }),
       });
 
       if (!response.ok) {
@@ -829,6 +834,7 @@ export function SchedulingForm() {
                           const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
                           const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
                           const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
+                          const availableStatuses = Object.keys(statusConfig).filter(s => isAdmin || s !== 'Pago') as AppointmentStatus[];
 
                           return (
                             <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between gap-2">
@@ -837,37 +843,38 @@ export function SchedulingForm() {
                                 <p className="text-xs text-muted-foreground pl-6 flex items-center gap-1.5"><Stethoscope className="h-3 w-3" /> {app.professional}</p>
                                 <p className="text-xs text-muted-foreground pl-6">{app.type}, {app.duration} min - R$ {app.price.toFixed(2)}</p>
                               </div>
-                              {isAdmin && (
-                                <div className="flex gap-2 self-end sm:self-center">
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className={`flex items-center gap-1 h-auto px-2 py-1 text-xs rounded-full ${currentStatusColor}`}>
-                                        <CurrentStatusIcon className="h-3.5 w-3.5" />
-                                        {currentStatusLabel}
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                      {Object.keys(statusConfig).map(key => {
-                                        const statusKey = key as AppointmentStatus;
-                                        const itemConfig = statusConfig[statusKey];
-                                        const ItemIcon = itemConfig.icon;
-                                        return (
-                                          <DropdownMenuItem key={statusKey} onSelect={() => handleUpdateStatus(app.id, statusKey)}>
-                                            <ItemIcon className={`mr-2 h-4 w-4 ${itemConfig.color}`} />
-                                            <span>{itemConfig.label}</span>
-                                          </DropdownMenuItem>
-                                        );
-                                      })}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(app)}>
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteClick(app)}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              )}
+                              <div className="flex gap-2 self-end sm:self-center">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className={`flex items-center gap-1 h-auto px-2 py-1 text-xs rounded-full ${currentStatusColor}`}>
+                                      <CurrentStatusIcon className="h-3.5 w-3.5" />
+                                      {currentStatusLabel}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                    {availableStatuses.map(key => {
+                                      const itemConfig = statusConfig[key];
+                                      const ItemIcon = itemConfig.icon;
+                                      return (
+                                        <DropdownMenuItem key={key} onSelect={() => handleUpdateStatus(app.id, key)}>
+                                          <ItemIcon className={`mr-2 h-4 w-4 ${itemConfig.color}`} />
+                                          <span>{itemConfig.label}</span>
+                                        </DropdownMenuItem>
+                                      );
+                                    })}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                                {isAdmin && (
+                                  <>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(app)}>
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteClick(app)}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </li>
                           )
                         })}

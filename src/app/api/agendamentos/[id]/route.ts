@@ -15,6 +15,7 @@ const appointmentUpdateSchema = z.object({
 
 const statusUpdateSchema = z.object({
   status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou", "Pago"]),
+  userRole: z.string().optional(), // Recebe o 'userRole' do frontend
 });
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
@@ -45,7 +46,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     let updatedAppointmentData: any;
     let newStatus: string;
 
-    if (Object.keys(body).length > 1) {
+    // Se a requisição tem mais de uma chave, é uma atualização completa
+    if (Object.keys(body).length > 2) {
       const validation = appointmentUpdateSchema.safeParse(body);
       if (!validation.success) {
         await client.query('ROLLBACK');
@@ -55,12 +57,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       newStatus = data.status;
 
       const conflictCheck = await client.query(
-        `SELECT id FROM agendamentos WHERE date = $1 AND time = $2 AND id != $3`,
-        [data.date, data.time, id]
+        `SELECT id FROM agendamentos WHERE date = $1 AND time = $2 AND professional = $3 AND id != $4`,
+        [data.date, data.time, data.professional, id]
       );
       if (conflictCheck.rowCount > 0) {
         await client.query('ROLLBACK');
-        return NextResponse.json({ error: 'Já existe um agendamento neste horário.' }, { status: 409 });
+        return NextResponse.json({ error: 'Já existe um agendamento para este profissional neste horário.' }, { status: 409 });
       }
 
       const result = await client.query(
@@ -70,13 +72,20 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         [data.date, data.time, data.type, data.duration, data.price, newStatus, data.professional, id]
       );
       updatedAppointmentData = result.rows[0];
-    } else {
+    } else { // Senão, é uma atualização de status
       const validation = statusUpdateSchema.safeParse(body);
       if (!validation.success) {
         await client.query('ROLLBACK');
         return NextResponse.json({ error: "Dados de atualização de status inválidos", details: validation.error.flatten() }, { status: 400 });
       }
-      const { status } = validation.data;
+      const { status, userRole } = validation.data;
+
+      // REGRA DE NEGÓCIO: Apenas Admins podem marcar como "Pago"
+      if (status === 'Pago' && userRole !== 'Admin') {
+          await client.query('ROLLBACK');
+          return NextResponse.json({ error: "Apenas administradores podem marcar uma consulta como paga." }, { status: 403 });
+      }
+
       newStatus = status;
       const result = await client.query('UPDATE agendamentos SET status = $1 WHERE id = $2 RETURNING *', [newStatus, id]);
       updatedAppointmentData = result.rows[0];

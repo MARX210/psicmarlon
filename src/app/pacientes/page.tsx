@@ -468,7 +468,7 @@ export default function PacientesPage() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead className="hidden md:table-cell">Nº ID</TableHead>
-              <TableHead>{isAdmin ? "CPF" : ""}</TableHead>
+              <TableHead>{isAdmin ? "CPF" : "CPF"}</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
