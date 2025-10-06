@@ -21,13 +21,15 @@ export function Header() {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoadingRole, setIsLoadingRole] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
     setUserRole(localStorage.getItem("userRole"));
+    setIsLoadingRole(false);
   }, []);
 
-  const isLoggedIn = isMounted ? localStorage.getItem("isLoggedIn") === "true" : false;
+  const isLoggedIn = isMounted && localStorage.getItem("isLoggedIn") === "true";
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
@@ -42,7 +44,7 @@ export function Header() {
     { href: "/", label: "Início", adminOnly: false },
     { href: "/cadastro", label: "Cadastro", adminOnly: true },
     { href: "/agenda", label: "Agenda", adminOnly: false },
-    { href: "/pacientes", label: "Pacientes", adminOnly: true },
+    { href: "/pacientes", label: "Pacientes", adminOnly: false },
     { href: "/profissionais", label: "Profissionais", adminOnly: true },
     { href: "/financeiro", label: "Financeiro", adminOnly: true },
   ];
@@ -51,6 +53,39 @@ export function Header() {
 
   const firstHalfLinks = visibleLinks.slice(0, Math.ceil(visibleLinks.length / 2));
   const secondHalfLinks = visibleLinks.slice(Math.ceil(visibleLinks.length / 2));
+
+  if (isLoadingRole) {
+      return (
+        <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
+          <div className="container mx-auto flex justify-between items-center p-4 gap-4">
+            <div className="w-1/4"></div>
+            <div className="flex justify-center w-1/2">
+                <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+                <Image
+                    src="/images/logopreta.png"
+                    alt="PsicMarlon Logo"
+                    width={100}
+                    height={20}
+                    priority
+                    className="object-contain dark:hidden"
+                />
+                <Image
+                    src="/images/logobranca.png"
+                    alt="PsicMarlon Logo"
+                    width={100}
+                    height={20}
+                    priority
+                    className="object-contain hidden dark:block"
+                />
+                </Link>
+            </div>
+            <div className="flex items-center justify-end gap-2 w-1/4">
+                <ThemeToggle />
+            </div>
+          </div>
+        </header>
+      )
+  }
 
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
@@ -182,7 +217,7 @@ export function Header() {
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </Button>
-            ) : (pathname !== '/login' &&
+            ) : (pathname !== '/login' && pathname !== '/setup' &&
               <Button asChild variant="outline" size="sm">
                 <Link href="/login">
                   <LogIn className="mr-2 h-4 w-4" />

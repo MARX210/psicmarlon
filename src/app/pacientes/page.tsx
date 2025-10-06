@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText, PlusCircle } from "lucide-react";
+import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText, PlusCircle, User, FileEdit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,7 @@ type Appointment = {
   time: string; // HH:mm
   type: string;
   status: string;
+  professional: string;
 };
 
 type Prontuario = {
@@ -131,11 +132,11 @@ export default function PacientesPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState("");
@@ -155,32 +156,37 @@ export default function PacientesPage() {
   });
   
   const ITEMS_PER_PAGE = 10;
+  const isAdmin = userRole === 'Admin';
 
-  const fetchPatients = useCallback(async () => {
+
+  const fetchAllData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch('/api/pacientes');
-      if (!res.ok) throw new Error('Erro ao buscar pacientes');
-      const data: Patient[] = await res.json();
-      setPatients(data);
+      const [patientsRes, appointmentsRes] = await Promise.all([
+        fetch('/api/pacientes'),
+        fetch('/api/agendamentos')
+      ]);
+
+      if (!patientsRes.ok) throw new Error('Erro ao buscar pacientes');
+      if (!appointmentsRes.ok) throw new Error('Erro ao buscar agendamentos');
+      
+      const patientsData: Patient[] = await patientsRes.json();
+      const appointmentsData: Appointment[] = await appointmentsRes.json();
+
+      setAllPatients(patientsData);
+      setAppointments(appointmentsData);
+
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Não foi possível carregar a lista de pacientes.",
+        description: "Não foi possível carregar os dados.",
       });
+    } finally {
+      setIsLoading(false);
     }
   }, [toast]);
 
-  const fetchAppointments = useCallback(async () => {
-    try {
-      const res = await fetch("/api/agendamentos");
-      if (!res.ok) throw new Error("Erro ao buscar agendamentos");
-      const data: Appointment[] = await res.json();
-      setAppointments(data);
-    } catch (error) {
-      console.error("Erro no fetchAppointments:", error);
-    }
-  }, []);
 
   const fetchProntuarios = useCallback(async (pacienteId: string) => {
     if (!pacienteId) return;
@@ -220,65 +226,83 @@ export default function PacientesPage() {
     if (!loggedIn) {
       window.location.href = "/login";
     } else {
-      setIsLoading(true);
-      Promise.all([fetchPatients(), fetchAppointments()]).finally(() => setIsLoading(false));
+      fetchAllData();
     }
-  }, [fetchPatients, fetchAppointments]);
+  }, [fetchAllData]);
   
   useEffect(() => {
-    if (editingPatient) {
+    if (selectedPatient && isAdmin) {
       form.reset({
-        email: editingPatient.email || "",
-        celular: editingPatient.celular || "",
-        cep: editingPatient.cep || "",
-        logradouro: editingPatient.logradouro || "",
-        numero: editingPatient.numero || "",
-        complemento: editingPatient.complemento || "",
-        bairro: editingPatient.bairro || "",
-        cidade: editingPatient.cidade || "",
-        estado: editingPatient.estado || "",
-        pais: editingPatient.pais || "Brasil",
+        email: selectedPatient.email || "",
+        celular: selectedPatient.celular || "",
+        cep: selectedPatient.cep || "",
+        logradouro: selectedPatient.logradouro || "",
+        numero: selectedPatient.numero || "",
+        complemento: selectedPatient.complemento || "",
+        bairro: selectedPatient.bairro || "",
+        cidade: selectedPatient.cidade || "",
+        estado: selectedPatient.estado || "",
+        pais: selectedPatient.pais || "Brasil",
       });
     }
-  }, [editingPatient, form]);
+  }, [selectedPatient, form, isAdmin]);
 
   useEffect(() => {
-    if(isProntuarioOpen && editingPatient) {
-        fetchProntuarios(editingPatient.id);
+    if(isProntuarioOpen && selectedPatient) {
+        fetchProntuarios(selectedPatient.id);
     }
-  }, [isProntuarioOpen, editingPatient, fetchProntuarios]);
+  }, [isProntuarioOpen, selectedPatient, fetchProntuarios]);
+
+
+  const professionalPatients = useMemo(() => {
+    if (isAdmin) return allPatients;
+    
+    const professionalRoles = userRole ? userRole.split(',').map(r => r.trim()) : [];
+    
+    const patientIds = new Set<string>();
+    appointments.forEach(app => {
+        if (professionalRoles.includes(app.professional)) {
+            patientIds.add(app.patientId);
+        }
+    });
+
+    return allPatients.filter(patient => patientIds.has(patient.id));
+  }, [allPatients, appointments, userRole, isAdmin]);
 
 
   const filteredPatients = useMemo(() => {
+    if (!isAdmin) return professionalPatients;
+
     const term = searchTerm.toLowerCase();
-    if (!term) return patients;
+    if (!term) return allPatients;
     
     const cleanTerm = term.replace(/\D/g, "");
 
-    return patients.filter(p => 
+    return allPatients.filter(p => 
       p.nome.toLowerCase().includes(term) ||
       p.cpf.replace(/\D/g, "").includes(cleanTerm) ||
       p.id.toLowerCase().includes(term)
     );
-  }, [patients, searchTerm]);
+  }, [allPatients, searchTerm, isAdmin, professionalPatients]);
 
 
   const paginatedPatients = useMemo(() => {
+    if(!isAdmin) return filteredPatients;
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredPatients.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredPatients, currentPage]);
+  }, [filteredPatients, currentPage, isAdmin]);
 
   const totalPages = Math.ceil(filteredPatients.length / ITEMS_PER_PAGE);
 
   const patientAppointments = useMemo(() => {
-    if (!editingPatient) return [];
+    if (!selectedPatient) return [];
     return appointments
-      .filter(app => app.patientId === editingPatient.id)
+      .filter(app => app.patientId === selectedPatient.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [appointments, editingPatient]);
+  }, [appointments, selectedPatient]);
   
   const handleTemplateChange = (templateKey: keyof typeof messageTemplates | "custom") => {
-    if (!editingPatient?.nome) return;
+    if (!selectedPatient?.nome) return;
     
     if (templateKey === "custom") {
         setWhatsappMessage("");
@@ -289,12 +313,12 @@ export default function PacientesPage() {
     const date = nextAppointment ? format(parseISO(nextAppointment.date), 'dd/MM/yyyy', { locale: ptBR }) : '[Data da consulta]';
     const time = nextAppointment ? nextAppointment.time : '[Hora da consulta]';
 
-    const message = messageTemplates[templateKey](editingPatient.nome.split(" ")[0], date, time);
+    const message = messageTemplates[templateKey](selectedPatient.nome.split(" ")[0], date, time);
     setWhatsappMessage(message);
   };
 
   const handleSendWhatsApp = () => {
-    if (!editingPatient || !editingPatient.celular) {
+    if (!selectedPatient || !selectedPatient.celular) {
       toast({ variant: "destructive", title: "Erro", description: "Paciente sem número de celular cadastrado." });
       return;
     }
@@ -310,7 +334,7 @@ export default function PacientesPage() {
         description: "A mensagem foi copiada. Agora, cole no WhatsApp.",
       });
 
-      let phoneNumber = editingPatient.celular!.replace(/\D/g, "");
+      let phoneNumber = selectedPatient.celular!.replace(/\D/g, "");
       if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) {
         phoneNumber = '55' + phoneNumber;
       }
@@ -329,10 +353,10 @@ export default function PacientesPage() {
   };
 
   const handleUpdatePatient = async (data: PatientUpdateFormValues) => {
-    if (!editingPatient) return;
+    if (!selectedPatient) return;
     setIsUpdating(true);
     try {
-        const response = await fetch(`/api/pacientes/${editingPatient.id}`, {
+        const response = await fetch(`/api/pacientes/${selectedPatient.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -345,8 +369,8 @@ export default function PacientesPage() {
             title: "Sucesso!",
             description: "Os dados do paciente foram atualizados.",
         });
-        setEditingPatient(null);
-        fetchPatients();
+        setSelectedPatient(null);
+        fetchAllData();
     } catch (error) {
         toast({
             variant: "destructive",
@@ -359,7 +383,7 @@ export default function PacientesPage() {
   };
   
   const handleSaveProntuario = async (data: ProntuarioFormValues) => {
-    if (!editingPatient || !userId) return;
+    if (!selectedPatient || !userId) return;
 
     prontuarioForm.formState.isSubmitting;
     try {
@@ -367,7 +391,7 @@ export default function PacientesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          paciente_id: editingPatient.id,
+          paciente_id: selectedPatient.id,
           profissional_id: userId,
           conteudo: data.conteudo,
         }),
@@ -380,7 +404,7 @@ export default function PacientesPage() {
       
       toast({ title: 'Anotação salva com sucesso!' });
       prontuarioForm.reset();
-      fetchProntuarios(editingPatient.id);
+      fetchProntuarios(selectedPatient.id);
 
     } catch (error) {
        toast({
@@ -391,8 +415,15 @@ export default function PacientesPage() {
     }
   };
 
+  const handleRowClick = (patient: Patient) => {
+    setSelectedPatient(patient);
+    if (!isAdmin) {
+      setIsProntuarioOpen(true);
+    }
+  }
 
-  if (!isClient || isLoadingRole) {
+
+  if (!isClient || isLoadingRole || isLoading) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -401,17 +432,15 @@ export default function PacientesPage() {
     );
   }
 
-  const isAdmin = userRole === 'Admin';
-
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl md:text-4xl font-bold font-headline text-center mb-4">
-          Meus Pacientes
+          {isAdmin ? "Gerenciar Pacientes" : "Meus Pacientes"}
         </h1>
         <p className="text-center text-muted-foreground max-w-2xl mx-auto">
-          Gerencie as informações dos seus pacientes em um só lugar.
+          {isAdmin ? "Gerencie as informações dos seus pacientes em um só lugar." : "Acesse o prontuário dos pacientes que você atende."}
         </p>
       </div>
       
@@ -433,43 +462,41 @@ export default function PacientesPage() {
       )}
 
       <div className="border rounded-lg overflow-hidden">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Nº ID</TableHead>
-                <TableHead className="hidden md:table-cell">CPF</TableHead>
-                <TableHead className="hidden sm:table-cell">Celular</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Nº ID</TableHead>
+              <TableHead className="hidden md:table-cell">{isAdmin ? "CPF" : "Contato"}</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedPatients.length > 0 ? paginatedPatients.map(patient => (
+              <TableRow key={patient.id} className="cursor-pointer" onClick={() => handleRowClick(patient)}>
+                <TableCell className="font-medium flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground"/> {patient.nome}
+                </TableCell>
+                <TableCell>{patient.id}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                    {isAdmin ? formatCpf(patient.cpf) : formatCelular(patient.celular)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon">
+                    {isAdmin ? <Edit className="h-4 w-4" /> : <FileEdit className="h-4 w-4" />}
+                    <span className="sr-only">{isAdmin ? "Ver Detalhes" : "Ver Prontuário"}</span>
+                  </Button>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedPatients.length > 0 ? paginatedPatients.map(patient => (
-                <TableRow key={patient.id} className="cursor-pointer" onClick={() => setEditingPatient(patient)}>
-                  <TableCell className="font-medium">{patient.nome}</TableCell>
-                  <TableCell>{patient.id}</TableCell>
-                  <TableCell className="hidden md:table-cell">{formatCpf(patient.cpf)}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{formatCelular(patient.celular)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon">
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Ver Detalhes</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">Nenhum paciente encontrado.</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
+            )) : (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center h-24">
+                  {isAdmin ? "Nenhum paciente encontrado." : "Nenhum paciente vinculado ao seu perfil de atendimento."}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {totalPages > 1 && isAdmin && (
@@ -496,174 +523,175 @@ export default function PacientesPage() {
         </div>
       )}
 
-      {/* Dialog de Detalhes e Edição */}
-      <Dialog open={!!editingPatient} onOpenChange={() => setEditingPatient(null)}>
-        <DialogContent className="sm:max-w-[800px] md:max-w-[900px] max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Detalhes de {editingPatient?.nome}</DialogTitle>
-            <DialogDescription>
-              Visualize, atualize os dados ou entre em contato com o paciente.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex justify-start gap-2 border-b pb-4">
-              <Button onClick={() => {
-                  if (!editingPatient) return;
-                  setEditingPatient(editingPatient);
-                  setIsWhatsAppDialogOpen(true);
-              }} disabled={!editingPatient?.celular}>
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                  Enviar WhatsApp
-              </Button>
-              <Button variant="outline" onClick={() => setIsProntuarioOpen(true)}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Ver Prontuário
-              </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 flex-grow overflow-y-auto pr-4">
-            {/* Coluna de Histórico */}
-            <div className="space-y-4">
-               <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Agendamentos</h3>
-               {patientAppointments.length > 0 ? (
-                 <ul className="space-y-2">
-                   {patientAppointments.map(app => {
-                      const status = (app.status as AppointmentStatus) || "Confirmado";
-                      const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
-                      const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
-                      const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
-
-                     return(
-                       <li key={app.id} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
-                         <div>
-                           <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
-                           <p className="text-xs text-muted-foreground">{app.type}</p>
-                         </div>
-                         <div className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2 py-1 ${currentStatusColor}`}>
-                            <CurrentStatusIcon className="h-3.5 w-3.5" />
-                            {currentStatusLabel}
-                         </div>
-                       </li>
-                     )
-                   })}
-                 </ul>
-               ) : (
-                 <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>
-               )}
-            </div>
+      {/* Dialog de Detalhes e Edição para ADMIN */}
+      {isAdmin && (
+        <Dialog open={!!selectedPatient && isAdmin} onOpenChange={(isOpen) => !isOpen && setSelectedPatient(null)}>
+            <DialogContent className="sm:max-w-[800px] md:max-w-[900px] max-h-[90vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle>Detalhes de {selectedPatient?.nome}</DialogTitle>
+                <DialogDescription>
+                Visualize, atualize os dados ou entre em contato com o paciente.
+                </DialogDescription>
+            </DialogHeader>
             
-             {/* Coluna de Edição */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg border-b pb-2">Dados Cadastrais</h3>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="space-y-4">
-                  <FormField control={form.control} name="celular" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Celular</FormLabel>
-                      <FormControl>
-                        <Input placeholder="(99) 99999-9999" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="email" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="email@exemplo.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="cep" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CEP</FormLabel>
-                      <FormControl>
-                        <Input placeholder="00000-000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="logradouro" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Logradouro</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Rua, Avenida..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                   <div className="grid grid-cols-2 gap-4">
-                      <FormField control={form.control} name="numero" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Número</FormLabel>
-                          <FormControl>
-                            <Input placeholder="123" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="complemento" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Complemento</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Apto, Bloco..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                   </div>
-                  <FormField control={form.control} name="bairro" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bairro</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Bairro" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                   <div className="grid grid-cols-2 gap-4">
-                      <FormField control={form.control} name="cidade" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cidade</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Cidade" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="estado" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estado</FormLabel>
-                          <FormControl>
-                            <Input placeholder="UF" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                   </div>
-                   <DialogFooter className="pt-4 sticky bottom-0 bg-background/95 pb-2">
-                     <Button type="button" variant="outline" onClick={() => setEditingPatient(null)}>Fechar</Button>
-                     <Button type="submit" disabled={isUpdating}>
-                        {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Salvar Alterações
-                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
+            <div className="flex justify-start gap-2 border-b pb-4">
+                <Button onClick={() => {
+                    if (!selectedPatient) return;
+                    setIsWhatsAppDialogOpen(true);
+                }} disabled={!selectedPatient?.celular}>
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Enviar WhatsApp
+                </Button>
+                <Button variant="outline" onClick={() => setIsProntuarioOpen(true)}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Ver Prontuário
+                </Button>
             </div>
 
-          </div>
-        </DialogContent>
-      </Dialog>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 flex-grow overflow-y-auto pr-4">
+                {/* Coluna de Histórico */}
+                <div className="space-y-4">
+                <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Agendamentos</h3>
+                {patientAppointments.length > 0 ? (
+                    <ul className="space-y-2">
+                    {patientAppointments.map(app => {
+                        const status = (app.status as AppointmentStatus) || "Confirmado";
+                        const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
+                        const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
+                        const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
+
+                        return(
+                        <li key={app.id} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
+                            <div>
+                            <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
+                            <p className="text-xs text-muted-foreground">{app.type}</p>
+                            </div>
+                            <div className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2 py-1 ${currentStatusColor}`}>
+                                <CurrentStatusIcon className="h-3.5 w-3.5" />
+                                {currentStatusLabel}
+                            </div>
+                        </li>
+                        )
+                    })}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>
+                )}
+                </div>
+                
+                {/* Coluna de Edição */}
+                <div className="space-y-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Dados Cadastrais</h3>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="space-y-4">
+                    <FormField control={form.control} name="celular" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Celular</FormLabel>
+                        <FormControl>
+                            <Input placeholder="(99) 99999-9999" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                            <Input type="email" placeholder="email@exemplo.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="cep" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>CEP</FormLabel>
+                        <FormControl>
+                            <Input placeholder="00000-000" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="logradouro" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Logradouro</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Rua, Avenida..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="numero" render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Número</FormLabel>
+                            <FormControl>
+                                <Input placeholder="123" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="complemento" render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Complemento</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Apto, Bloco..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+                    <FormField control={form.control} name="bairro" render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Bairro</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Bairro" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="cidade" render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Cidade</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Cidade" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="estado" render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Estado</FormLabel>
+                            <FormControl>
+                                <Input placeholder="UF" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+                    <DialogFooter className="pt-4 sticky bottom-0 bg-background/95 pb-2">
+                        <Button type="button" variant="outline" onClick={() => setSelectedPatient(null)}>Fechar</Button>
+                        <Button type="submit" disabled={isUpdating}>
+                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Salvar Alterações
+                        </Button>
+                    </DialogFooter>
+                    </form>
+                </Form>
+                </div>
+
+            </div>
+            </DialogContent>
+        </Dialog>
+      )}
       
-      {/* Dialog do WhatsApp */}
+      {/* Dialog do WhatsApp (comum para todos) */}
       <Dialog open={isWhatsAppDialogOpen} onOpenChange={setIsWhatsAppDialogOpen}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Enviar Mensagem via WhatsApp</DialogTitle>
                 <DialogDescription>
-                    Selecione um modelo ou escreva uma mensagem personalizada para {editingPatient?.nome}.
+                    Selecione um modelo ou escreva uma mensagem personalizada para {selectedPatient?.nome}.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -692,11 +720,14 @@ export default function PacientesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog do Prontuário */}
-      <Dialog open={isProntuarioOpen} onOpenChange={setIsProntuarioOpen}>
+      {/* Dialog do Prontuário (comum para todos) */}
+      <Dialog open={isProntuarioOpen} onOpenChange={(isOpen) => {
+          setIsProntuarioOpen(isOpen);
+          if (!isOpen) setSelectedPatient(null);
+      }}>
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
               <DialogHeader>
-                  <DialogTitle>Prontuário de {editingPatient?.nome}</DialogTitle>
+                  <DialogTitle>Prontuário de {selectedPatient?.nome}</DialogTitle>
                   <DialogDescription>
                       {isAdmin ? "Visualize e adicione anotações de todos os profissionais." : "Visualize e adicione suas anotações ao prontuário."}
                   </DialogDescription>
@@ -744,6 +775,7 @@ export default function PacientesPage() {
                               )}
                           />
                           <DialogFooter>
+                              <Button type="button" variant="ghost" onClick={() => setIsProntuarioOpen(false)}>Cancelar</Button>
                               <Button type="submit" disabled={prontuarioForm.formState.isSubmitting}>
                                   {prontuarioForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                   Salvar Anotação
