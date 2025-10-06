@@ -111,6 +111,7 @@ const formatCelular = (celular: string | null) => {
 
 export default function PacientesPage() {
   const [isClient, setIsClient] = useState(false);
+  const [isLoadingRole, setIsLoadingRole] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -161,9 +162,10 @@ export default function PacientesPage() {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     const role = localStorage.getItem("userRole");
-
+    
     setIsLoggedIn(loggedIn);
     setUserRole(role);
+    setIsLoadingRole(false);
 
     if (!loggedIn) {
       window.location.href = "/login";
@@ -239,17 +241,37 @@ export default function PacientesPage() {
 
   const handleSendWhatsApp = () => {
     if (!editingPatient || !editingPatient.celular) {
-        toast({ variant: "destructive", title: "Erro", description: "Paciente sem número de celular cadastrado." });
+      toast({ variant: "destructive", title: "Erro", description: "Paciente sem número de celular cadastrado." });
+      return;
+    }
+    
+    if (!whatsappMessage) {
+        toast({ variant: "destructive", title: "Mensagem vazia", description: "Escreva uma mensagem ou selecione um modelo." });
         return;
     }
-    let phoneNumber = editingPatient.celular.replace(/\D/g, "");
-    // Garante que o DDI 55 esteja presente para números brasileiros
-    if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) {
-       phoneNumber = '55' + phoneNumber;
-    }
-    const encodedMessage = encodeURIComponent(whatsappMessage);
-    window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
-    setIsWhatsAppDialogOpen(false);
+
+    navigator.clipboard.writeText(whatsappMessage).then(() => {
+      toast({
+        title: "Mensagem Copiada!",
+        description: "A mensagem foi copiada. Agora, cole no WhatsApp.",
+      });
+
+      let phoneNumber = editingPatient.celular.replace(/\D/g, "");
+      if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) {
+        phoneNumber = '55' + phoneNumber;
+      }
+      
+      window.open(`https://wa.me/${phoneNumber}`, '_blank');
+      setIsWhatsAppDialogOpen(false);
+
+    }).catch(err => {
+      console.error("Erro ao copiar mensagem: ", err);
+      toast({
+        variant: "destructive",
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar a mensagem para a área de transferência.",
+      });
+    });
   };
 
   const handleUpdatePatient = async (data: PatientUpdateFormValues) => {
@@ -283,7 +305,7 @@ export default function PacientesPage() {
   };
 
 
-  if (!isClient || !isLoggedIn || userRole !== 'Admin') {
+  if (!isClient || isLoadingRole || !isLoggedIn || userRole !== 'Admin') {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-200px)]">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -574,12 +596,13 @@ export default function PacientesPage() {
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsWhatsAppDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleSendWhatsApp}>Enviar no WhatsApp</Button>
+                <Button onClick={handleSendWhatsApp}>Copiar e Abrir WhatsApp</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+    
 
     
