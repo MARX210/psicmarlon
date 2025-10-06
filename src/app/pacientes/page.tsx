@@ -32,6 +32,7 @@ import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
 
 
 type Patient = {
@@ -111,18 +112,6 @@ const formatCpf = (cpf: string) => {
   return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 };
 
-const formatCelular = (celular: string | null) => {
-  if (!celular) return "N/A";
-  const cleanValue = celular.replace(/\D/g, "");
-  if (cleanValue.length === 11) {
-    return cleanValue.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-  }
-  if (cleanValue.length === 10) {
-    return cleanValue.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
-  }
-  return celular;
-};
-
 
 export default function PacientesPage() {
   const [isClient, setIsClient] = useState(false);
@@ -192,8 +181,8 @@ export default function PacientesPage() {
     if (!pacienteId) return;
     setIsLoadingProntuario(true);
     try {
-        const profissionalId = userRole !== 'Admin' ? userId : '';
-        const res = await fetch(`/api/prontuarios?pacienteId=${pacienteId}&profissionalId=${profissionalId}`);
+        const profissionalIdQuery = userRole !== 'Admin' && userId ? `&profissionalId=${userId}` : '';
+        const res = await fetch(`/api/prontuarios?pacienteId=${pacienteId}${profissionalIdQuery}`);
         if (!res.ok) throw new Error('Erro ao buscar prontuário');
         const data: Prontuario[] = await res.json();
         setProntuarios(data);
@@ -271,26 +260,27 @@ export default function PacientesPage() {
 
 
   const filteredPatients = useMemo(() => {
-    if (!isAdmin) return professionalPatients;
+    const sourceList = isAdmin ? allPatients : professionalPatients;
+    
+    if (!isAdmin) return sourceList;
 
     const term = searchTerm.toLowerCase();
     if (!term) return allPatients;
     
     const cleanTerm = term.replace(/\D/g, "");
 
-    return allPatients.filter(p => 
+    return sourceList.filter(p => 
       p.nome.toLowerCase().includes(term) ||
       p.cpf.replace(/\D/g, "").includes(cleanTerm) ||
       p.id.toLowerCase().includes(term)
     );
-  }, [allPatients, searchTerm, isAdmin, professionalPatients]);
+  }, [allPatients, professionalPatients, searchTerm, isAdmin]);
 
 
   const paginatedPatients = useMemo(() => {
-    if(!isAdmin) return filteredPatients;
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredPatients.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredPatients, currentPage, isAdmin]);
+  }, [filteredPatients, currentPage]);
 
   const totalPages = Math.ceil(filteredPatients.length / ITEMS_PER_PAGE);
 
@@ -300,6 +290,17 @@ export default function PacientesPage() {
       .filter(app => app.patientId === selectedPatient.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [appointments, selectedPatient]);
+
+  const appointmentStats = useMemo(() => {
+    if (!patientAppointments) return { total: 0, realizados: 0, faltas: 0 };
+    const realizados = patientAppointments.filter(app => app.status === 'Realizado' || app.status === 'Pago').length;
+    const faltas = patientAppointments.filter(app => app.status === 'Faltou').length;
+    return {
+      total: patientAppointments.length,
+      realizados,
+      faltas,
+    };
+  }, [patientAppointments]);
   
   const handleTemplateChange = (templateKey: keyof typeof messageTemplates | "custom") => {
     if (!selectedPatient?.nome) return;
@@ -466,8 +467,8 @@ export default function PacientesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Nº ID</TableHead>
-              <TableHead className="hidden md:table-cell">{isAdmin ? "CPF" : "Contato"}</TableHead>
+              <TableHead className="hidden md:table-cell">Nº ID</TableHead>
+              <TableHead>{isAdmin ? "CPF" : ""}</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -477,9 +478,9 @@ export default function PacientesPage() {
                 <TableCell className="font-medium flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground"/> {patient.nome}
                 </TableCell>
-                <TableCell>{patient.id}</TableCell>
-                <TableCell className="hidden md:table-cell">
-                    {isAdmin ? formatCpf(patient.cpf) : formatCelular(patient.celular)}
+                <TableCell className="hidden md:table-cell">{patient.id}</TableCell>
+                <TableCell>
+                    {isAdmin ? formatCpf(patient.cpf) : ""}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon">
@@ -732,6 +733,26 @@ export default function PacientesPage() {
                       {isAdmin ? "Visualize e adicione anotações de todos os profissionais." : "Visualize e adicione suas anotações ao prontuário."}
                   </DialogDescription>
               </DialogHeader>
+              
+               <Card>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Consultas</p>
+                      <p className="text-lg font-bold">{appointmentStats.total}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Realizadas</p>
+                      <p className="text-lg font-bold text-green-600">{appointmentStats.realizados}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Faltas</p>
+                      <p className="text-lg font-bold text-red-600">{appointmentStats.faltas}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
 
               <div className="flex-grow space-y-4 overflow-y-hidden flex flex-col">
                   <h3 className="font-semibold text-md">Anotações Anteriores</h3>
