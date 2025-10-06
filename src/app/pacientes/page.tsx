@@ -726,56 +726,70 @@ export default function PacientesPage() {
           setIsProntuarioOpen(isOpen);
           if (!isOpen) setSelectedPatient(null);
       }}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
               <DialogHeader>
                   <DialogTitle>Prontuário de {selectedPatient?.nome}</DialogTitle>
                   <DialogDescription>
-                      {isAdmin ? "Visualize e adicione anotações de todos os profissionais." : "Visualize e adicione suas anotações ao prontuário."}
+                      {isAdmin ? "Visualize o histórico e adicione anotações." : "Visualize o histórico e adicione suas anotações."}
                   </DialogDescription>
               </DialogHeader>
               
-               <Card>
-                <CardContent className="p-4">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Consultas</p>
-                      <p className="text-lg font-bold">{appointmentStats.total}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Realizadas</p>
-                      <p className="text-lg font-bold text-green-600">{appointmentStats.realizados}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Faltas</p>
-                      <p className="text-lg font-bold text-red-600">{appointmentStats.faltas}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-
               <div className="flex-grow space-y-4 overflow-y-hidden flex flex-col">
-                  <h3 className="font-semibold text-md">Anotações Anteriores</h3>
-                  <ScrollArea className="flex-grow border rounded-lg p-2">
-                        {isLoadingProntuario ? (
-                            <div className="flex justify-center items-center h-32">
-                                <Loader2 className="w-6 h-6 animate-spin" />
-                            </div>
-                        ) : prontuarios.length > 0 ? (
-                            <div className="space-y-4 p-2">
-                                {prontuarios.map(p => (
-                                    <div key={p.id} className="text-sm p-3 bg-muted rounded-lg">
-                                        <p className="whitespace-pre-wrap">{p.conteudo}</p>
-                                        <p className="text-xs text-muted-foreground mt-2 pt-2 border-t text-right">
-                                            Por <span className="font-bold">{p.profissional_nome}</span> em {format(parseISO(p.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center py-10">Nenhuma anotação encontrada.</p>
-                        )}
-                  </ScrollArea>
+                  
+                  <div className="space-y-2">
+                      <h3 className="font-semibold text-md">Histórico de Consultas</h3>
+                      <ScrollArea className="h-40 border rounded-lg p-2">
+                           {patientAppointments.length > 0 ? (
+                              <ul className="space-y-2 p-2">
+                                {patientAppointments.map(app => {
+                                    const status = (app.status as AppointmentStatus) || "Confirmado";
+                                    const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
+                                    const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
+                                    const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
+
+                                    return(
+                                    <li key={app.id} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
+                                        <div>
+                                        <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
+                                        <p className="text-xs text-muted-foreground">{app.type}</p>
+                                        </div>
+                                        <div className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2 py-1 ${currentStatusColor}`}>
+                                            <CurrentStatusIcon className="h-3.5 w-3.5" />
+                                            {currentStatusLabel}
+                                        </div>
+                                    </li>
+                                    )
+                                })}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado.</p>
+                            )}
+                      </ScrollArea>
+                  </div>
+                  
+                  <div className="space-y-2 flex-grow flex flex-col min-h-0">
+                    <h3 className="font-semibold text-md">Anotações Anteriores</h3>
+                    <ScrollArea className="flex-grow border rounded-lg p-2">
+                          {isLoadingProntuario ? (
+                              <div className="flex justify-center items-center h-32">
+                                  <Loader2 className="w-6 h-6 animate-spin" />
+                              </div>
+                          ) : prontuarios.length > 0 ? (
+                              <div className="space-y-4 p-2">
+                                  {prontuarios.map(p => (
+                                      <div key={p.id} className="text-sm p-3 bg-muted rounded-lg">
+                                          <p className="whitespace-pre-wrap">{p.conteudo}</p>
+                                          <p className="text-xs text-muted-foreground mt-2 pt-2 border-t text-right">
+                                              Por <span className="font-bold">{p.profissional_nome}</span> em {format(parseISO(p.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                          </p>
+                                      </div>
+                                  ))}
+                              </div>
+                          ) : (
+                              <p className="text-sm text-muted-foreground text-center py-10">Nenhuma anotação encontrada.</p>
+                          )}
+                    </ScrollArea>
+                  </div>
 
                   <Form {...prontuarioForm}>
                       <form onSubmit={prontuarioForm.handleSubmit(handleSaveProntuario)} className="space-y-4 pt-4">
@@ -788,7 +802,7 @@ export default function PacientesPage() {
                                       <FormControl>
                                           <Textarea 
                                               placeholder={`Anote aqui a evolução do paciente... (Registrando como ${userName})`} 
-                                              rows={4} 
+                                              rows={3} 
                                               {...field} />
                                       </FormControl>
                                       <FormMessage />
@@ -810,4 +824,6 @@ export default function PacientesPage() {
     </div>
   );
 }
+    
+
     
