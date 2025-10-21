@@ -359,28 +359,15 @@ export default function PacientesPage() {
         return;
     }
 
-    navigator.clipboard.writeText(whatsappMessage).then(() => {
-      toast({
-        title: "Mensagem Copiada!",
-        description: "A mensagem foi copiada. Agora, cole no WhatsApp.",
-      });
+    let phoneNumber = selectedPatient.celular!.replace(/\D/g, "");
+    if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) {
+      phoneNumber = '55' + phoneNumber;
+    }
 
-      let phoneNumber = selectedPatient.celular!.replace(/\D/g, "");
-      if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) {
-        phoneNumber = '55' + phoneNumber;
-      }
-      
-      window.open(`https://wa.me/${phoneNumber}`, '_blank');
-      setIsWhatsAppDialogOpen(false);
-
-    }).catch(err => {
-      console.error("Erro ao copiar mensagem: ", err);
-      toast({
-        variant: "destructive",
-        title: "Erro ao copiar",
-        description: "Não foi possível copiar a mensagem para a área de transferência.",
-      });
-    });
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+    
+    window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
+    setIsWhatsAppDialogOpen(false);
   };
 
   const handleUpdatePatient = async (data: PatientUpdateFormValues) => {
@@ -803,7 +790,7 @@ export default function PacientesPage() {
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsWhatsAppDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleSendWhatsApp}>Copiar e Abrir WhatsApp</Button>
+                <Button onClick={handleSendWhatsApp}>Abrir WhatsApp</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
