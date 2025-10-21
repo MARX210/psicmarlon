@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText, PlusCircle, User, FileEdit } from "lucide-react";
+import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText, PlusCircle, User, FileEdit, Trash2, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,18 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,7 +42,6 @@ import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent } from "@/components/ui/card";
 
 
 type Patient = {
@@ -49,6 +58,7 @@ type Patient = {
   cidade: string | null;
   estado: string | null;
   pais: string | null;
+  created_at: string;
 };
 
 type Appointment = {
@@ -71,6 +81,7 @@ type Prontuario = {
 
 
 type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou" | "Pago";
+type SortOption = "name-asc" | "name-desc" | "date-asc" | "date-desc";
 
 const statusConfig: Record<AppointmentStatus, { label: string; icon: React.ElementType; color: string }> = {
   Confirmado: { label: "Confirmado", icon: CalendarClock, color: "text-blue-500" },
@@ -126,12 +137,16 @@ export default function PacientesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [isProntuarioOpen, setIsProntuarioOpen] = useState(false);
   const [prontuarios, setProntuarios] = useState<Prontuario[]>([]);
   const [isLoadingProntuario, setIsLoadingProntuario] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>("name-asc");
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
 
 
   const { toast } = useToast();
@@ -259,30 +274,43 @@ export default function PacientesPage() {
   }, [allPatients, appointments, userRole, isAdmin]);
 
 
-  const filteredPatients = useMemo(() => {
-    const sourceList = isAdmin ? allPatients : professionalPatients;
-    
-    if (!isAdmin) return sourceList;
+  const filteredAndSortedPatients = useMemo(() => {
+    let list = isAdmin ? allPatients : professionalPatients;
 
-    const term = searchTerm.toLowerCase();
-    if (!term) return allPatients;
-    
-    const cleanTerm = term.replace(/\D/g, "");
+    if (isAdmin && searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const cleanTerm = term.replace(/\D/g, "");
 
-    return sourceList.filter(p => 
-      p.nome.toLowerCase().includes(term) ||
-      p.cpf.replace(/\D/g, "").includes(cleanTerm) ||
-      p.id.toLowerCase().includes(term)
-    );
-  }, [allPatients, professionalPatients, searchTerm, isAdmin]);
+      list = list.filter(p => 
+        p.nome.toLowerCase().includes(term) ||
+        p.cpf.replace(/\D/g, "").includes(cleanTerm) ||
+        p.id.toLowerCase().includes(term)
+      );
+    }
+    
+    return [...list].sort((a, b) => {
+        switch (sortOption) {
+            case "name-asc":
+                return a.nome.localeCompare(b.nome);
+            case "name-desc":
+                return b.nome.localeCompare(a.nome);
+            case "date-asc":
+                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            case "date-desc":
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            default:
+                return a.nome.localeCompare(b.nome);
+        }
+    });
+}, [allPatients, professionalPatients, searchTerm, isAdmin, sortOption]);
 
 
   const paginatedPatients = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredPatients.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredPatients, currentPage]);
+    return filteredAndSortedPatients.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredAndSortedPatients, currentPage]);
 
-  const totalPages = Math.ceil(filteredPatients.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredAndSortedPatients.length / ITEMS_PER_PAGE);
 
   const patientAppointments = useMemo(() => {
     if (!selectedPatient) return [];
@@ -291,17 +319,7 @@ export default function PacientesPage() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [appointments, selectedPatient]);
 
-  const appointmentStats = useMemo(() => {
-    if (!patientAppointments) return { total: 0, realizados: 0, faltas: 0 };
-    const realizados = patientAppointments.filter(app => app.status === 'Realizado' || app.status === 'Pago').length;
-    const faltas = patientAppointments.filter(app => app.status === 'Faltou').length;
-    return {
-      total: patientAppointments.length,
-      realizados,
-      faltas,
-    };
-  }, [patientAppointments]);
-  
+
   const handleTemplateChange = (templateKey: keyof typeof messageTemplates | "custom") => {
     if (!selectedPatient?.nome) return;
     
@@ -416,6 +434,41 @@ export default function PacientesPage() {
     }
   };
 
+  const handleDeleteClick = (patient: Patient) => {
+    setPatientToDelete(patient);
+    setShowDeleteAlert(true);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (!patientToDelete) return;
+    
+    try {
+      const response = await fetch(`/api/pacientes/${patientToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Erro ao excluir paciente.');
+      }
+      toast({
+        title: "Paciente Excluído!",
+        description: "O paciente e todos os seus dados foram removidos.",
+      });
+      fetchAllData();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao Excluir",
+        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
+      });
+    } finally {
+      setShowDeleteAlert(false);
+      setPatientToDelete(null);
+    }
+  };
+
+
   const handleRowClick = (patient: Patient) => {
     setSelectedPatient(patient);
     if (!isAdmin) {
@@ -446,7 +499,7 @@ export default function PacientesPage() {
       </div>
       
       {isAdmin && (
-        <div className="flex justify-center">
+        <div className="flex justify-center flex-col sm:flex-row gap-4">
           <div className="relative w-full max-w-md">
             <Input 
               placeholder="Buscar por Nome, CPF ou Nº ID..."
@@ -459,6 +512,20 @@ export default function PacientesPage() {
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           </div>
+           <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+              <SelectTrigger className="w-full sm:w-[220px]">
+                <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4"/>
+                    <SelectValue placeholder="Ordenar por..." />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Ordem Alfabética (A-Z)</SelectItem>
+                <SelectItem value="name-desc">Ordem Alfabética (Z-A)</SelectItem>
+                <SelectItem value="date-desc">Mais Recentes (Cadastro)</SelectItem>
+                <SelectItem value="date-asc">Mais Antigos (Cadastro)</SelectItem>
+              </SelectContent>
+            </Select>
         </div>
       )}
 
@@ -467,26 +534,32 @@ export default function PacientesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead className="hidden md:table-cell">Nº ID</TableHead>
-              <TableHead>{isAdmin ? "CPF" : "CPF"}</TableHead>
+              <TableHead>Nº ID</TableHead>
+              <TableHead className="hidden sm:table-cell">{isAdmin ? "CPF" : ""}</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedPatients.length > 0 ? paginatedPatients.map(patient => (
-              <TableRow key={patient.id} className="cursor-pointer" onClick={() => handleRowClick(patient)}>
-                <TableCell className="font-medium flex items-center gap-2">
+              <TableRow key={patient.id} >
+                <TableCell className="font-medium flex items-center gap-2 cursor-pointer" onClick={() => handleRowClick(patient)}>
                     <User className="h-4 w-4 text-muted-foreground"/> {patient.nome}
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{patient.id}</TableCell>
-                <TableCell>
+                <TableCell className="cursor-pointer" onClick={() => handleRowClick(patient)}>{patient.id}</TableCell>
+                <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(patient)}>
                     {isAdmin ? formatCpf(patient.cpf) : ""}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" onClick={() => handleRowClick(patient)}>
                     {isAdmin ? <Edit className="h-4 w-4" /> : <FileEdit className="h-4 w-4" />}
                     <span className="sr-only">{isAdmin ? "Ver Detalhes" : "Ver Prontuário"}</span>
                   </Button>
+                   {isAdmin && (
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(patient)}>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Excluir Paciente</span>
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             )) : (
@@ -526,7 +599,7 @@ export default function PacientesPage() {
 
       {/* Dialog de Detalhes e Edição para ADMIN */}
       {isAdmin && (
-        <Dialog open={!!selectedPatient && isAdmin} onOpenChange={(isOpen) => !isOpen && setSelectedPatient(null)}>
+        <Dialog open={!!selectedPatient && isAdmin && !isProntuarioOpen} onOpenChange={(isOpen) => !isOpen && setSelectedPatient(null)}>
             <DialogContent className="sm:max-w-[800px] md:max-w-[900px] max-h-[90vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Detalhes de {selectedPatient?.nome}</DialogTitle>
@@ -552,32 +625,34 @@ export default function PacientesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 flex-grow overflow-y-auto pr-4">
                 {/* Coluna de Histórico */}
                 <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Agendamentos</h3>
-                {patientAppointments.length > 0 ? (
-                    <ul className="space-y-2">
-                    {patientAppointments.map(app => {
-                        const status = (app.status as AppointmentStatus) || "Confirmado";
-                        const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
-                        const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
-                        const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
+                    <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Consultas</h3>
+                    <ScrollArea className="h-96 border rounded-md">
+                        {patientAppointments.length > 0 ? (
+                        <ul className="space-y-2 p-3">
+                            {patientAppointments.map(app => {
+                                const status = (app.status as AppointmentStatus) || "Confirmado";
+                                const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
+                                const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
+                                const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
 
-                        return(
-                        <li key={app.id} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
-                            <div>
-                            <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
-                            <p className="text-xs text-muted-foreground">{app.type}</p>
-                            </div>
-                            <div className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2 py-1 ${currentStatusColor}`}>
-                                <CurrentStatusIcon className="h-3.5 w-3.5" />
-                                {currentStatusLabel}
-                            </div>
-                        </li>
-                        )
-                    })}
-                    </ul>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>
-                )}
+                                return(
+                                <li key={app.id} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
+                                    <div>
+                                    <p><span className="font-bold">{format(parseISO(app.date), 'dd/MM/yyyy', { locale: ptBR })}</span> às {app.time}</p>
+                                    <p className="text-xs text-muted-foreground">{app.type} - {app.professional}</p>
+                                    </div>
+                                    <div className={`flex items-center gap-1.5 text-xs font-medium rounded-full px-2 py-1 ${currentStatusColor}`}>
+                                        <CurrentStatusIcon className="h-3.5 w-3.5" />
+                                        {currentStatusLabel}
+                                    </div>
+                                </li>
+                                )
+                            })}
+                        </ul>
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>
+                        )}
+                    </ScrollArea>
                 </div>
                 
                 {/* Coluna de Edição */}
@@ -724,7 +799,8 @@ export default function PacientesPage() {
       {/* Dialog do Prontuário (comum para todos) */}
       <Dialog open={isProntuarioOpen} onOpenChange={(isOpen) => {
           setIsProntuarioOpen(isOpen);
-          if (!isOpen) setSelectedPatient(null);
+          if (!isOpen && !isAdmin) setSelectedPatient(null); // Fecha o paciente para não-admin
+          if (!isOpen && isAdmin) setIsProntuarioOpen(false); // Apenas fecha prontuario para admin
       }}>
           <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
               <DialogHeader>
@@ -738,7 +814,7 @@ export default function PacientesPage() {
                   
                   <div className="space-y-2">
                       <h3 className="font-semibold text-md">Histórico de Consultas</h3>
-                      <ScrollArea className="h-40 border rounded-lg p-2">
+                       <ScrollArea className="h-40 border rounded-lg p-2">
                            {patientAppointments.length > 0 ? (
                               <ul className="space-y-2 p-2">
                                 {patientAppointments.map(app => {
@@ -821,6 +897,23 @@ export default function PacientesPage() {
               </div>
           </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o paciente
+              <span className="font-bold"> {patientToDelete?.nome} </span>
+              e todos os seus dados associados (agendamentos, prontuários, etc).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPatientToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Confirmar Exclusão</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

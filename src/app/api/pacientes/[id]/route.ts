@@ -71,3 +71,32 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       if(client) client.release();
   }
 }
+
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const { id } = params;
+  if (!id) {
+    return NextResponse.json({ error: "ID do paciente não fornecido" }, { status: 400 });
+  }
+
+  const pool = getPool();
+  let client;
+
+  try {
+    client = await pool.connect();
+    
+    // As FKs para agendamentos e prontuarios devem ter ON DELETE CASCADE
+    const result = await client.query("DELETE FROM pacientes WHERE id = $1 RETURNING *", [id]);
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
+    }
+    
+    return new Response(null, { status: 204 }); // 204 No Content for successful deletion
+
+  } catch (error) {
+    console.error("Erro ao excluir paciente:", error);
+    return NextResponse.json({ error: "Erro interno ao excluir paciente" }, { status: 500 });
+  } finally {
+      if (client) client.release();
+  }
+}
