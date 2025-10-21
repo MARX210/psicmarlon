@@ -127,11 +127,13 @@ export function SchedulingForm() {
   const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [newTimeSlot, setNewTimeSlot] = useState("");
-  const [allPatients, setAllPatients] = useState<Patient[]>([]);
+  const [searchedPatients, setSearchedPatients] = useState<Patient[]>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoadingRole, setIsLoadingRole] = useState(true);
   const [professionalRoles, setProfessionalRoles] = useState<string[]>([]);
   const [isPatientComboboxOpen, setIsPatientComboboxOpen] = useState(false);
+  const [patientSearchTerm, setPatientSearchTerm] = useState("");
+  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
 
 
   const isAdmin = userRole === 'Admin';
@@ -150,16 +152,32 @@ export function SchedulingForm() {
     },
   });
   
-  const fetchAllPatients = useCallback(async () => {
+  const fetchSearchedPatients = useCallback(async (searchTerm: string) => {
+    if (searchTerm.length < 2) {
+      setSearchedPatients([]);
+      return;
+    }
+    setIsSearchingPatients(true);
     try {
-      const res = await fetch(`/api/pacientes`);
-      if (!res.ok) throw new Error("Erro ao buscar todos os pacientes");
+      const res = await fetch(`/api/pacientes?search=${searchTerm}`);
+      if (!res.ok) throw new Error("Erro ao buscar pacientes");
       const data: Patient[] = await res.json();
-      setAllPatients(data);
+      setSearchedPatients(data);
     } catch (error) {
       console.error(error);
+      setSearchedPatients([]);
+    } finally {
+      setIsSearchingPatients(false);
     }
   }, []);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchSearchedPatients(patientSearchTerm);
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [patientSearchTerm, fetchSearchedPatients]);
 
   const fetchProfessionalRoles = useCallback(async () => {
     try {
@@ -227,11 +245,10 @@ export function SchedulingForm() {
     if (!isLoadingRole && userRole) {
         fetchAppointments(userRole);
         if (isAdmin) {
-            fetchAllPatients();
             fetchProfessionalRoles();
         }
     }
-  }, [userRole, isLoadingRole, fetchAppointments, fetchAllPatients, fetchProfessionalRoles, isAdmin]);
+  }, [userRole, isLoadingRole, fetchAppointments, fetchProfessionalRoles, isAdmin]);
 
   const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus) => {
     try {
@@ -351,6 +368,8 @@ export function SchedulingForm() {
     setCpfInput("");
     setPatientNotFound(false);
     setIsEditing(null);
+    setPatientSearchTerm("");
+    setSearchedPatients([]);
     form.reset({
       patientId: "",
       time: "",
@@ -372,9 +391,16 @@ export function SchedulingForm() {
   };
 
   const handleEditClick = (appointment: Appointment) => {
-    const patientToEdit = allPatients.find(p => p.id === appointment.patientId);
+    // This function will need access to all patients to find the one to edit.
+    // If not all patients are loaded, this might fail. We assume for now they are.
+    // A better approach might be to fetch the specific patient if not found.
+    const patientToEdit = searchedPatients.find(p => p.id === appointment.patientId) || 
+                          (selectedPatient?.id === appointment.patientId ? selectedPatient : null);
+
     if (!patientToEdit) {
-        toast({ variant: "destructive", title: "Erro", description: "Paciente do agendamento não encontrado." });
+        toast({ variant: "destructive", title: "Erro", description: "Paciente do agendamento não encontrado na lista atual." });
+        // Fetch patient specifically if not found?
+        // fetch(`/api/pacientes?cpf=${appointment.patientId}`).then...
         return;
     }
     
@@ -575,31 +601,40 @@ export function SchedulingForm() {
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
-                                    <CommandInput placeholder="Buscar por nome, CPF ou ID..." />
+                                    <CommandInput 
+                                      placeholder="Buscar por nome..." 
+                                      value={patientSearchTerm}
+                                      onValueChange={setPatientSearchTerm}
+                                    />
                                     <CommandList>
-                                        <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
-                                        <CommandGroup>
-                                            {allPatients.map((patient) => (
-                                                <CommandItem
-                                                    key={patient.id}
-                                                    value={`${patient.name} ${patient.cpf} ${patient.id}`}
-                                                    onSelect={() => {
-                                                        setSelectedPatient(patient);
-                                                        form.setValue("patientId", patient.id);
-                                                        setIsPatientComboboxOpen(false);
-                                                        toast({ title: "Paciente Selecionado", description: `${patient.name}` });
-                                                    }}
-                                                >
-                                                    <CheckCircle2
-                                                        className={`mr-2 h-4 w-4 ${selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"}`}
-                                                    />
-                                                    <div>
-                                                        <p>{patient.name}</p>
-                                                        <p className="text-xs text-muted-foreground">{patient.cpf}</p>
-                                                    </div>
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
+                                        {isSearchingPatients ? (
+                                            <div className="p-4 text-sm text-center">Buscando...</div>
+                                        ) : searchedPatients.length === 0 && patientSearchTerm.length > 1 ? (
+                                            <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
+                                        ) : (
+                                          <CommandGroup>
+                                              {searchedPatients.map((patient) => (
+                                                  <CommandItem
+                                                      key={patient.id}
+                                                      value={patient.name}
+                                                      onSelect={() => {
+                                                          setSelectedPatient(patient);
+                                                          form.setValue("patientId", patient.id);
+                                                          setIsPatientComboboxOpen(false);
+                                                          toast({ title: "Paciente Selecionado", description: `${patient.name}` });
+                                                      }}
+                                                  >
+                                                      <CheckCircle2
+                                                          className={`mr-2 h-4 w-4 ${selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"}`}
+                                                      />
+                                                      <div>
+                                                          <p>{patient.name}</p>
+                                                          <p className="text-xs text-muted-foreground">{patient.cpf}</p>
+                                                      </div>
+                                                  </CommandItem>
+                                              ))}
+                                          </CommandGroup>
+                                        )}
                                     </CommandList>
                                 </Command>
                             </PopoverContent>
@@ -948,5 +983,3 @@ export function SchedulingForm() {
     </div>
   );
 }
-
-    
