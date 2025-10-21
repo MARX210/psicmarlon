@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { format, parse, isSameDay, isSunday, addMinutes, parseISO, differenceInYears, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -114,6 +115,7 @@ const calculateAge = (birthDate: string) => {
 
 export function SchedulingForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [cpfInput, setCpfInput] = useState("");
@@ -609,7 +611,21 @@ export function SchedulingForm() {
                                     <CommandList>
                                         {isSearchingPatients && <CommandEmpty>Buscando...</CommandEmpty>}
                                         {!isSearchingPatients && searchedPatients.length === 0 && patientSearchTerm.length > 1 && (
-                                            <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
+                                            <CommandEmpty>
+                                              <div className="py-4 text-center text-sm">
+                                                <p>Nenhum paciente encontrado.</p>
+                                                <Button
+                                                  variant="link"
+                                                  className="h-auto p-0 text-sm"
+                                                  onClick={() => {
+                                                    setIsPatientComboboxOpen(false);
+                                                    router.push('/cadastro');
+                                                  }}
+                                                >
+                                                  Adicionar novo paciente
+                                                </Button>
+                                              </div>
+                                            </CommandEmpty>
                                         )}
                                         <CommandGroup>
                                             {searchedPatients.map((patient) => (
@@ -657,18 +673,6 @@ export function SchedulingForm() {
                         <p><span className="font-semibold">Idade:</span> {calculateAge(selectedPatient.nascimento) ?? 'N/A'} anos</p>
                         <p><span className="font-semibold">Nº ID:</span> {selectedPatient.id}</p>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Paciente não encontrado */}
-                  {patientNotFound && (
-                    <div className="text-sm text-center my-4 text-muted-foreground">
-                      <span>Paciente não encontrado. </span>
-                      <Button variant="link" asChild className="p-0 h-auto">
-                        <Link href="/cadastro">
-                          Cadastre um novo aqui.
-                        </Link>
-                      </Button>
                     </div>
                   )}
                   
@@ -982,3 +986,5 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
