@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown, Check } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -79,7 +79,7 @@ const appointmentSchema = z.object({
 type AppointmentFormValues = z.infer<typeof appointmentSchema>;
 type Patient = {
   id: string;
-  name: string;
+  nome: string;
   cpf: string;
   nascimento: string; // YYYY-MM-DD
 };
@@ -583,7 +583,7 @@ export function SchedulingForm() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   {/* Busca de paciente */}
                   <div className="space-y-2">
-                     <FormLabel>Buscar Paciente</FormLabel>
+                     <FormLabel>Buscar Paciente por Nome</FormLabel>
                         <Popover open={isPatientComboboxOpen} onOpenChange={setIsPatientComboboxOpen}>
                             <PopoverTrigger asChild>
                                 <Button
@@ -594,47 +594,46 @@ export function SchedulingForm() {
                                     disabled={!!selectedPatient}
                                 >
                                     {selectedPatient
-                                        ? selectedPatient.name
+                                        ? selectedPatient.nome
                                         : "Selecione o paciente..."}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command>
+                                <Command shouldFilter={false}>
                                     <CommandInput 
-                                      placeholder="Buscar por nome..." 
+                                      placeholder="Digite o nome do paciente..." 
                                       value={patientSearchTerm}
                                       onValueChange={setPatientSearchTerm}
                                     />
                                     <CommandList>
-                                        {isSearchingPatients ? (
-                                            <div className="p-4 text-sm text-center">Buscando...</div>
-                                        ) : searchedPatients.length === 0 && patientSearchTerm.length > 1 ? (
+                                        {isSearchingPatients && <CommandEmpty>Buscando...</CommandEmpty>}
+                                        {!isSearchingPatients && searchedPatients.length === 0 && patientSearchTerm.length > 1 && (
                                             <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
-                                        ) : (
-                                          <CommandGroup>
-                                              {searchedPatients.map((patient) => (
-                                                  <CommandItem
-                                                      key={patient.id}
-                                                      value={patient.name}
-                                                      onSelect={() => {
-                                                          setSelectedPatient(patient);
-                                                          form.setValue("patientId", patient.id);
-                                                          setIsPatientComboboxOpen(false);
-                                                          toast({ title: "Paciente Selecionado", description: `${patient.name}` });
-                                                      }}
-                                                  >
-                                                      <CheckCircle2
-                                                          className={`mr-2 h-4 w-4 ${selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"}`}
-                                                      />
-                                                      <div>
-                                                          <p>{patient.name}</p>
-                                                          <p className="text-xs text-muted-foreground">{patient.cpf}</p>
-                                                      </div>
-                                                  </CommandItem>
-                                              ))}
-                                          </CommandGroup>
                                         )}
+                                        <CommandGroup>
+                                            {searchedPatients.map((patient) => (
+                                                <CommandItem
+                                                    key={patient.id}
+                                                    value={patient.nome}
+                                                    onSelect={() => {
+                                                        setSelectedPatient(patient);
+                                                        form.setValue("patientId", patient.id);
+                                                        setIsPatientComboboxOpen(false);
+                                                        setPatientSearchTerm("");
+                                                        toast({ title: "Paciente Selecionado", description: `${patient.nome}` });
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={`mr-2 h-4 w-4 ${selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"}`}
+                                                    />
+                                                    <div>
+                                                        <p>{patient.nome}</p>
+                                                        <p className="text-xs text-muted-foreground">{patient.cpf}</p>
+                                                    </div>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
                                     </CommandList>
                                 </Command>
                             </PopoverContent>
@@ -654,7 +653,7 @@ export function SchedulingForm() {
                         </Button>
                       </div>
                       <div className="pl-6 space-y-1">
-                        <p><span className="font-semibold">Nome:</span> {selectedPatient.name}</p>
+                        <p><span className="font-semibold">Nome:</span> {selectedPatient.nome}</p>
                         <p><span className="font-semibold">Idade:</span> {calculateAge(selectedPatient.nascimento) ?? 'N/A'} anos</p>
                         <p><span className="font-semibold">Nº ID:</span> {selectedPatient.id}</p>
                       </div>
