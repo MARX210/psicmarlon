@@ -131,6 +131,7 @@ export default function PacientesPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -162,11 +163,16 @@ export default function PacientesPage() {
   const isAdmin = userRole === 'Admin';
 
 
-  const fetchAllData = useCallback(async () => {
+  const fetchAllData = useCallback(async (searchTerm = "") => {
     setIsLoading(true);
     try {
+      let patientsUrl = '/api/pacientes';
+      if (searchTerm) {
+          patientsUrl += `?search=${encodeURIComponent(searchTerm)}`;
+      }
+
       const [patientsRes, appointmentsRes] = await Promise.all([
-        fetch('/api/pacientes'),
+        fetch(patientsUrl),
         fetch('/api/agendamentos')
       ]);
 
@@ -175,8 +181,13 @@ export default function PacientesPage() {
       
       const patientsData: Patient[] = await patientsRes.json();
       const appointmentsData: Appointment[] = await appointmentsRes.json();
-
-      setAllPatients(patientsData);
+      
+      if (searchTerm) {
+        setPatients(patientsData);
+      } else {
+        setAllPatients(patientsData);
+        setPatients(patientsData);
+      }
       setAppointments(appointmentsData);
 
     } catch (error) {
@@ -189,6 +200,16 @@ export default function PacientesPage() {
       setIsLoading(false);
     }
   }, [toast]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (isAdmin) {
+        fetchAllData(searchTerm);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, fetchAllData, isAdmin]);
 
 
   const fetchProntuarios = useCallback(async (pacienteId: string) => {
@@ -258,7 +279,7 @@ export default function PacientesPage() {
 
 
   const professionalPatients = useMemo(() => {
-    if (isAdmin) return allPatients;
+    if (isAdmin) return patients;
     
     const professionalRoles = userRole ? userRole.split(',').map(r => r.trim()) : [];
     
@@ -270,22 +291,11 @@ export default function PacientesPage() {
     });
 
     return allPatients.filter(patient => patientIds.has(patient.id));
-  }, [allPatients, appointments, userRole, isAdmin]);
+  }, [patients, allPatients, appointments, userRole, isAdmin]);
 
 
   const filteredAndSortedPatients = useMemo(() => {
-    let list = isAdmin ? allPatients : professionalPatients;
-
-    if (isAdmin && searchTerm) {
-      const term = searchTerm.toLowerCase();
-      const cleanTerm = term.replace(/\D/g, "");
-
-      list = list.filter(p => 
-        p.nome.toLowerCase().includes(term) ||
-        p.cpf.replace(/\D/g, "").includes(cleanTerm) ||
-        p.id.toLowerCase().includes(term)
-      );
-    }
+    let list = isAdmin ? patients : professionalPatients;
     
     return [...list].sort((a, b) => {
         switch (sortOption) {
@@ -304,7 +314,7 @@ export default function PacientesPage() {
                 return a.nome.localeCompare(b.nome);
         }
     });
-}, [allPatients, professionalPatients, searchTerm, isAdmin, sortOption]);
+}, [patients, professionalPatients, isAdmin, sortOption]);
 
 
   const paginatedPatients = useMemo(() => {
@@ -919,6 +929,8 @@ export default function PacientesPage() {
     </div>
   );
 }
+    
+
     
 
     
