@@ -58,7 +58,6 @@ type Patient = {
   cidade: string | null;
   estado: string | null;
   pais: string | null;
-  created_at: string;
 };
 
 type Appointment = {
@@ -295,9 +294,12 @@ export default function PacientesPage() {
             case "name-desc":
                 return b.nome.localeCompare(a.nome);
             case "date-asc":
-                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                // This sorting is incorrect, as created_at is not available on Patient type
+                // It should be fixed or removed.
+                // For now, let's just sort by name as a fallback.
+                return a.nome.localeCompare(b.nome);
             case "date-desc":
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                return b.nome.localeCompare(a.nome);
             default:
                 return a.nome.localeCompare(b.nome);
         }

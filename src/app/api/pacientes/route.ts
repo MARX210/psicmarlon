@@ -15,15 +15,15 @@ export async function GET(req: Request) {
     client = await pool.connect();
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS.MSZ') as created_at FROM Pacientes WHERE cpf = $1 OR id = $1";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular FROM Pacientes WHERE cpf = $1 OR id = $1";
       const result = await client.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS.MSZ') as created_at FROM Pacientes WHERE nome ILIKE $1 ORDER BY nome LIMIT 50";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento FROM Pacientes WHERE nome ILIKE $1 ORDER BY nome LIMIT 50";
       const result = await client.query(query, [`%${search}%`]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SS.MSZ') as created_at FROM Pacientes ORDER BY nome";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM Pacientes ORDER BY nome";
       const result = await client.query(query);
       return NextResponse.json(result.rows, { status: 200 });
     }
