@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock, CreditCard, Stethoscope } from "lucide-react";
+import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -51,6 +51,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
 // Feriados
@@ -129,6 +131,7 @@ export function SchedulingForm() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoadingRole, setIsLoadingRole] = useState(true);
   const [professionalRoles, setProfessionalRoles] = useState<string[]>([]);
+  const [isPatientComboboxOpen, setIsPatientComboboxOpen] = useState(false);
 
 
   const isAdmin = userRole === 'Admin';
@@ -546,7 +549,7 @@ export function SchedulingForm() {
             <CardHeader>
               <CardTitle>{isEditing ? 'Editar Consulta' : 'Nova Consulta'}</CardTitle>
               <CardDescription>
-                {isEditing ? 'Altere os dados do agendamento abaixo.' : 'Busque o paciente por CPF ou Nº ID e preencha os dados.'}
+                {isEditing ? 'Altere os dados do agendamento abaixo.' : 'Busque o paciente e preencha os dados da consulta.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -554,19 +557,53 @@ export function SchedulingForm() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   {/* Busca de paciente */}
                   <div className="space-y-2">
-                    <FormLabel htmlFor="cpf">Buscar Paciente por CPF ou Nº ID</FormLabel>
-                    <div className="flex gap-2">
-                      <Input
-                        id="cpf"
-                        placeholder="000.000.000-00 ou ID"
-                        value={cpfInput}
-                        onChange={(e) => setCpfInput(e.target.value)}
-                        disabled={!!selectedPatient}
-                      />
-                      <Button type="button" onClick={handleSearchPatient} disabled={!!selectedPatient || !cpfInput}>
-                        <Search className="h-4 w-4" />
-                      </Button>
-                    </div>
+                     <FormLabel>Buscar Paciente</FormLabel>
+                        <Popover open={isPatientComboboxOpen} onOpenChange={setIsPatientComboboxOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={isPatientComboboxOpen}
+                                    className="w-full justify-between"
+                                    disabled={!!selectedPatient}
+                                >
+                                    {selectedPatient
+                                        ? selectedPatient.name
+                                        : "Selecione o paciente..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Buscar por nome, CPF ou ID..." />
+                                    <CommandList>
+                                        <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
+                                        <CommandGroup>
+                                            {allPatients.map((patient) => (
+                                                <CommandItem
+                                                    key={patient.id}
+                                                    value={`${patient.name} ${patient.cpf} ${patient.id}`}
+                                                    onSelect={() => {
+                                                        setSelectedPatient(patient);
+                                                        form.setValue("patientId", patient.id);
+                                                        setIsPatientComboboxOpen(false);
+                                                        toast({ title: "Paciente Selecionado", description: `${patient.name}` });
+                                                    }}
+                                                >
+                                                    <CheckCircle2
+                                                        className={`mr-2 h-4 w-4 ${selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"}`}
+                                                    />
+                                                    <div>
+                                                        <p>{patient.name}</p>
+                                                        <p className="text-xs text-muted-foreground">{patient.cpf}</p>
+                                                    </div>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                   </div>
 
                   {/* Paciente selecionado */}
@@ -911,3 +948,5 @@ export function SchedulingForm() {
     </div>
   );
 }
+
+    
