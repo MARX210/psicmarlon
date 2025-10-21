@@ -446,8 +446,8 @@ export default function PacientesPage() {
         method: 'DELETE',
       });
 
-      if (!response.ok) {
-        const result = await response.json();
+      if (response.status !== 204) {
+        const result = await response.json().catch(() => ({}));
         throw new Error(result.error || 'Erro ao excluir paciente.');
       }
       toast({
@@ -921,3 +921,4 @@ export default function PacientesPage() {
     
 
     
+
