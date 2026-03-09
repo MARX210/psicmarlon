@@ -14,15 +14,15 @@ export async function GET(req: Request) {
     client = await pool.connect();
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular FROM Pacientes WHERE cpf = $1 OR id = $1";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM pacientes WHERE cpf = $1 OR id = $1";
       const result = await client.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento FROM Pacientes WHERE nome ILIKE $1 ORDER BY nome LIMIT 50";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM pacientes WHERE nome ILIKE $1 ORDER BY nome LIMIT 50";
       const result = await client.query(query, [`%${search}%`]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM Pacientes ORDER BY nome";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM pacientes ORDER BY nome";
       const result = await client.query(query);
       return NextResponse.json(result.rows, { status: 200 });
     }
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     const normalizedCpf = cpf ? cpf.replace(/\D/g, "") : null;
 
     const query = `
-      INSERT INTO Pacientes (
+      INSERT INTO pacientes (
         id, nome, cpf, sexo, nascimento, email, como_conheceu,
         tipo_paciente, cartao_id, cep, logradouro,
         numero, complemento, bairro, cidade, estado, pais, celular
@@ -92,10 +92,10 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("ERRO NO POST de pacientes:", error);
     if (error.code === '23505') { 
-        const isCpf = error.constraint === 'pacientes_cpf_key';
-        const isId = error.constraint === 'pacientes_pkey';
-        if (isCpf) return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
-        if(isId) return NextResponse.json({ error: 'Já existe um paciente com este Nº de Cartão/ID.' }, { status: 409 });
+        // Em Postgres, nomes de constraints são geralmente minúsculos se não aspas
+        const constraint = error.constraint || '';
+        if (constraint.includes('cpf')) return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
+        if (constraint.includes('pkey')) return NextResponse.json({ error: 'Já existe um paciente com este Nº de Cartão/ID.' }, { status: 409 });
     }
     return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
   } finally {
