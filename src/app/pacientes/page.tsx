@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -118,7 +117,7 @@ type PatientUpdateFormValues = z.infer<typeof patientUpdateSchema>;
 type ProntuarioFormValues = z.infer<typeof prontuarioSchema>;
 
 const formatCpf = (cpf: string) => {
-  if (!cpf) return "";
+  if (!cpf) return "N/A";
   return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 };
 
@@ -303,13 +302,6 @@ export default function PacientesPage() {
                 return a.nome.localeCompare(b.nome);
             case "name-desc":
                 return b.nome.localeCompare(a.nome);
-            case "date-asc":
-                // This sorting is incorrect, as created_at is not available on Patient type
-                // It should be fixed or removed.
-                // For now, let's just sort by name as a fallback.
-                return a.nome.localeCompare(b.nome);
-            case "date-desc":
-                return b.nome.localeCompare(a.nome);
             default:
                 return a.nome.localeCompare(b.nome);
         }
@@ -365,8 +357,9 @@ export default function PacientesPage() {
     }
 
     const encodedMessage = encodeURIComponent(whatsappMessage);
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
     
-    window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
+    window.open(whatsappUrl, '_blank');
     setIsWhatsAppDialogOpen(false);
   };
 
@@ -403,7 +396,6 @@ export default function PacientesPage() {
   const handleSaveProntuario = async (data: ProntuarioFormValues) => {
     if (!selectedPatient || !userId) return;
 
-    prontuarioForm.formState.isSubmitting;
     try {
       const response = await fetch('/api/prontuarios', {
         method: 'POST',
@@ -501,7 +493,7 @@ export default function PacientesPage() {
         <div className="flex justify-center flex-col sm:flex-row gap-4">
           <div className="relative w-full max-w-md">
             <Input 
-              placeholder="Buscar por Nome, CPF ou Nº ID..."
+              placeholder="Buscar por Nome..."
               value={searchTerm}
               onChange={e => {
                 setSearchTerm(e.target.value);
@@ -521,8 +513,6 @@ export default function PacientesPage() {
               <SelectContent>
                 <SelectItem value="name-asc">Ordem Alfabética (A-Z)</SelectItem>
                 <SelectItem value="name-desc">Ordem Alfabética (Z-A)</SelectItem>
-                <SelectItem value="date-desc">Mais Recentes (Cadastro)</SelectItem>
-                <SelectItem value="date-asc">Mais Antigos (Cadastro)</SelectItem>
               </SelectContent>
             </Select>
         </div>
@@ -649,7 +639,7 @@ export default function PacientesPage() {
                             })}
                         </ul>
                         ) : (
-                            <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado para este paciente.</p>
+                            <p className="text-sm text-muted-foreground text-center pt-4">Nenhum agendamento encontrado.</p>
                         )}
                     </ScrollArea>
                 </div>
@@ -760,7 +750,7 @@ export default function PacientesPage() {
         </Dialog>
       )}
       
-      {/* Dialog do WhatsApp (comum para todos) */}
+      {/* Dialog do WhatsApp */}
       <Dialog open={isWhatsAppDialogOpen} onOpenChange={setIsWhatsAppDialogOpen}>
         <DialogContent>
             <DialogHeader>
@@ -795,17 +785,17 @@ export default function PacientesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog do Prontuário (comum para todos) */}
+      {/* Dialog do Prontuário */}
       <Dialog open={isProntuarioOpen} onOpenChange={(isOpen) => {
           setIsProntuarioOpen(isOpen);
-          if (!isOpen && !isAdmin) setSelectedPatient(null); // Fecha o paciente para não-admin
-          if (!isOpen && isAdmin) setIsProntuarioOpen(false); // Apenas fecha prontuario para admin
+          if (!isOpen && !isAdmin) setSelectedPatient(null);
+          if (!isOpen && isAdmin) setIsProntuarioOpen(false);
       }}>
           <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
               <DialogHeader>
                   <DialogTitle>Prontuário de {selectedPatient?.nome}</DialogTitle>
                   <DialogDescription>
-                      {isAdmin ? "Visualize o histórico e adicione anotações." : "Visualize o histórico e adicione suas anotações."}
+                      Visualize o histórico de consultas e as anotações do paciente.
                   </DialogDescription>
               </DialogHeader>
               
@@ -904,7 +894,7 @@ export default function PacientesPage() {
             <AlertDialogDescription>
               Esta ação não pode ser desfeita. Isso excluirá permanentemente o paciente
               <span className="font-bold"> {patientToDelete?.nome} </span>
-              e todos os seus dados associados (agendamentos, prontuários, etc).
+              e todos os seus dados associados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -916,9 +906,3 @@ export default function PacientesPage() {
     </div>
   );
 }
-    
-
-    
-
-    
-

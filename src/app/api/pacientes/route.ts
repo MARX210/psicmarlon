@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { patientRegistrationSchema } from "@/lib/schemas";
@@ -57,9 +56,15 @@ export async function POST(req: Request) {
       numero, complemento, bairro, cidade, estado, pais
     } = validation.data;
     
-    const [day, month, year] = nascimento.split("/");
-    const nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    // Tratamento de nascimento opcional
+    let nascimentoISO = null;
+    if (nascimento && nascimento.includes("/")) {
+        const [day, month, year] = nascimento.split("/");
+        nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+    
     const normalizedCelular = celular ? celular.replace(/\D/g, "") : null;
+    const normalizedCpf = cpf ? cpf.replace(/\D/g, "") : null;
 
     const query = `
       INSERT INTO Pacientes (
@@ -72,8 +77,9 @@ export async function POST(req: Request) {
     `;
 
     const values = [
-      cartaoId, nome, cpf.replace(/\D/g, ""), sexo, nascimentoISO, email, comoConheceu,
-      tipoPaciente, cartaoId, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, normalizedCelular
+      cartaoId, nome, normalizedCpf, sexo || null, nascimentoISO, email || null, comoConheceu || null,
+      tipoPaciente || null, cartaoId, cep || null, logradouro || null, numero || null, 
+      complemento || null, bairro || null, cidade || null, estado || null, pais || "Brasil", normalizedCelular
     ];
 
     const result = await client.query(query, values);

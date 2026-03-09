@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -51,14 +50,13 @@ export function RegistrationForm() {
   const selectedPatientType = form.watch("tipoPaciente");
   const cepValue = form.watch("cep");
 
-  // Geração de cartaoId
+  // Geração de cartaoId automática (se não selecionado tipo, usa um prefixo genérico)
   useEffect(() => {
-    if (selectedPatientType) {
-      const timestamp = Date.now().toString(36);
-      const randomPart = Math.random().toString(36).substring(2, 9);
-      const uniqueId = `${selectedPatientType}-${timestamp}-${randomPart}`.toUpperCase().slice(0, 20);
-      form.setValue("cartaoId", uniqueId);
-    }
+    const timestamp = Date.now().toString(36);
+    const randomPart = Math.random().toString(36).substring(2, 9);
+    const prefix = selectedPatientType || "P";
+    const uniqueId = `${prefix}-${timestamp}-${randomPart}`.toUpperCase().slice(0, 20);
+    form.setValue("cartaoId", uniqueId);
   }, [selectedPatientType, form]);
 
   // Busca CEP
@@ -75,13 +73,9 @@ export function RegistrationForm() {
             form.setValue("estado", data.uf);
             form.setValue("pais", "Brasil");
             toast({ title: "Endereço encontrado", description: "Campos preenchidos automaticamente." });
-          } else {
-            toast({ variant: "destructive", title: "CEP não encontrado", description: "Verifique o CEP digitado." });
           }
         })
-        .catch(() => {
-          toast({ variant: "destructive", title: "Erro na busca", description: "Não foi possível buscar o CEP." });
-        });
+        .catch(() => {});
     }
   }, [cepValue, form, toast]);
 
@@ -143,20 +137,6 @@ export function RegistrationForm() {
       const result = await response.json();
 
       if (!response.ok) {
-        if (response.status === 400 && result.details) {
-          const fieldErrors = result.details.fieldErrors;
-          Object.keys(fieldErrors).forEach((field) => {
-            const messages = fieldErrors[field];
-            if (messages) {
-              form.setError(field as keyof PatientFormValues, {
-                type: "manual",
-                message: messages.join(", "),
-              });
-            }
-          });
-          toast({ variant: "destructive", title: "Erro de Validação", description: "Por favor, corrija os campos indicados." });
-          return;
-        }
         throw new Error(result.error || "Algo deu errado no servidor.");
       }
 
@@ -179,7 +159,7 @@ export function RegistrationForm() {
         <Card>
           <CardHeader>
             <CardTitle>Dados Pessoais</CardTitle>
-            <CardDescription>Informações básicas do paciente.</CardDescription>
+            <CardDescription>Informações básicas do paciente. (* obrigatórios)</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FormField control={form.control} name="nome" render={({ field }) => (
@@ -193,7 +173,7 @@ export function RegistrationForm() {
             )} />
             <FormField control={form.control} name="cpf" render={({ field }) => (
               <FormItem>
-                <FormLabel>CPF*</FormLabel>
+                <FormLabel>CPF</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="000.000.000-00"
@@ -207,8 +187,8 @@ export function RegistrationForm() {
             />
             <FormField control={form.control} name="sexo" render={({ field }) => (
               <FormItem>
-                <FormLabel>Sexo*</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <FormLabel>Sexo</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ""}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o sexo" />
@@ -226,7 +206,7 @@ export function RegistrationForm() {
             )} />
             <FormField control={form.control} name="nascimento" render={({ field }) => (
               <FormItem>
-                <FormLabel>Data de Nascimento*</FormLabel>
+                <FormLabel>Data de Nascimento</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="dd/mm/aaaa"
@@ -242,7 +222,7 @@ export function RegistrationForm() {
               name="tipoPaciente"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tipo de Paciente*</FormLabel>
+                  <FormLabel>Tipo de Paciente</FormLabel>
                   <Select
                     onValueChange={(v: string) => field.onChange(v ? Number(v) : undefined)}
                     value={field.value !== undefined ? String(field.value) : undefined}
@@ -268,7 +248,7 @@ export function RegistrationForm() {
               <FormItem>
                 <FormLabel>Nº Cartão/ID Gerado</FormLabel>
                 <FormControl>
-                  <Input placeholder="Selecione o tipo para gerar" {...field} readOnly />
+                  <Input placeholder="Identificador automático" {...field} readOnly />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -293,7 +273,7 @@ export function RegistrationForm() {
             )} />
             <FormField control={form.control} name="celular" render={({ field }) => (
               <FormItem>
-                <FormLabel>Celular</FormLabel>
+                <FormLabel>Celular*</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="(99) 99999-9999"
@@ -337,7 +317,7 @@ export function RegistrationForm() {
             )} />
             <FormField control={form.control} name="logradouro" render={({ field }) => (
               <FormItem className="sm:col-span-2 md:col-span-3 lg:col-span-3">
-                <FormLabel>Logradouro*</FormLabel>
+                <FormLabel>Logradouro</FormLabel>
                 <FormControl>
                   <Input placeholder="Rua, Avenida, etc." {...field} />
                 </FormControl>
@@ -346,7 +326,7 @@ export function RegistrationForm() {
             )} />
             <FormField control={form.control} name="numero" render={({ field }) => (
               <FormItem>
-                <FormLabel>Número*</FormLabel>
+                <FormLabel>Número</FormLabel>
                 <FormControl>
                   <Input placeholder="Ex: 123" {...field} />
                 </FormControl>
@@ -364,15 +344,16 @@ export function RegistrationForm() {
             )} />
             <FormField control={form.control} name="bairro" render={({ field }) => (
               <FormItem className="md:col-span-1 lg:col-span-2">
-                <FormLabel>Bairro*</FormLabel>
+                <FormLabel>Bairro</FormLabel>
                 <FormControl>
                   <Input placeholder="Bairro" {...field} />
-                </FormControl>                <FormMessage />
+                </FormControl>
+                <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="cidade" render={({ field }) => (
               <FormItem>
-                <FormLabel>Cidade*</FormLabel>
+                <FormLabel>Cidade</FormLabel>
                 <FormControl>
                   <Input placeholder="Cidade" {...field} />
                 </FormControl>
@@ -381,7 +362,7 @@ export function RegistrationForm() {
             )} />
             <FormField control={form.control} name="estado" render={({ field }) => (
               <FormItem>
-                <FormLabel>Estado*</FormLabel>
+                <FormLabel>Estado</FormLabel>
                 <FormControl>
                   <Input placeholder="UF" {...field} />
                 </FormControl>
@@ -390,7 +371,7 @@ export function RegistrationForm() {
             )} />
             <FormField control={form.control} name="pais" render={({ field }) => (
               <FormItem>
-                <FormLabel>País*</FormLabel>
+                <FormLabel>País</FormLabel>
                 <FormControl>
                   <Input {...field} />
                 </FormControl>
