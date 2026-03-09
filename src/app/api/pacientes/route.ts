@@ -18,7 +18,7 @@ export async function GET(req: Request) {
       const result = await client.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM pacientes WHERE nome ILIKE $1 ORDER BY nome LIMIT 50";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM pacientes WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50";
       const result = await client.query(query, [`%${search}%`]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
     if (!validation.success) {
       return NextResponse.json({ 
-        error: "Dados inválidos", 
+        error: "Dados inválidos no formulário.", 
         details: validation.error.flatten() 
       }, { status: 400 });
     }
@@ -56,15 +56,21 @@ export async function POST(req: Request) {
       numero, complemento, bairro, cidade, estado, pais
     } = validation.data;
     
-    // Tratamento de nascimento opcional
     let nascimentoISO = null;
-    if (nascimento && nascimento.includes("/")) {
-        const [day, month, year] = nascimento.split("/");
-        nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    if (nascimento && nascimento.trim() !== "" && nascimento.includes("/")) {
+        const parts = nascimento.split("/");
+        if (parts.length === 3) {
+            const [day, month, year] = parts;
+            nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        }
     }
     
-    const normalizedCelular = celular ? celular.replace(/\D/g, "") : null;
+    const normalizedCelular = celular ? celular.replace(/\D/g, "") : "";
     const normalizedCpf = cpf ? cpf.replace(/\D/g, "") : null;
+
+    if (!nome || !normalizedCelular) {
+        return NextResponse.json({ error: "Nome e Celular são obrigatórios." }, { status: 400 });
+    }
 
     const query = `
       INSERT INTO pacientes (
@@ -77,9 +83,24 @@ export async function POST(req: Request) {
     `;
 
     const values = [
-      cartaoId, nome, normalizedCpf, sexo || null, nascimentoISO, email || null, comoConheceu || null,
-      tipoPaciente || null, cartaoId, cep || null, logradouro || null, numero || null, 
-      complemento || null, bairro || null, cidade || null, estado || null, pais || "Brasil", normalizedCelular
+      cartaoId, 
+      nome, 
+      normalizedCpf || null, 
+      sexo || null, 
+      nascimentoISO, 
+      email || null, 
+      comoConheceu || null,
+      tipoPaciente || null, 
+      cartaoId, 
+      cep || null, 
+      logradouro || null, 
+      numero || null, 
+      complemento || null, 
+      bairro || null, 
+      cidade || null, 
+      estado || null, 
+      pais || "Brasil", 
+      normalizedCelular
     ];
 
     const result = await client.query(query, values);
@@ -91,13 +112,19 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("ERRO NO POST de pacientes:", error);
+    
+    // Tratamento de erros específicos do Postgres
     if (error.code === '23505') { 
-        // Em Postgres, nomes de constraints são geralmente minúsculos se não aspas
-        const constraint = error.constraint || '';
-        if (constraint.includes('cpf')) return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
-        if (constraint.includes('pkey')) return NextResponse.json({ error: 'Já existe um paciente com este Nº de Cartão/ID.' }, { status: 409 });
+        if (error.constraint && error.constraint.includes('cpf')) {
+            return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
+        }
+        return NextResponse.json({ error: 'Já existe um paciente com este Nº de Cartão/ID.' }, { status: 409 });
     }
-    return NextResponse.json({ error: "Erro interno no servidor ao adicionar paciente." }, { status: 500 });
+    
+    // Retorna a mensagem de erro real do banco para facilitar o diagnóstico
+    return NextResponse.json({ 
+      error: "Erro no banco de dados: " + (error.message || "Erro interno desconhecido.")
+    }, { status: 500 });
   } finally {
       if(client) client.release();
   }

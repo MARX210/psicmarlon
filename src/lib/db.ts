@@ -1,7 +1,6 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
-// Adicionado para garantir que o pool seja um singleton
 declare global {
   var pool: pkg.Pool | undefined;
 }
@@ -11,23 +10,18 @@ let pool: pkg.Pool;
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl || databaseUrl.trim() === '') {
   console.error('ERRO CRÍTICO: Variável de ambiente DATABASE_URL não está configurada ou está vazia.');
-  
-  // This will throw during build time on Vercel if the env var is not set.
   if (process.env.VERCEL) {
      throw new Error('DATABASE_URL is not set or is empty in the Vercel environment variables');
   }
 }
 
 async function createTables() {
-    if (!pool) {
-      console.log("Pool not initialized, skipping table creation.");
-      return;
-    }
+    if (!pool) return;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        // Garantir que a tabela profissionais existe (essencial para o setup)
+        // Tabela Profissionais
         await client.query(`
             CREATE TABLE IF NOT EXISTS profissionais (
                 id SERIAL PRIMARY KEY,
@@ -39,33 +33,21 @@ async function createTables() {
             );
         `);
 
-        // Criar ou atualizar a tabela pacientes
+        // Tabela Pacientes (Garante a estrutura base)
         await client.query(`
             CREATE TABLE IF NOT EXISTS pacientes (
                 id VARCHAR(255) PRIMARY KEY,
                 nome TEXT NOT NULL,
-                cpf VARCHAR(14) UNIQUE,
-                sexo VARCHAR(50),
-                nascimento DATE,
-                email TEXT,
-                celular VARCHAR(20) NOT NULL,
-                como_conheceu TEXT,
-                tipo_paciente INTEGER,
-                cartao_id VARCHAR(255),
-                cep VARCHAR(10),
-                logradouro TEXT,
-                numero VARCHAR(20),
-                complemento TEXT,
-                bairro TEXT,
-                cidade TEXT,
-                estado VARCHAR(50),
-                pais TEXT DEFAULT 'Brasil'
+                celular VARCHAR(20) NOT NULL
             );
         `);
 
-        // Verificar e adicionar colunas faltantes caso a tabela já existisse de forma simplificada
+        // Lista exaustiva de colunas para a tabela pacientes
         const columnsToCheck = [
+            { name: 'cpf', type: 'VARCHAR(14) UNIQUE' },
             { name: 'sexo', type: 'VARCHAR(50)' },
+            { name: 'nascimento', type: 'DATE' },
+            { name: 'email', type: 'TEXT' },
             { name: 'como_conheceu', type: 'TEXT' },
             { name: 'tipo_paciente', type: 'INTEGER' },
             { name: 'cartao_id', type: 'VARCHAR(255)' },
@@ -133,42 +115,28 @@ async function createTables() {
         `);
 
         await client.query('COMMIT');
-        console.log("Esquema do banco de dados sincronizado com sucesso.");
+        console.log("Banco de dados sincronizado.");
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error("Erro ao sincronizar o esquema do banco de dados:", err);
+        console.error("Erro ao sincronizar banco de dados:", err);
     } finally {
         client.release();
     }
 }
 
-
 if (process.env.NODE_ENV === 'production') {
-  pool = new Pool({
-    connectionString: databaseUrl,
-  });
+  pool = new Pool({ connectionString: databaseUrl });
   createTables().catch(console.error);
 } else {
   if (!global.pool) {
-    global.pool = new Pool({
-      connectionString: databaseUrl,
-    });
+    global.pool = new Pool({ connectionString: databaseUrl });
     createTables().catch(console.error);
   }
   pool = global.pool;
 }
 
-
 const getPool = () => {
-  if (!pool) {
-     console.error('ERRO CRÍTICO: Pool de conexões não foi inicializado.');
-     if (process.env.VERCEL) {
-        throw new Error('CRITICAL ERROR: Connection pool not initialized in Vercel environment.');
-     }
-     // For local dev, try to re-initialize
-     pool = new Pool({ connectionString: databaseUrl });
-     console.log('Re-initializing pool for local development.');
-  }
+  if (!pool) pool = new Pool({ connectionString: databaseUrl });
   return pool;
 };
 
