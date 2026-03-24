@@ -59,22 +59,6 @@ type Patient = {
   created_at: string;
 };
 
-type Appointment = {
-  id: number;
-  patientId: string;
-  patientName: string;
-  date: string; 
-  time: string; 
-  status: string;
-};
-
-type Prontuario = {
-  id: number;
-  data_registro: string;
-  conteudo: string;
-  profissional_nome: string;
-};
-
 const patientUpdateSchema = z.object({
   email: z.string().email("Email inválido").optional().or(z.literal('')),
   celular: z.string().optional().or(z.literal('')),
@@ -95,6 +79,13 @@ const prontuarioSchema = z.object({
 type PatientUpdateFormValues = z.infer<typeof patientUpdateSchema>;
 type ProntuarioFormValues = z.infer<typeof prontuarioSchema>;
 
+type Prontuario = {
+  id: number;
+  data_registro: string;
+  conteudo: string;
+  profissional_nome: string;
+};
+
 const formatPhone = (phone: string | null) => {
     if (!phone) return "N/A";
     const clean = phone.replace(/\D/g, "");
@@ -107,7 +98,6 @@ export default function PacientesPage() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
@@ -129,10 +119,8 @@ export default function PacientesPage() {
     setIsLoading(true);
     try {
       const patientsRes = await fetch(`/api/pacientes${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`);
-      const appsRes = await fetch('/api/agendamentos');
-      if (!patientsRes.ok || !appsRes.ok) throw new Error('Falha ao carregar dados');
+      if (!patientsRes.ok) throw new Error('Falha ao carregar dados');
       setPatients(await patientsRes.json());
-      setAppointments(await appsRes.json());
     } catch (error: any) {
       toast({ variant: "destructive", title: "Erro", description: error.message });
     } finally {
@@ -156,6 +144,7 @@ export default function PacientesPage() {
     setIsLoadingProntuario(true);
     try {
         const res = await fetch(`/api/prontuarios?pacienteId=${pacienteId}`);
+        if (!res.ok) throw new Error();
         setProntuarios(await res.json());
     } catch (error) {
         setProntuarios([]);
@@ -237,7 +226,7 @@ export default function PacientesPage() {
         </div>
       </div>
 
-      <div className="border rounded-lg bg-card shadow-sm">
+      <div className="border rounded-lg bg-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
@@ -270,7 +259,7 @@ export default function PacientesPage() {
                 </TableCell>
               </TableRow>
             )) : (
-              <TableRow><TableCell colSpan={4} className="text-center h-24">Nenhum paciente encontrado.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Nenhum paciente encontrado.</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
