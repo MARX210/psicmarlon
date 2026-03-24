@@ -36,7 +36,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -115,6 +115,17 @@ const formatPhone = (phone: string | null) => {
     if (clean.length === 11) return clean.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
     if (clean.length === 10) return clean.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
     return phone;
+};
+
+const safeFormatDate = (dateStr: string | null | undefined, formatStr: string = "dd/MM/yyyy HH:mm") => {
+  if (!dateStr) return "N/A";
+  try {
+    const date = new Date(dateStr);
+    if (!isValid(date)) return "Data inválida";
+    return format(date, formatStr, { locale: ptBR });
+  } catch {
+    return "Erro na data";
+  }
 };
 
 export default function PacientesPage() {
@@ -338,7 +349,8 @@ export default function PacientesPage() {
   const formatDateForInput = (dateString: string | null) => {
     if (!dateString) return "";
     try {
-      const date = parseISO(dateString);
+      const date = new Date(dateString);
+      if (!isValid(date)) return "";
       return format(date, "dd/MM/yyyy");
     } catch {
       return dateString;
@@ -568,7 +580,7 @@ export default function PacientesPage() {
                                                 </Badge>
                                                 <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
                                                     <Clock className="h-3 w-3" />
-                                                    {format(parseISO(item.data_registro), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                                    {safeFormatDate(item.data_registro)}
                                                 </span>
                                             </div>
                                             {!isAnotacao && (
