@@ -38,8 +38,7 @@ async function createTables() {
             CREATE TABLE IF NOT EXISTS pacientes (
                 id VARCHAR(255) PRIMARY KEY,
                 nome TEXT NOT NULL,
-                celular VARCHAR(20) NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT NOW()
+                celular VARCHAR(20) NOT NULL
             );
         `);
 
@@ -59,7 +58,8 @@ async function createTables() {
             { name: 'bairro', type: 'TEXT' },
             { name: 'cidade', type: 'TEXT' },
             { name: 'estado', type: 'VARCHAR(50)' },
-            { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' }
+            { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' },
+            { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT NOW()' }
         ];
 
         for (const col of columnsToCheck) {
@@ -78,6 +78,9 @@ async function createTables() {
             if (col.name !== 'nome' && col.name !== 'celular') {
                 await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
             }
+
+            // Removendo explicitamente a restrição de unicidade do CPF caso ela exista e esteja causando problemas
+            // (Opcional, mas útil se você quiser permitir CPFs duplicados ou vazios que o Postgres pode interpretar mal)
         }
 
         // Tabela de prontuários
