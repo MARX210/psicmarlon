@@ -43,7 +43,7 @@ async function createTables() {
             );
         `);
 
-        // Lista exaustiva de colunas para a tabela pacientes
+        // Lista de colunas para a tabela pacientes e suas definições
         const columnsToCheck = [
             { name: 'cpf', type: 'VARCHAR(14) UNIQUE' },
             { name: 'sexo', type: 'VARCHAR(50)' },
@@ -59,11 +59,11 @@ async function createTables() {
             { name: 'bairro', type: 'TEXT' },
             { name: 'cidade', type: 'TEXT' },
             { name: 'estado', type: 'VARCHAR(50)' },
-            { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' },
-            { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT NOW()' }
+            { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' }
         ];
 
         for (const col of columnsToCheck) {
+            // Adiciona a coluna se não existir
             await client.query(`
                 DO $$ 
                 BEGIN 
@@ -72,6 +72,12 @@ async function createTables() {
                     END IF;
                 END $$;
             `);
+            
+            // Garante que a coluna possa ser nula (remove NOT NULL se existir)
+            // Exceto para nome e celular que são obrigatórios
+            if (col.name !== 'nome' && col.name !== 'celular') {
+                await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
+            }
         }
 
         // Tabela de prontuários
