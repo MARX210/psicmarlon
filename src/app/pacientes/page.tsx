@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, ArrowUpDown, Filter, User, X } from "lucide-react";
+import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,11 +164,12 @@ export default function PacientesPage() {
             form.setValue("cidade", data.localidade);
             form.setValue("estado", data.uf);
             form.setValue("pais", "Brasil");
+            toast({ title: "Endereço encontrado", description: "Campos preenchidos automaticamente." });
           }
         })
         .catch(() => {});
     }
-  }, [cepValue, form]);
+  }, [cepValue, form, toast]);
 
   const sortedPatients = useMemo(() => {
     const result = [...patients];
@@ -220,11 +222,11 @@ export default function PacientesPage() {
             body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error('Erro ao atualizar');
-        toast({ title: "Sucesso!", description: "Dados atualizados." });
+        toast({ title: "Sucesso!", description: "Dados atualizados com sucesso." });
         setSelectedPatient(null);
         fetchAllData(searchTerm);
     } catch (error) {
-        toast({ variant: "destructive", title: "Erro na atualização" });
+        toast({ variant: "destructive", title: "Erro na atualização", description: "Não foi possível salvar as alterações." });
     } finally {
         setIsUpdating(false);
     }
@@ -251,7 +253,7 @@ export default function PacientesPage() {
     if (!patientToDelete) return;
     try {
       await fetch(`/api/pacientes/${patientToDelete.id}`, { method: 'DELETE' });
-      toast({ title: "Excluído!" });
+      toast({ title: "Excluído!", description: "Paciente removido com sucesso." });
       fetchAllData(searchTerm);
     } finally {
       setShowDeleteAlert(false);
@@ -406,19 +408,19 @@ export default function PacientesPage() {
       {/* Dialog Edição Completa */}
       <Dialog open={!!selectedPatient && !isProntuarioOpen} onOpenChange={v => !v && setSelectedPatient(null)}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-          <DialogHeader className="p-6 pb-2">
+          <DialogHeader className="p-6 pb-2 border-b">
             <DialogTitle>Atualizar Cadastro: {selectedPatient?.nome}</DialogTitle>
           </DialogHeader>
           
-          <ScrollArea className="flex-grow px-6">
-            <div className="flex gap-2 border-b pb-4 mb-4">
+          <div className="flex-grow overflow-y-auto px-6 py-4">
+            <div className="flex gap-2 mb-6">
               <Button onClick={() => { setWhatsappMessage(`Olá, ${selectedPatient?.nome?.split(" ")[0]}! Tudo bem?`); setIsWhatsAppDialogOpen(true); }} className="bg-green-600 hover:bg-green-700 w-full">
                   <MessageCircle className="mr-2 h-4 w-4" /> Iniciar conversa no WhatsApp
               </Button>
             </div>
             
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="space-y-6 pb-6">
+              <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="space-y-6 pb-20">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="nome" render={({ field }) => (
                       <FormItem className="md:col-span-2"><FormLabel>Nome Completo*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
@@ -486,14 +488,16 @@ export default function PacientesPage() {
                     )} />
                   </div>
                 </div>
-
-                <div className="flex justify-end gap-2 pt-4 sticky bottom-0 bg-background py-4 border-t z-10">
-                    <Button type="button" variant="ghost" onClick={() => setSelectedPatient(null)}>Cancelar</Button>
-                    <Button type="submit" disabled={isUpdating}>{isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Salvar Alterações</Button>
-                </div>
               </form>
             </Form>
-          </ScrollArea>
+          </div>
+
+          <div className="flex justify-end gap-2 p-4 border-t bg-background sticky bottom-0 z-20">
+              <Button type="button" variant="ghost" onClick={() => setSelectedPatient(null)}>Cancelar</Button>
+              <Button type="submit" disabled={isUpdating} onClick={form.handleSubmit(handleUpdatePatient)}>
+                  {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Salvar Alterações
+              </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
