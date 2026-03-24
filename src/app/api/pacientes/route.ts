@@ -38,7 +38,8 @@ export async function GET(req: Request) {
 
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const result = await client.query(`${baseQuery} WHERE cpf = $1 OR id = $1`, [normalizedCpf]);
+      // Busca por CPF ou pelo ID bruto (para IDs alfanuméricos como P-TIMESTAMP)
+      const result = await client.query(`${baseQuery} WHERE cpf = $1 OR id = $1 OR id = $2`, [normalizedCpf, cpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
       const result = await client.query(`${baseQuery} WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50`, [`%${search}%`]);

@@ -1,15 +1,13 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { format, parse, isSameDay, isSunday, addMinutes, parseISO, differenceInYears, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +23,11 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, Search, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, BadgeInfo, CheckCircle2, X, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown, Check } from "lucide-react";
+import { Edit, Trash2, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, CheckCircle2, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown, Check } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -57,9 +54,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 
 
 // Feriados
-const holidays: Date[] = [
-  // new Date("2024-01-01"), // Ano novo - Exemplo
-];
+const holidays: Date[] = [];
 
 const defaultTimeSlots = [
   "08:00", "09:00", "10:00", "11:00", "12:00",
@@ -118,9 +113,7 @@ export function SchedulingForm() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [cpfInput, setCpfInput] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [patientNotFound, setPatientNotFound] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,9 +130,7 @@ export function SchedulingForm() {
   const [patientSearchTerm, setPatientSearchTerm] = useState("");
   const [isSearchingPatients, setIsSearchingPatients] = useState(false);
 
-
   const isAdmin = userRole === 'Admin';
-
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentSchema),
@@ -189,13 +180,8 @@ export function SchedulingForm() {
         setProfessionalRoles(data);
     } catch (error) {
         console.error(error);
-        toast({
-            variant: "destructive",
-            title: "Erro de Configuração",
-            description: "Não foi possível carregar as especialidades dos profissionais."
-        });
     }
-  }, [toast]);
+  }, []);
 
   const fetchAppointments = useCallback(async (role: string | null) => {
     setIsLoading(true);
@@ -207,10 +193,7 @@ export function SchedulingForm() {
         }
 
         const res = await fetch(url);
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`Erro ao buscar agendamentos: ${text}`);
-        }
+        if (!res.ok) throw new Error(`Erro ao buscar agendamentos`);
         const data: Appointment[] = await res.json();
         setAppointments(data);
     } catch (error) {
@@ -238,7 +221,6 @@ export function SchedulingForm() {
         setTimeSlots(defaultTimeSlots);
       }
     } catch (error) {
-      console.error("Failed to parse timeSlots from localStorage", error);
       setTimeSlots(defaultTimeSlots);
     }
   }, [form]);
@@ -266,18 +248,9 @@ export function SchedulingForm() {
       }
       
       await fetchAppointments(userRole);
-
-      toast({
-        title: "Status Atualizado!",
-        description: `O status do agendamento foi alterado para ${status}.`,
-      });
-
+      toast({ title: "Status Atualizado!", description: `O status do agendamento foi alterado para ${status}.` });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível atualizar o status do agendamento.",
-      });
+      toast({ variant: "destructive", title: "Erro", description: error instanceof Error ? error.message : "Não foi possível atualizar o status." });
     }
   };
 
@@ -310,11 +283,7 @@ export function SchedulingForm() {
       localStorage.setItem("timeSlots", JSON.stringify(updatedSlots));
       setNewTimeSlot("");
     } else {
-      toast({
-        variant: "destructive",
-        title: "Horário Inválido",
-        description: "Use o formato HH:mm e o horário não pode ser repetido.",
-      });
+      toast({ variant: "destructive", title: "Horário Inválido", description: "Use o formato HH:mm e evite repetições." });
     }
   };
 
@@ -324,54 +293,11 @@ export function SchedulingForm() {
     localStorage.setItem("timeSlots", JSON.stringify(updatedSlots));
   };
 
-
-  const handleSearchPatient = async () => {
-    if (!cpfInput) return;
-    setPatientNotFound(false);
-    setSelectedPatient(null);
-    form.reset({
-      ...form.getValues(),
-      patientId: "",
-      price: "0",
-    });
-
-    try {
-      const normalizedCpf = cpfInput.replace(/\D/g, "");
-      const res = await fetch(`/api/pacientes?cpf=${cpfInput}`);
-      if (!res.ok) throw new Error("Erro na resposta do servidor");
-      
-      const data: Patient[] = await res.json();
-
-      if (data && data.length > 0) {
-        const patient = data[0];
-        setSelectedPatient(patient);
-        form.setValue("patientId", patient.id);
-        toast({ title: "Paciente Encontrado", description: `${patient.name} selecionado.` });
-      } else {
-        setPatientNotFound(true);
-        toast({
-          variant: "destructive",
-          title: "Paciente não encontrado",
-          description: "Verifique o CPF ou cadastre um novo paciente.",
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Erro na busca",
-        description: "Não foi possível buscar o paciente. Tente novamente.",
-      });
-    }
-  };
-
   const handleClearPatient = () => {
     setSelectedPatient(null);
-    setCpfInput("");
-    setPatientNotFound(false);
-    setIsEditing(null);
     setPatientSearchTerm("");
     setSearchedPatients([]);
+    setIsEditing(null);
     form.reset({
       patientId: "",
       time: "",
@@ -392,23 +318,32 @@ export function SchedulingForm() {
     form.setValue("time", "");
   };
 
-  const handleEditClick = (appointment: Appointment) => {
-    // This function will need access to all patients to find the one to edit.
-    // If not all patients are loaded, this might fail. We assume for now they are.
-    // A better approach might be to fetch the specific patient if not found.
-    const patientToEdit = searchedPatients.find(p => p.id === appointment.patientId) || 
+  const handleEditClick = async (appointment: Appointment) => {
+    let patientToEdit = searchedPatients.find(p => p.id === appointment.patientId) || 
                           (selectedPatient?.id === appointment.patientId ? selectedPatient : null);
 
+    // Se o paciente não estiver carregado na lista atual de busca, tenta buscar no servidor
     if (!patientToEdit) {
-        toast({ variant: "destructive", title: "Erro", description: "Paciente do agendamento não encontrado na lista atual." });
-        // Fetch patient specifically if not found?
-        // fetch(`/api/pacientes?cpf=${appointment.patientId}`).then...
+      try {
+        const res = await fetch(`/api/pacientes?cpf=${appointment.patientId}`);
+        if (res.ok) {
+          const data: Patient[] = await res.json();
+          if (data && data.length > 0) {
+            patientToEdit = data[0];
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao buscar paciente para edição:", error);
+      }
+    }
+
+    if (!patientToEdit) {
+        toast({ variant: "destructive", title: "Erro", description: "erro" });
         return;
     }
     
     setIsEditing(appointment.id);
     setSelectedPatient(patientToEdit);
-    setCpfInput(patientToEdit.cpf);
     const appointmentDate = parseISO(appointment.date);
     setSelectedDate(appointmentDate);
 
@@ -433,52 +368,27 @@ export function SchedulingForm() {
   
   const handleDeleteConfirm = async () => {
     if (!appointmentToDelete) return;
-    
     try {
-      const response = await fetch(`/api/agendamentos/${appointmentToDelete.id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Erro ao excluir agendamento');
-      }
-      toast({
-        title: "Agendamento Excluído!",
-        description: "A consulta foi removida da sua agenda.",
-      });
+      const response = await fetch(`/api/agendamentos/${appointmentToDelete.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Erro ao excluir agendamento');
+      toast({ title: "Agendamento Excluído!", description: "Consulta removida com sucesso." });
       await fetchAppointments(userRole);
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro ao Excluir",
-        description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
-      });
+      toast({ variant: "destructive", title: "Erro ao Excluir", description: "Ocorreu um erro ao excluir." });
     } finally {
       setShowDeleteAlert(false);
       setAppointmentToDelete(null);
     }
   };
 
-
   const appointmentDates = appointments.map(app => parseISO(app.date));
-  
   const isDayInPast = selectedDate && isBefore(selectedDate, startOfDay(new Date()));
   const isFormDisabled = !selectedPatient || isSubmitting || (isDayInPast && !isEditing);
-  
   const isDayUnavailable = selectedDate && (isSunday(selectedDate) || holidays.some(holiday => isSameDay(holiday, selectedDate)));
 
   async function onSubmit(data: AppointmentFormValues) {
-    if (!selectedPatient) {
-      toast({
-        variant: "destructive",
-        title: "Nenhum paciente selecionado",
-        description: "Por favor, busque e selecione um paciente.",
-      });
-      return;
-    }
-    
+    if (!selectedPatient) return;
     setIsSubmitting(true);
-
     const submissionData = {
       patientId: selectedPatient.id,
       date: format(data.date, "yyyy-MM-dd"),
@@ -489,73 +399,22 @@ export function SchedulingForm() {
       price: parseFloat(data.price),
       status: data.status || 'Confirmado',
     };
-
     const url = isEditing ? `/api/agendamentos/${isEditing}` : '/api/agendamentos';
     const method = isEditing ? 'PUT' : 'POST';
-
     try {
-        const response = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(submissionData),
-        });
-
+        const response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(submissionData) });
         const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.error || `Erro ao ${isEditing ? 'atualizar' : 'criar'} agendamento`);
-        }
-
-        toast({
-            title: `Agendamento ${isEditing ? 'Atualizado' : 'Realizado'}!`,
-            description: `Consulta para ${selectedPatient.name} foi ${isEditing ? 'atualizada' : 'marcada'} com sucesso.`,
-        });
-        
+        if (!response.ok) throw new Error(result.error || `Erro ao salvar agendamento`);
+        toast({ title: `Agendamento ${isEditing ? 'Atualizado' : 'Realizado'}!`, description: `Consulta marcada com sucesso.` });
         await fetchAppointments(userRole);
         handleClearPatient();
-
     } catch (error) {
-         toast({
-            variant: "destructive",
-            title: `Erro no Agendamento`,
-            description: error instanceof Error ? error.message : "Ocorreu um erro desconhecido.",
-        });
+         toast({ variant: "destructive", title: `Erro no Agendamento`, description: error instanceof Error ? error.message : "Erro desconhecido." });
     } finally {
         setIsSubmitting(false);
         setIsEditing(null);
     }
   }
-  
-  const AppointmentStatusBadge = ({ status }: { status: AppointmentStatus }) => {
-    const config = statusConfig[status] || statusConfig.Confirmado;
-    const Icon = config.icon;
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className={`flex items-center gap-1.5 h-auto px-2 py-1 text-xs rounded-full ${config.color}`}>
-            <Icon className="h-3.5 w-3.5" />
-            {config.label}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {Object.keys(statusConfig).map(key => {
-            const statusKey = key as AppointmentStatus;
-            const itemConfig = statusConfig[statusKey];
-            const ItemIcon = itemConfig.icon;
-            return (
-              <DropdownMenuItem key={statusKey} onSelect={() => {
-                // We need the appointment ID here. This component needs to be used inside the map.
-                // This is just a placeholder to show how it would be structured.
-              }}>
-                <ItemIcon className={`mr-2 h-4 w-4 ${itemConfig.color}`} />
-                <span>{itemConfig.label}</span>
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
 
   if (isLoadingRole) {
     return (
@@ -566,86 +425,47 @@ export function SchedulingForm() {
     );
   }
 
-
   return (
     <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
-      {/* Coluna Esquerda: Formulários */}
       {isAdmin && (
         <div className="xl:col-span-2 space-y-8">
-          {/* Formulário de agendamento */}
           <Card>
             <CardHeader>
               <CardTitle>{isEditing ? 'Editar Consulta' : 'Nova Consulta'}</CardTitle>
-              <CardDescription>
-                {isEditing ? 'Altere os dados do agendamento abaixo.' : 'Busque o paciente e preencha os dados da consulta.'}
-              </CardDescription>
+              <CardDescription>{isEditing ? 'Altere os dados abaixo.' : 'Busque o paciente e preencha os dados.'}</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  {/* Busca de paciente */}
                   <div className="space-y-2">
                      <FormLabel>Buscar Paciente por Nome</FormLabel>
                         <Popover open={isPatientComboboxOpen} onOpenChange={setIsPatientComboboxOpen}>
                             <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={isPatientComboboxOpen}
-                                    className="w-full justify-between"
-                                    disabled={!!selectedPatient}
-                                >
-                                    {selectedPatient
-                                        ? selectedPatient.nome
-                                        : "Selecione o paciente..."}
+                                <Button variant="outline" role="combobox" aria-expanded={isPatientComboboxOpen} className="w-full justify-between" disabled={!!selectedPatient}>
+                                    {selectedPatient ? selectedPatient.nome : "Selecione o paciente..."}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command shouldFilter={false}>
-                                    <CommandInput 
-                                      placeholder="Digite o nome do paciente..." 
-                                      value={patientSearchTerm}
-                                      onValueChange={setPatientSearchTerm}
-                                    />
+                                    <CommandInput placeholder="Digite o nome..." value={patientSearchTerm} onValueChange={setPatientSearchTerm} />
                                     <CommandList>
                                         {isSearchingPatients && <CommandEmpty>Buscando...</CommandEmpty>}
                                         {!isSearchingPatients && searchedPatients.length === 0 && patientSearchTerm.length > 1 && (
                                             <CommandEmpty>
                                               <div className="py-4 text-center text-sm">
                                                 <p>Nenhum paciente encontrado.</p>
-                                                <Button
-                                                  variant="link"
-                                                  className="h-auto p-0 text-sm"
-                                                  onClick={() => {
-                                                    setIsPatientComboboxOpen(false);
-                                                    router.push('/cadastro');
-                                                  }}
-                                                >
-                                                  Adicionar novo paciente
-                                                </Button>
+                                                <Button variant="link" className="h-auto p-0 text-sm" onClick={() => { setIsPatientComboboxOpen(false); router.push('/cadastro'); }}>Adicionar novo paciente</Button>
                                               </div>
                                             </CommandEmpty>
                                         )}
                                         <CommandGroup>
                                             {searchedPatients.map((patient) => (
-                                                <CommandItem
-                                                    key={patient.id}
-                                                    value={patient.nome}
-                                                    onSelect={() => {
-                                                        setSelectedPatient(patient);
-                                                        form.setValue("patientId", patient.id);
-                                                        setIsPatientComboboxOpen(false);
-                                                        setPatientSearchTerm("");
-                                                        toast({ title: "Paciente Selecionado", description: `${patient.nome}` });
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={`mr-2 h-4 w-4 ${selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"}`}
-                                                    />
+                                                <CommandItem key={patient.id} value={patient.nome} onSelect={() => { setSelectedPatient(patient); form.setValue("patientId", patient.id); setIsPatientComboboxOpen(false); setPatientSearchTerm(""); }}>
+                                                    <Check className={`mr-2 h-4 w-4 ${selectedPatient?.id === patient.id ? "opacity-100" : "opacity-0"}`} />
                                                     <div>
                                                         <p>{patient.nome}</p>
-                                                        <p className="text-xs text-muted-foreground">{patient.cpf}</p>
+                                                        <p className="text-xs text-muted-foreground">{patient.cpf || patient.id}</p>
                                                     </div>
                                                 </CommandItem>
                                             ))}
@@ -656,17 +476,11 @@ export function SchedulingForm() {
                         </Popover>
                   </div>
 
-                  {/* Paciente selecionado */}
                   {selectedPatient && (
                     <div className="p-3 bg-muted rounded-lg text-sm space-y-3">
                       <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-2 font-bold">
-                          <User className="w-4 h-4 mt-0.5" />
-                          <span>Paciente Selecionado</span>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearPatient}>
-                          <XCircle className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-2 font-bold"><User className="w-4 h-4 mt-0.5" /><span>Paciente Selecionado</span></div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClearPatient}><XCircle className="w-4 h-4" /></Button>
                       </div>
                       <div className="pl-6 space-y-1">
                         <p><span className="font-semibold">Nome:</span> {selectedPatient.nome}</p>
@@ -677,68 +491,27 @@ export function SchedulingForm() {
                   )}
                   
                   {isDayInPast && !isEditing && (
-                      <p className="text-xs text-destructive pt-1 flex items-center gap-2"><BadgeAlert className="h-4 w-4" /> Não é possível criar agendamentos em datas passadas.</p>
+                      <p className="text-xs text-destructive pt-1 flex items-center gap-2"><BadgeAlert className="h-4 w-4" /> Bloqueado para datas passadas.</p>
                   )}
 
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="time"
-                      render={({ field }) => (
+                    <FormField control={form.control} name="time" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Horário</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            disabled={isFormDisabled || timeSlotsForSelectedDay.length === 0 || isDayUnavailable}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {timeSlotsForSelectedDay.map((slot) => (
-                                <SelectItem key={slot} value={slot}>
-                                  {slot}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={isFormDisabled || timeSlotsForSelectedDay.length === 0 || isDayUnavailable}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                            <SelectContent>{timeSlotsForSelectedDay.map((slot) => (<SelectItem key={slot} value={slot}>{slot}</SelectItem>))}</SelectContent>
                           </Select>
-                          {timeSlotsForSelectedDay.length === 0 && selectedPatient && !isDayUnavailable && !isDayInPast &&(
-                            <p className="text-xs text-muted-foreground pt-1">Não há horários disponíveis.</p>
-                          )}
-                          {isDayUnavailable && (
-                            <p className="text-xs text-destructive pt-1">Dia indisponível para agendamentos.</p>
-                          )}
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="professional"
-                      render={({ field }) => (
+                    <FormField control={form.control} name="professional" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Profissional</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            disabled={isFormDisabled || isDayUnavailable}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {professionalRoles.map((prof) => (
-                                <SelectItem key={prof} value={prof}>
-                                  {prof}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={isFormDisabled || isDayUnavailable}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                            <SelectContent>{professionalRoles.map((prof) => (<SelectItem key={prof} value={prof}>{prof}</SelectItem>))}</SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>
@@ -746,53 +519,24 @@ export function SchedulingForm() {
                     />
                   </div>
 
-                  {/* Duração e preço */}
                   <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="duration"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Duração (min)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="Ex: 50" {...field} disabled={isFormDisabled || isDayUnavailable} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <FormField control={form.control} name="duration" render={({ field }) => (
+                        <FormItem><FormLabel>Duração (min)</FormLabel><FormControl><Input type="number" {...field} disabled={isFormDisabled || isDayUnavailable} /></FormControl><FormMessage /></FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Valor (R$)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="Ex: 150" {...field} disabled={isFormDisabled || isDayUnavailable} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <FormField control={form.control} name="price" render={({ field }) => (
+                        <FormItem><FormLabel>Valor (R$)</FormLabel><FormControl><Input type="number" {...field} disabled={isFormDisabled || isDayUnavailable} /></FormControl><FormMessage /></FormItem>
                       )}
                     />
                   </div>
 
-                  {/* Tipo de consulta */}
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
+                  <FormField control={form.control} name="type" render={({ field }) => (
                       <FormItem className="space-y-3">
                         <FormLabel>Tipo de Consulta</FormLabel>
                         <FormControl>
                           <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4" disabled={isFormDisabled || isDayUnavailable}>
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl><RadioGroupItem value="Online" /></FormControl>
-                              <FormLabel className="font-normal">Online</FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl><RadioGroupItem value="Presencial" /></FormControl>
-                              <FormLabel className="font-normal">Presencial</FormLabel>
-                            </FormItem>
+                            <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Online" /></FormControl><FormLabel className="font-normal">Online</FormLabel></FormItem>
+                            <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Presencial" /></FormControl><FormLabel className="font-normal">Presencial</FormLabel></FormItem>
                           </RadioGroup>
                         </FormControl>
                         <FormMessage />
@@ -811,34 +555,24 @@ export function SchedulingForm() {
             </CardContent>
           </Card>
 
-          {/* Gerenciador de Horários */}
           {isClient && (
             <Card>
               <CardHeader>
                 <CardTitle>Meus Horários</CardTitle>
-                <CardDescription>Adicione ou remova os horários disponíveis para agendamento.</CardDescription>
+                <CardDescription>Horários disponíveis para agendamento.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2 mb-4">
-                  <Input
-                    type="time"
-                    value={newTimeSlot}
-                    onChange={(e) => setNewTimeSlot(e.target.value)}
-                    placeholder="HH:mm"
-                  />
+                  <Input type="time" value={newTimeSlot} onChange={(e) => setNewTimeSlot(e.target.value)} placeholder="HH:mm" />
                   <Button onClick={handleAddTimeSlot}><PlusCircle /> Adicionar</Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {timeSlots.length > 0 ? timeSlots.map(slot => (
                     <Badge key={slot} variant="secondary" className="text-base">
                       {slot}
-                      <button onClick={() => handleRemoveTimeSlot(slot)} className="ml-2 p-0.5 rounded-full hover:bg-destructive/20 text-destructive">
-                        <XCircle className="h-4 w-4"/>
-                      </button>
+                      <button onClick={() => handleRemoveTimeSlot(slot)} className="ml-2 p-0.5 rounded-full hover:bg-destructive/20 text-destructive"><XCircle className="h-4 w-4"/></button>
                     </Badge>
-                  )) : (
-                    <p className="text-sm text-muted-foreground">Nenhum horário definido.</p>
-                  )}
+                  )) : (<p className="text-sm text-muted-foreground">Nenhum horário definido.</p>)}
                 </div>
               </CardContent>
             </Card>
@@ -846,22 +580,15 @@ export function SchedulingForm() {
         </div>
       )}
 
-      {/* Calendário e agenda */}
       <div className={isAdmin ? "xl:col-span-3" : "xl:col-span-5 w-full"}>
         <Card>
           <CardHeader>
             <CardTitle>Calendário e Agenda</CardTitle>
-            <CardDescription>
-              Selecione um dia para ver os agendamentos.
-            </CardDescription>
+            <CardDescription>Selecione um dia para visualizar.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col xl:flex-row gap-8">
             <div className="flex flex-col xl:flex-row gap-8 w-full">
-              {!isClient ? (
-                <div className="flex-1 flex justify-center items-center">
-                  <Skeleton className="w-full h-[300px]" />
-                </div>
-              ) : (
+              {!isClient ? (<div className="flex-1 flex justify-center items-center"><Skeleton className="w-full h-[300px]" /></div>) : (
                 <div className="w-full xl:max-w-sm">
                   <div className="[&>div]:w-full">
                     <Calendar
@@ -870,14 +597,8 @@ export function SchedulingForm() {
                       onSelect={handleDayClick}
                       locale={ptBR}
                       disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date))}
-                      modifiers={{
-                        booked: appointmentDates,
-                        unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)),
-                      }}
-                      modifiersClassNames={{
-                        booked: "day-booked",
-                        unavailable: "text-muted-foreground opacity-50",
-                      }}
+                      modifiers={{ booked: appointmentDates, unavailable: (date) => isSunday(date) || holidays.some(h => isSameDay(h, date)) }}
+                      modifiersClassNames={{ booked: "day-booked", unavailable: "text-muted-foreground opacity-50" }}
                       className="border rounded-lg p-3"
                     />
                   </div>
@@ -885,32 +606,18 @@ export function SchedulingForm() {
               )}
 
               <div className="flex-1">
-                {!isClient || isLoading ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-6 w-1/2" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                ) : (
+                {!isClient || isLoading ? (<div className="space-y-4"><Skeleton className="h-6 w-1/2" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>) : (
                   <>
-                    <h3 className="font-bold text-lg mb-4">
-                      Agenda de {selectedDate ? format(selectedDate, 'PPP', { locale: ptBR }) : '...'}
-                    </h3>
+                    <h3 className="font-bold text-lg mb-4">Agenda de {selectedDate ? format(selectedDate, 'PPP', { locale: ptBR }) : '...'}</h3>
                     {isDayUnavailable ? (
-                      <div className="text-sm p-3 bg-destructive/10 text-destructive rounded-lg flex items-center gap-2">
-                        <XCircle className="h-5 w-5" />
-                        <span>Este dia não está disponível para agendamento.</span>
-                      </div>
+                      <div className="text-sm p-3 bg-destructive/10 text-destructive rounded-lg flex items-center gap-2"><XCircle className="h-5 w-5" /><span>Dia indisponível.</span></div>
                     ) : appointmentsOnSelectedDate.length > 0 ? (
                       <ul className="space-y-3">
                         {appointmentsOnSelectedDate.map(app => {
                           const status = (app.status as AppointmentStatus) || "Confirmado";
-                          const CurrentStatusIcon = statusConfig[status]?.icon || CalendarClock;
-                          const currentStatusColor = statusConfig[status]?.color || "text-blue-500";
-                          const currentStatusLabel = statusConfig[status]?.label || "Confirmado";
+                          const config = statusConfig[status];
+                          const Icon = config.icon;
                           const availableStatuses = Object.keys(statusConfig).filter(s => isAdmin || s !== 'Pago') as AppointmentStatus[];
-
                           return (
                             <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between gap-2">
                               <div className="flex-grow">
@@ -921,32 +628,19 @@ export function SchedulingForm() {
                               <div className="flex gap-2 self-end sm:self-center">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className={`flex items-center gap-1 h-auto px-2 py-1 text-xs rounded-full ${currentStatusColor}`}>
-                                      <CurrentStatusIcon className="h-3.5 w-3.5" />
-                                      {currentStatusLabel}
-                                    </Button>
+                                    <Button variant="ghost" size="sm" className={`flex items-center gap-1 h-auto px-2 py-1 text-xs rounded-full ${config.color}`}><Icon className="h-3.5 w-3.5" />{config.label}</Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent>
                                     {availableStatuses.map(key => {
-                                      const itemConfig = statusConfig[key];
-                                      const ItemIcon = itemConfig.icon;
-                                      return (
-                                        <DropdownMenuItem key={key} onSelect={() => handleUpdateStatus(app.id, key)}>
-                                          <ItemIcon className={`mr-2 h-4 w-4 ${itemConfig.color}`} />
-                                          <span>{itemConfig.label}</span>
-                                        </DropdownMenuItem>
-                                      );
+                                      const item = statusConfig[key];
+                                      return (<DropdownMenuItem key={key} onSelect={() => handleUpdateStatus(app.id, key)}><item.icon className={`mr-2 h-4 w-4 ${item.color}`} /><span>{item.label}</span></DropdownMenuItem>);
                                     })}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                                 {isAdmin && (
                                   <>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(app)}>
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteClick(app)}>
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(app)}><Edit className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8" onClick={() => handleDeleteClick(app)}><Trash2 className="h-4 w-4" /></Button>
                                   </>
                                 )}
                               </div>
@@ -954,9 +648,7 @@ export function SchedulingForm() {
                           )
                         })}
                       </ul>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Não há agendamentos para este dia.</p>
-                    )}
+                    ) : (<p className="text-sm text-muted-foreground">Sem agendamentos.</p>)}
                   </>
                 )}
               </div>
@@ -967,24 +659,15 @@ export function SchedulingForm() {
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o agendamento de
-              <span className="font-bold"> {appointmentToDelete?.patientName} </span>
-              às
-              <span className="font-bold"> {appointmentToDelete?.time} </span>
-              do dia
-              <span className="font-bold"> {appointmentToDelete ? format(parseISO(appointmentToDelete.date), 'dd/MM/yyyy') : ''}</span>.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita. Confirmar exclusão de {appointmentToDelete?.patientName} às {appointmentToDelete?.time}?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setAppointmentToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Confirmar Exclusão</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 }
-
-    
