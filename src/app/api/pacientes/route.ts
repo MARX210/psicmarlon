@@ -12,7 +12,6 @@ export async function GET(req: Request) {
 
   try {
     client = await pool.connect();
-    // Consulta garantindo nomes de colunas e tratando nulos para evitar erros no frontend
     const baseQuery = `
       SELECT 
         id, 
@@ -39,27 +38,20 @@ export async function GET(req: Request) {
 
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const query = `${baseQuery} WHERE cpf = $1 OR id = $1`;
-      const result = await client.query(query, [normalizedCpf]);
+      const result = await client.query(`${baseQuery} WHERE cpf = $1 OR id = $1`, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
-      // Busca flexível por nome, cpf ou id usando ILIKE para ignorar maiúsculas/minúsculas
-      const query = `${baseQuery} WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50`;
-      const result = await client.query(query, [`%${search}%`]);
+      const result = await client.query(`${baseQuery} WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50`, [`%${search}%`]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
-      const query = `${baseQuery} ORDER BY nome`;
-      const result = await client.query(query);
+      const result = await client.query(`${baseQuery} ORDER BY created_at DESC`);
       return NextResponse.json(result.rows, { status: 200 });
     }
-
   } catch (error: any) {
     console.error("Erro no GET de pacientes:", error);
-    return NextResponse.json({ 
-      error: "Erro ao buscar pacientes: " + (error.message || "Erro desconhecido") 
-    }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar pacientes: " + error.message }, { status: 500 });
   } finally {
-      if(client) client.release();
+    if (client) client.release();
   }
 }
 
@@ -72,10 +64,7 @@ export async function POST(req: Request) {
     const validation = patientRegistrationSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ 
-        error: "Dados inválidos no formulário.", 
-        details: validation.error.flatten() 
-      }, { status: 400 });
+      return NextResponse.json({ error: "Dados inválidos", details: validation.error.flatten() }, { status: 400 });
     }
 
     const {
@@ -84,22 +73,17 @@ export async function POST(req: Request) {
       numero, complemento, bairro, cidade, estado, pais
     } = validation.data;
     
-    // Tratamento de data opcional
     let nascimentoISO = null;
     if (nascimento && nascimento.trim() !== "" && nascimento.includes("/")) {
-        const parts = nascimento.split("/");
-        if (parts.length === 3) {
-            const [day, month, year] = parts;
-            nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-        }
+      const parts = nascimento.split("/");
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      }
     }
     
     const normalizedCelular = celular ? celular.replace(/\D/g, "") : "";
     const normalizedCpf = (cpf && cpf.trim() !== "") ? cpf.replace(/\D/g, "") : null;
-
-    if (!nome || !normalizedCelular) {
-        return NextResponse.json({ error: "Nome e Celular são obrigatórios." }, { status: 400 });
-    }
 
     const query = `
       INSERT INTO pacientes (
@@ -112,44 +96,18 @@ export async function POST(req: Request) {
     `;
 
     const values = [
-      cartaoId, 
-      nome, 
-      normalizedCpf, 
-      sexo || null, 
-      nascimentoISO, 
-      email || null, 
-      comoConheceu || null,
-      tipoPaciente || null, 
-      cartaoId, 
-      cep || null, 
-      logradouro || null, 
-      numero || null, 
-      complemento || null, 
-      bairro || null, 
-      cidade || null, 
-      estado || null, 
-      pais || "Brasil", 
-      normalizedCelular
+      cartaoId, nome, normalizedCpf, sexo || null, nascimentoISO, email || null,
+      comoConheceu || null, tipoPaciente || null, cartaoId, cep || null,
+      logradouro || null, numero || null, complemento || null, bairro || null,
+      cidade || null, estado || null, pais || "Brasil", normalizedCelular
     ];
 
     const result = await client.query(query, values);
-    
-    return NextResponse.json({ 
-      message: "Paciente adicionado com sucesso!", 
-      patient: result.rows[0] 
-    }, { status: 201 });
-
+    return NextResponse.json({ message: "Paciente adicionado!", patient: result.rows[0] }, { status: 201 });
   } catch (error: any) {
     console.error("ERRO NO POST de pacientes:", error);
-    
-    if (error.code === '23505') { 
-        return NextResponse.json({ error: 'Erro de duplicidade: CPF ou ID já cadastrado.' }, { status: 409 });
-    }
-    
-    return NextResponse.json({ 
-      error: "Erro no banco de dados: " + (error.message || "Erro interno.")
-    }, { status: 500 });
+    return NextResponse.json({ error: "Erro no banco de dados: " + error.message }, { status: 500 });
   } finally {
-      if(client) client.release();
+    if (client) client.release();
   }
 }
