@@ -140,6 +140,7 @@ export default function PacientesPage() {
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [isProntuarioOpen, setIsProntuarioOpen] = useState(false);
+  const [isUpdateOpen, setIsUpdateOpen] = useState(false);
   const [patientHistory, setPatientHistory] = useState<HistoryItem[]>([]);
   const [isLoadingProntuario, setIsLoadingProntuario] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
@@ -267,6 +268,7 @@ export default function PacientesPage() {
         });
         if (!res.ok) throw new Error('Erro ao atualizar');
         toast({ title: "Sucesso!", description: "Dados atualizados com sucesso." });
+        setIsUpdateOpen(false);
         setSelectedPatient(null);
         fetchAllData(searchTerm);
     } catch (error) {
@@ -416,6 +418,7 @@ export default function PacientesPage() {
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { 
                         setSelectedPatient(patient); 
                         setIsProntuarioOpen(false); 
+                        setIsUpdateOpen(true);
                         form.reset({ 
                             nome: patient.nome,
                             email: patient.email || '', 
@@ -436,7 +439,11 @@ export default function PacientesPage() {
                     }} title="Atualizar Cadastro">
                         <FileEdit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-sky-500" onClick={() => { setSelectedPatient(patient); setIsProntuarioOpen(true); }} title="Ver Prontuário">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-sky-500" onClick={() => { 
+                        setSelectedPatient(patient); 
+                        setIsUpdateOpen(false);
+                        setIsProntuarioOpen(true); 
+                    }} title="Ver Prontuário">
                         <FileText className="h-4 w-4" />
                     </Button>
                     {userRole === 'Admin' && (
@@ -454,7 +461,10 @@ export default function PacientesPage() {
       </div>
 
       {/* Dialog Edição Completa */}
-      <Dialog open={!!selectedPatient && !isProntuarioOpen} onOpenChange={v => !v && setSelectedPatient(null)}>
+      <Dialog open={isUpdateOpen} onOpenChange={(v) => {
+          setIsUpdateOpen(v);
+          if(!v) setSelectedPatient(null);
+      }}>
         <DialogContent className="sm:max-w-[700px] h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-6 pb-2 border-b">
             <DialogTitle>Atualizar Cadastro: {selectedPatient?.nome}</DialogTitle>
@@ -541,7 +551,10 @@ export default function PacientesPage() {
           </div>
 
           <div className="flex justify-end gap-2 p-4 border-t bg-background sticky bottom-0 z-20">
-              <Button type="button" variant="ghost" onClick={() => setSelectedPatient(null)}>Cancelar</Button>
+              <Button type="button" variant="ghost" onClick={() => {
+                  setIsUpdateOpen(false);
+                  setSelectedPatient(null);
+              }}>Cancelar</Button>
               <Button type="submit" disabled={isUpdating} onClick={form.handleSubmit(handleUpdatePatient)}>
                   {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Salvar Alterações
               </Button>
@@ -550,7 +563,10 @@ export default function PacientesPage() {
       </Dialog>
 
       {/* Dialog Prontuário Integrado */}
-      <Dialog open={isProntuarioOpen} onOpenChange={setIsProntuarioOpen}>
+      <Dialog open={isProntuarioOpen} onOpenChange={(v) => {
+          setIsProntuarioOpen(v);
+          if(!v) setSelectedPatient(null);
+      }}>
         <DialogContent className="sm:max-w-[700px] h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-6 border-b">
             <DialogTitle>Histórico Clínico e Evolução: {selectedPatient?.nome}</DialogTitle>
