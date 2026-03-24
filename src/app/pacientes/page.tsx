@@ -202,7 +202,7 @@ export default function PacientesPage() {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Não foi possível carregar os dados. Verifique a conexão.",
+        description: "Não foi possível carregar os dados. Verifique o banco de dados.",
       });
     } finally {
       setIsLoading(false);
@@ -530,20 +530,20 @@ export default function PacientesPage() {
                 <SelectItem value="name-asc">Ordem Alfabética (A-Z)</SelectItem>
                 <SelectItem value="name-desc">Ordem Alfabética (Z-A)</SelectItem>
                 <SelectItem value="date-asc">Recentemente Adicionados</SelectItem>
-                <SelectItem value="date-desc">Antigos</SelectItem>
+                <SelectItem value="date-desc">Mais Antigos</SelectItem>
               </SelectContent>
             </Select>
         </div>
       )}
 
-      <div className="border rounded-lg overflow-hidden bg-card">
+      <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Nº ID / Cartão</TableHead>
-              <TableHead>Celular/Telefone</TableHead>
-              <TableHead className="text-right">Ações Rápidas</TableHead>
+              <TableHead className="font-bold">Nome</TableHead>
+              <TableHead className="font-bold">Nº ID / Cartão</TableHead>
+              <TableHead className="font-bold">Celular/Telefone</TableHead>
+              <TableHead className="text-right font-bold">Ações Rápidas</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -565,7 +565,7 @@ export default function PacientesPage() {
                 <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEditModal(patient)} title="Atualizar Cadastro">
-                            <FileEdit className="h-4 w-4 text-blue-500" />
+                            <FileEdit className="h-4 w-4 text-primary" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => openProntuarioModal(patient)} title="Ver Prontuário">
                             <FileText className="h-4 w-4 text-sky-500" />
@@ -642,7 +642,7 @@ export default function PacientesPage() {
                 {/* Coluna de Histórico */}
                 <div className="space-y-4">
                     <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Últimas Consultas</h3>
-                    <ScrollArea className="h-96 border rounded-md">
+                    <ScrollArea className="h-[400px] border rounded-md">
                         {patientAppointments.length > 0 ? (
                         <ul className="space-y-2 p-3">
                             {patientAppointments.map(app => {

@@ -12,12 +12,12 @@ export async function GET(req: Request) {
 
   try {
     client = await pool.connect();
-    // Consulta base com todas as colunas necessárias
+    // Consulta base com todas as colunas necessárias, garantindo que colunas novas sejam tratadas
     const baseQuery = `
       SELECT 
-        id, nome, cpf, 
+        id, nome, COALESCE(cpf, '') as cpf, 
         to_char(nascimento, 'YYYY-MM-DD') as nascimento, 
-        celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, 
+        celular, COALESCE(email, '') as email, sexo, tipo_paciente, cartao_id, como_conheceu, 
         cep, logradouro, numero, complemento, bairro, cidade, estado, pais, 
         created_at 
       FROM pacientes

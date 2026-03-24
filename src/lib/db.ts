@@ -42,7 +42,7 @@ async function createTables() {
             );
         `);
 
-        // Lista de colunas para garantir que a tabela pacientes esteja completa
+        // Lista de colunas para garantir que a tabela pacientes esteja completa e flexível
         const columnsToCheck = [
             { name: 'cpf', type: 'VARCHAR(14) UNIQUE' },
             { name: 'sexo', type: 'VARCHAR(50)' },
@@ -73,11 +73,21 @@ async function createTables() {
                 END $$;
             `);
             
-            // Garante que a coluna possa ser nula (remove NOT NULL se existir)
+            // Garante que a coluna possa ser nula (remove NOT NULL se existir) para campos opcionais
             if (col.name !== 'nome' && col.name !== 'celular') {
                 await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
-                // Se for CPF, também remove a restrição UNIQUE se estiver causando problemas com valores vazios
-                // (Opcional, mas útil se muitos campos estiverem vazios)
+                
+                // Se for CPF, tenta remover a restrição UNIQUE se estiver causando problemas com valores vazios/nulos
+                if (col.name === 'cpf') {
+                   await client.query(`
+                     DO $$ 
+                     BEGIN 
+                       IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pacientes_cpf_key') THEN
+                         ALTER TABLE pacientes DROP CONSTRAINT pacientes_cpf_key;
+                       END IF;
+                     END $$;
+                   `);
+                }
             }
         }
 
