@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check } from "lucide-react";
+import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -317,9 +317,12 @@ export default function PacientesPage() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold font-headline">Gerenciar Pacientes</h1>
-          <p className="text-muted-foreground">Visualize e organize o histórico de seus pacientes.</p>
+          <Badge variant="secondary" className="px-2 py-1 flex items-center gap-1.5 text-sm">
+            <Users className="h-4 w-4" />
+            {patients.length} {patients.length === 1 ? 'Paciente' : 'Pacientes'}
+          </Badge>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <div className="relative flex-grow sm:w-64">
@@ -407,7 +410,7 @@ export default function PacientesPage() {
 
       {/* Dialog Edição Completa */}
       <Dialog open={!!selectedPatient && !isProntuarioOpen} onOpenChange={v => !v && setSelectedPatient(null)}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[700px] h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-6 pb-2 border-b">
             <DialogTitle>Atualizar Cadastro: {selectedPatient?.nome}</DialogTitle>
           </DialogHeader>
