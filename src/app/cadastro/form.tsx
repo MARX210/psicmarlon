@@ -50,7 +50,7 @@ export function RegistrationForm() {
   const selectedPatientType = form.watch("tipoPaciente");
   const cepValue = form.watch("cep");
 
-  // Geração de cartaoId automática (se não selecionado tipo, usa um prefixo genérico)
+  // Geração de cartaoId automática
   useEffect(() => {
     const timestamp = Date.now().toString(36);
     const randomPart = Math.random().toString(36).substring(2, 9);
@@ -176,7 +176,7 @@ export function RegistrationForm() {
                 <FormLabel>CPF</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="000.000.000-00"
+                    placeholder="000.000.000-00 (Opcional)"
                     {...field}
                     onChange={(e) => handleInputChange(e, "cpf", "cpf")}
                   />

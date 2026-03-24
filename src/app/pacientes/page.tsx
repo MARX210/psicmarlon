@@ -46,7 +46,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 type Patient = {
   id: string;
   nome: string;
-  cpf: string;
+  cpf: string | null;
   celular: string | null;
   email: string | null;
   cep: string | null;
@@ -57,6 +57,7 @@ type Patient = {
   cidade: string | null;
   estado: string | null;
   pais: string | null;
+  created_at: string;
 };
 
 type Appointment = {
@@ -116,8 +117,8 @@ const prontuarioSchema = z.object({
 type PatientUpdateFormValues = z.infer<typeof patientUpdateSchema>;
 type ProntuarioFormValues = z.infer<typeof prontuarioSchema>;
 
-const formatCpf = (cpf: string) => {
-  if (!cpf) return "N/A";
+const formatCpf = (cpf: string | null) => {
+  if (!cpf || cpf.trim() === "") return "N/A";
   return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 };
 
@@ -302,6 +303,10 @@ export default function PacientesPage() {
                 return a.nome.localeCompare(b.nome);
             case "name-desc":
                 return b.nome.localeCompare(a.nome);
+            case "date-asc":
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            case "date-desc":
+                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
             default:
                 return a.nome.localeCompare(b.nome);
         }
@@ -513,6 +518,8 @@ export default function PacientesPage() {
               <SelectContent>
                 <SelectItem value="name-asc">Ordem Alfabética (A-Z)</SelectItem>
                 <SelectItem value="name-desc">Ordem Alfabética (Z-A)</SelectItem>
+                <SelectItem value="date-asc">Recentemente Adicionados</SelectItem>
+                <SelectItem value="date-desc">Antigos</SelectItem>
               </SelectContent>
             </Select>
         </div>

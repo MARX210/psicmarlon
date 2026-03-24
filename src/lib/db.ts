@@ -33,12 +33,13 @@ async function createTables() {
             );
         `);
 
-        // Tabela Pacientes (Garante a estrutura base)
+        // Tabela Pacientes
         await client.query(`
             CREATE TABLE IF NOT EXISTS pacientes (
                 id VARCHAR(255) PRIMARY KEY,
                 nome TEXT NOT NULL,
-                celular VARCHAR(20) NOT NULL
+                celular VARCHAR(20) NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
             );
         `);
 
@@ -58,7 +59,8 @@ async function createTables() {
             { name: 'bairro', type: 'TEXT' },
             { name: 'cidade', type: 'TEXT' },
             { name: 'estado', type: 'VARCHAR(50)' },
-            { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' }
+            { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' },
+            { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT NOW()' }
         ];
 
         for (const col of columnsToCheck) {

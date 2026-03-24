@@ -14,15 +14,15 @@ export async function GET(req: Request) {
     client = await pool.connect();
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM pacientes WHERE cpf = $1 OR id = $1";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, created_at FROM pacientes WHERE cpf = $1 OR id = $1";
       const result = await client.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM pacientes WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, created_at FROM pacientes WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50";
       const result = await client.query(query, [`%${search}%`]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais FROM pacientes ORDER BY nome";
+      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, created_at FROM pacientes ORDER BY nome";
       const result = await client.query(query);
       return NextResponse.json(result.rows, { status: 200 });
     }
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     }
     
     const normalizedCelular = celular ? celular.replace(/\D/g, "") : "";
-    const normalizedCpf = cpf ? cpf.replace(/\D/g, "") : null;
+    const normalizedCpf = (cpf && cpf.trim() !== "") ? cpf.replace(/\D/g, "") : null;
 
     if (!nome || !normalizedCelular) {
         return NextResponse.json({ error: "Nome e Celular são obrigatórios." }, { status: 400 });
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     const values = [
       cartaoId, 
       nome, 
-      normalizedCpf || null, 
+      normalizedCpf, 
       sexo || null, 
       nascimentoISO, 
       email || null, 
@@ -113,7 +113,6 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("ERRO NO POST de pacientes:", error);
     
-    // Tratamento de erros específicos do Postgres
     if (error.code === '23505') { 
         if (error.constraint && error.constraint.includes('cpf')) {
             return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
@@ -121,7 +120,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Já existe um paciente com este Nº de Cartão/ID.' }, { status: 409 });
     }
     
-    // Retorna a mensagem de erro real do banco para facilitar o diagnóstico
     return NextResponse.json({ 
       error: "Erro no banco de dados: " + (error.message || "Erro interno desconhecido.")
     }, { status: 500 });
