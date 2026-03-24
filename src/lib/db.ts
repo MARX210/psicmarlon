@@ -21,7 +21,7 @@ async function createTables() {
     try {
         await client.query('BEGIN');
 
-        // Tabela Profissionais
+        // 1. Tabela Profissionais
         await client.query(`
             CREATE TABLE IF NOT EXISTS profissionais (
                 id SERIAL PRIMARY KEY,
@@ -33,7 +33,7 @@ async function createTables() {
             );
         `);
 
-        // Tabela Pacientes
+        // 2. Tabela Pacientes (Base)
         await client.query(`
             CREATE TABLE IF NOT EXISTS pacientes (
                 id VARCHAR(255) PRIMARY KEY,
@@ -42,9 +42,9 @@ async function createTables() {
             );
         `);
 
-        // Lista de colunas para garantir que a tabela pacientes esteja completa e flexível
-        const columnsToCheck = [
-            { name: 'cpf', type: 'VARCHAR(14) UNIQUE' },
+        // 3. Migração Segura de Colunas (Adiciona se não existir e remove NOT NULL)
+        const columns = [
+            { name: 'cpf', type: 'VARCHAR(14)' },
             { name: 'sexo', type: 'VARCHAR(50)' },
             { name: 'nascimento', type: 'DATE' },
             { name: 'email', type: 'TEXT' },
@@ -62,8 +62,8 @@ async function createTables() {
             { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT NOW()' }
         ];
 
-        for (const col of columnsToCheck) {
-            // Adiciona a coluna se não existir
+        for (const col of columns) {
+            // Tenta adicionar a coluna (se não existir)
             await client.query(`
                 DO $$ 
                 BEGIN 
@@ -73,25 +73,11 @@ async function createTables() {
                 END $$;
             `);
             
-            // Garante que a coluna possa ser nula (remove NOT NULL se existir) para campos opcionais
-            if (col.name !== 'nome' && col.name !== 'celular') {
-                await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
-                
-                // Se for CPF, tenta remover a restrição UNIQUE se estiver causando problemas com valores vazios/nulos
-                if (col.name === 'cpf') {
-                   await client.query(`
-                     DO $$ 
-                     BEGIN 
-                       IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'pacientes_cpf_key') THEN
-                         ALTER TABLE pacientes DROP CONSTRAINT pacientes_cpf_key;
-                       END IF;
-                     END $$;
-                   `);
-                }
-            }
+            // Garante que a coluna NÃO seja obrigatória (exceto nome e celular que já estão na base)
+            await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
         }
 
-        // Tabela de prontuários
+        // 4. Tabela de Prontuários
         await client.query(`
             CREATE TABLE IF NOT EXISTS prontuarios (
                 id SERIAL PRIMARY KEY,
@@ -104,7 +90,7 @@ async function createTables() {
             );
         `);
 
-        // Tabela de agendamentos
+        // 5. Tabela de Agendamentos
         await client.query(`
             CREATE TABLE IF NOT EXISTS agendamentos (
                 id SERIAL PRIMARY KEY,
@@ -120,7 +106,7 @@ async function createTables() {
             );
         `);
 
-        // Tabela de transações
+        // 6. Tabela de Transações
         await client.query(`
             CREATE TABLE IF NOT EXISTS transacoes (
                 id SERIAL PRIMARY KEY,
@@ -134,10 +120,10 @@ async function createTables() {
         `);
 
         await client.query('COMMIT');
-        console.log("Banco de dados sincronizado.");
+        console.log("Banco de dados sincronizado com sucesso.");
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error("Erro ao sincronizar banco de dados:", err);
+        console.error("Erro crítico ao sincronizar banco de dados:", err);
     } finally {
         client.release();
     }

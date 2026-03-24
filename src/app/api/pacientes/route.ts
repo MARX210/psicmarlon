@@ -12,13 +12,27 @@ export async function GET(req: Request) {
 
   try {
     client = await pool.connect();
-    // Consulta base com todas as colunas necessárias, garantindo que colunas novas sejam tratadas
+    // Consulta garantindo nomes de colunas e tratando nulos para evitar erros no frontend
     const baseQuery = `
       SELECT 
-        id, nome, COALESCE(cpf, '') as cpf, 
+        id, 
+        nome, 
+        COALESCE(cpf, '') as cpf, 
         to_char(nascimento, 'YYYY-MM-DD') as nascimento, 
-        celular, COALESCE(email, '') as email, sexo, tipo_paciente, cartao_id, como_conheceu, 
-        cep, logradouro, numero, complemento, bairro, cidade, estado, pais, 
+        celular, 
+        COALESCE(email, '') as email, 
+        sexo, 
+        tipo_paciente, 
+        cartao_id, 
+        como_conheceu, 
+        cep, 
+        logradouro, 
+        numero, 
+        complemento, 
+        bairro, 
+        cidade, 
+        estado, 
+        pais, 
         created_at 
       FROM pacientes
     `;
@@ -29,6 +43,7 @@ export async function GET(req: Request) {
       const result = await client.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
+      // Busca flexível por nome, cpf ou id
       const query = `${baseQuery} WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50`;
       const result = await client.query(query, [`%${search}%`]);
       return NextResponse.json(result.rows, { status: 200 });
@@ -38,9 +53,11 @@ export async function GET(req: Request) {
       return NextResponse.json(result.rows, { status: 200 });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro no GET de pacientes:", error);
-    return NextResponse.json({ error: "Erro ao buscar paciente(s). Verifique se o banco está atualizado." }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Erro ao buscar pacientes: " + (error.message || "Erro desconhecido") 
+    }, { status: 500 });
   } finally {
       if(client) client.release();
   }
@@ -67,6 +84,7 @@ export async function POST(req: Request) {
       numero, complemento, bairro, cidade, estado, pais
     } = validation.data;
     
+    // Tratamento de data opcional
     let nascimentoISO = null;
     if (nascimento && nascimento.trim() !== "" && nascimento.includes("/")) {
         const parts = nascimento.split("/");
@@ -125,14 +143,11 @@ export async function POST(req: Request) {
     console.error("ERRO NO POST de pacientes:", error);
     
     if (error.code === '23505') { 
-        if (error.constraint && error.constraint.includes('cpf')) {
-            return NextResponse.json({ error: 'Já existe um paciente com este CPF.' }, { status: 409 });
-        }
-        return NextResponse.json({ error: 'Já existe um paciente com este Nº de Cartão/ID.' }, { status: 409 });
+        return NextResponse.json({ error: 'Erro de duplicidade: CPF ou ID já cadastrado.' }, { status: 409 });
     }
     
     return NextResponse.json({ 
-      error: "Erro no banco de dados: " + (error.message || "Erro interno desconhecido.")
+      error: "Erro no banco de dados: " + (error.message || "Erro interno.")
     }, { status: 500 });
   } finally {
       if(client) client.release();
