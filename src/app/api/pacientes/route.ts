@@ -12,24 +12,35 @@ export async function GET(req: Request) {
 
   try {
     client = await pool.connect();
+    // Consulta base com todas as colunas necessárias
+    const baseQuery = `
+      SELECT 
+        id, nome, cpf, 
+        to_char(nascimento, 'YYYY-MM-DD') as nascimento, 
+        celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, 
+        cep, logradouro, numero, complemento, bairro, cidade, estado, pais, 
+        created_at 
+      FROM pacientes
+    `;
+
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, created_at FROM pacientes WHERE cpf = $1 OR id = $1";
+      const query = `${baseQuery} WHERE cpf = $1 OR id = $1`;
       const result = await client.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, created_at FROM pacientes WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50";
+      const query = `${baseQuery} WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50`;
       const result = await client.query(query, [`%${search}%`]);
       return NextResponse.json(result.rows, { status: 200 });
     } else {
-      const query = "SELECT id, nome, cpf, to_char(nascimento, 'YYYY-MM-DD') as nascimento, celular, email, sexo, tipo_paciente, cartao_id, como_conheceu, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, created_at FROM pacientes ORDER BY nome";
+      const query = `${baseQuery} ORDER BY nome`;
       const result = await client.query(query);
       return NextResponse.json(result.rows, { status: 200 });
     }
 
   } catch (error) {
     console.error("Erro no GET de pacientes:", error);
-    return NextResponse.json({ error: "Erro ao buscar paciente(s)" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar paciente(s). Verifique se o banco está atualizado." }, { status: 500 });
   } finally {
       if(client) client.release();
   }
@@ -76,9 +87,9 @@ export async function POST(req: Request) {
       INSERT INTO pacientes (
         id, nome, cpf, sexo, nascimento, email, como_conheceu,
         tipo_paciente, cartao_id, cep, logradouro,
-        numero, complemento, bairro, cidade, estado, pais, celular
+        numero, complemento, bairro, cidade, estado, pais, celular, created_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
       RETURNING *;
     `;
 

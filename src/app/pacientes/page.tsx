@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Users, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText, PlusCircle, User, FileEdit, Trash2, Filter } from "lucide-react";
+import { Loader2, Search, Edit, CalendarClock, CheckCircle2, XCircle, AlertCircle, CreditCard, MessageCircle, FileText, User, FileEdit, Trash2, Filter, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,7 @@ import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 
 type Patient = {
@@ -117,9 +118,16 @@ const prontuarioSchema = z.object({
 type PatientUpdateFormValues = z.infer<typeof patientUpdateSchema>;
 type ProntuarioFormValues = z.infer<typeof prontuarioSchema>;
 
-const formatCpf = (cpf: string | null) => {
-  if (!cpf || cpf.trim() === "") return "N/A";
-  return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+const formatPhone = (phone: string | null) => {
+    if (!phone) return "N/A";
+    const clean = phone.replace(/\D/g, "");
+    if (clean.length === 11) {
+        return clean.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    }
+    if (clean.length === 10) {
+        return clean.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    }
+    return phone;
 };
 
 
@@ -194,7 +202,7 @@ export default function PacientesPage() {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Não foi possível carregar os dados.",
+        description: "Não foi possível carregar os dados. Verifique a conexão.",
       });
     } finally {
       setIsLoading(false);
@@ -465,11 +473,14 @@ export default function PacientesPage() {
   };
 
 
-  const handleRowClick = (patient: Patient) => {
+  const openEditModal = (patient: Patient) => {
     setSelectedPatient(patient);
-    if (!isAdmin) {
-      setIsProntuarioOpen(true);
-    }
+    setIsProntuarioOpen(false);
+  }
+
+  const openProntuarioModal = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setIsProntuarioOpen(true);
   }
 
 
@@ -490,7 +501,7 @@ export default function PacientesPage() {
           {isAdmin ? "Gerenciar Pacientes" : "Meus Pacientes"}
         </h1>
         <p className="text-center text-muted-foreground max-w-2xl mx-auto">
-          {isAdmin ? "Gerencie as informações dos seus pacientes em um só lugar." : "Acesse o prontuário dos pacientes que você atende."}
+          {isAdmin ? "Gerencie as informações dos seus pacientes, histórico clínico e ações de contato." : "Acesse o prontuário dos pacientes que você atende."}
         </p>
       </div>
       
@@ -498,7 +509,7 @@ export default function PacientesPage() {
         <div className="flex justify-center flex-col sm:flex-row gap-4">
           <div className="relative w-full max-w-md">
             <Input 
-              placeholder="Buscar por Nome..."
+              placeholder="Buscar por Nome, ID..."
               value={searchTerm}
               onChange={e => {
                 setSearchTerm(e.target.value);
@@ -525,42 +536,51 @@ export default function PacientesPage() {
         </div>
       )}
 
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-hidden bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>Nº ID</TableHead>
-              <TableHead className="hidden sm:table-cell">{isAdmin ? "CPF" : ""}</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead>Nº ID / Cartão</TableHead>
+              <TableHead>Celular/Telefone</TableHead>
+              <TableHead className="text-right">Ações Rápidas</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedPatients.length > 0 ? paginatedPatients.map(patient => (
               <TableRow key={patient.id} >
-                <TableCell className="font-medium flex items-center gap-2 cursor-pointer" onClick={() => handleRowClick(patient)}>
-                    <User className="h-4 w-4 text-muted-foreground"/> {patient.nome}
+                <TableCell className="font-medium">
+                    <button onClick={() => openEditModal(patient)} className="flex items-center gap-2 hover:text-primary transition-colors text-left">
+                        <User className="h-4 w-4 text-muted-foreground"/> {patient.nome}
+                    </button>
                 </TableCell>
-                <TableCell className="cursor-pointer" onClick={() => handleRowClick(patient)}>{patient.id}</TableCell>
-                <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(patient)}>
-                    {isAdmin ? formatCpf(patient.cpf) : ""}
+                <TableCell>
+                    <Badge variant="outline" className="font-mono text-xs">{patient.id}</Badge>
+                </TableCell>
+                <TableCell>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <Phone className="h-3.5 w-3.5"/> {formatPhone(patient.celular)}
+                    </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleRowClick(patient)}>
-                    {isAdmin ? <Edit className="h-4 w-4" /> : <FileEdit className="h-4 w-4" />}
-                    <span className="sr-only">{isAdmin ? "Ver Detalhes" : "Ver Prontuário"}</span>
-                  </Button>
-                   {isAdmin && (
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(patient)}>
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Excluir Paciente</span>
-                    </Button>
-                  )}
+                    <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEditModal(patient)} title="Atualizar Cadastro">
+                            <FileEdit className="h-4 w-4 text-blue-500" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => openProntuarioModal(patient)} title="Ver Prontuário">
+                            <FileText className="h-4 w-4 text-sky-500" />
+                        </Button>
+                        {isAdmin && (
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteClick(patient)} title="Excluir Paciente">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
                 </TableCell>
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center h-24">
+                <TableCell colSpan={4} className="text-center h-24">
                   {isAdmin ? "Nenhum paciente encontrado." : "Nenhum paciente vinculado ao seu perfil de atendimento."}
                 </TableCell>
               </TableRow>
@@ -598,9 +618,9 @@ export default function PacientesPage() {
         <Dialog open={!!selectedPatient && isAdmin && !isProntuarioOpen} onOpenChange={(isOpen) => !isOpen && setSelectedPatient(null)}>
             <DialogContent className="sm:max-w-[800px] md:max-w-[900px] max-h-[90vh] flex flex-col">
             <DialogHeader>
-                <DialogTitle>Detalhes de {selectedPatient?.nome}</DialogTitle>
+                <DialogTitle>Cadastro de {selectedPatient?.nome}</DialogTitle>
                 <DialogDescription>
-                Visualize, atualize os dados ou entre em contato com o paciente.
+                Atualize os dados cadastrais ou entre em contato com o paciente via WhatsApp.
                 </DialogDescription>
             </DialogHeader>
             
@@ -608,20 +628,20 @@ export default function PacientesPage() {
                 <Button onClick={() => {
                     if (!selectedPatient) return;
                     setIsWhatsAppDialogOpen(true);
-                }} disabled={!selectedPatient?.celular}>
+                }} disabled={!selectedPatient?.celular} className="bg-green-600 hover:bg-green-700">
                     <MessageCircle className="mr-2 h-4 w-4" />
-                    Enviar WhatsApp
+                    Enviar Mensagem (WhatsApp)
                 </Button>
                 <Button variant="outline" onClick={() => setIsProntuarioOpen(true)}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Ver Prontuário
+                    <FileText className="mr-2 h-4 w-4 text-sky-500" />
+                    Acessar Prontuário
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 flex-grow overflow-y-auto pr-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 flex-grow overflow-y-auto pr-4 pt-4">
                 {/* Coluna de Histórico */}
                 <div className="space-y-4">
-                    <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Histórico de Consultas</h3>
+                    <h3 className="font-semibold text-lg flex items-center gap-2"><CalendarClock className="w-5 h-5"/> Últimas Consultas</h3>
                     <ScrollArea className="h-96 border rounded-md">
                         {patientAppointments.length > 0 ? (
                         <ul className="space-y-2 p-3">
@@ -653,12 +673,12 @@ export default function PacientesPage() {
                 
                 {/* Coluna de Edição */}
                 <div className="space-y-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Dados Cadastrais</h3>
+                <h3 className="font-semibold text-lg border-b pb-2">Atualizar Cadastro</h3>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="space-y-4">
                     <FormField control={form.control} name="celular" render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Celular</FormLabel>
+                        <FormLabel>Celular (Obrigatório)</FormLabel>
                         <FormControl>
                             <Input placeholder="(99) 99999-9999" {...field} />
                         </FormControl>
@@ -761,15 +781,15 @@ export default function PacientesPage() {
       <Dialog open={isWhatsAppDialogOpen} onOpenChange={setIsWhatsAppDialogOpen}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Enviar Mensagem via WhatsApp</DialogTitle>
+                <DialogTitle>Mensagem para {selectedPatient?.nome}</DialogTitle>
                 <DialogDescription>
-                    Selecione um modelo ou escreva uma mensagem personalizada para {selectedPatient?.nome}.
+                    O link abrirá a conversa já com a mensagem pronta para envio.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <Select onValueChange={(value: keyof typeof messageTemplates | "custom") => handleTemplateChange(value)}>
                     <SelectTrigger>
-                        <SelectValue placeholder="Selecione um modelo de mensagem" />
+                        <SelectValue placeholder="Escolha um modelo de mensagem" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="confirmacao">Confirmar consulta</SelectItem>
@@ -779,7 +799,7 @@ export default function PacientesPage() {
                     </SelectContent>
                 </Select>
                 <Textarea 
-                    placeholder="Sua mensagem aqui..."
+                    placeholder="Escreva sua mensagem aqui..."
                     value={whatsappMessage}
                     onChange={(e) => setWhatsappMessage(e.target.value)}
                     rows={5}
@@ -787,7 +807,7 @@ export default function PacientesPage() {
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsWhatsAppDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleSendWhatsApp}>Abrir WhatsApp</Button>
+                <Button onClick={handleSendWhatsApp} className="bg-green-600 hover:bg-green-700">Abrir WhatsApp</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -802,14 +822,14 @@ export default function PacientesPage() {
               <DialogHeader>
                   <DialogTitle>Prontuário de {selectedPatient?.nome}</DialogTitle>
                   <DialogDescription>
-                      Visualize o histórico de consultas e as anotações do paciente.
+                      Histórico de evoluções e anotações clínicas.
                   </DialogDescription>
               </DialogHeader>
               
               <div className="flex-grow space-y-4 overflow-y-hidden flex flex-col">
                   
                   <div className="space-y-2">
-                      <h3 className="font-semibold text-md">Histórico de Consultas</h3>
+                      <h3 className="font-semibold text-md">Registro de Consultas</h3>
                        <ScrollArea className="h-40 border rounded-lg p-2">
                            {patientAppointments.length > 0 ? (
                               <ul className="space-y-2 p-2">
@@ -840,7 +860,7 @@ export default function PacientesPage() {
                   </div>
                   
                   <div className="space-y-2 flex-grow flex flex-col min-h-0">
-                    <h3 className="font-semibold text-md">Anotações Anteriores</h3>
+                    <h3 className="font-semibold text-md">Evolução do Paciente</h3>
                     <ScrollArea className="flex-grow border rounded-lg p-2">
                           {isLoadingProntuario ? (
                               <div className="flex justify-center items-center h-32">
@@ -849,31 +869,31 @@ export default function PacientesPage() {
                           ) : prontuarios.length > 0 ? (
                               <div className="space-y-4 p-2">
                                   {prontuarios.map(p => (
-                                      <div key={p.id} className="text-sm p-3 bg-muted rounded-lg">
+                                      <div key={p.id} className="text-sm p-3 bg-muted rounded-lg border-l-4 border-primary">
                                           <p className="whitespace-pre-wrap">{p.conteudo}</p>
-                                          <p className="text-xs text-muted-foreground mt-2 pt-2 border-t text-right">
-                                              Por <span className="font-bold">{p.profissional_nome}</span> em {format(parseISO(p.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                          <p className="text-xs text-muted-foreground mt-2 pt-2 border-t text-right italic">
+                                              Registrado por <span className="font-bold">{p.profissional_nome}</span> em {format(parseISO(p.data_registro), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                                           </p>
                                       </div>
                                   ))}
                               </div>
                           ) : (
-                              <p className="text-sm text-muted-foreground text-center py-10">Nenhuma anotação encontrada.</p>
+                              <p className="text-sm text-muted-foreground text-center py-10">Ainda não há anotações para este paciente.</p>
                           )}
                     </ScrollArea>
                   </div>
 
                   <Form {...prontuarioForm}>
-                      <form onSubmit={prontuarioForm.handleSubmit(handleSaveProntuario)} className="space-y-4 pt-4">
+                      <form onSubmit={prontuarioForm.handleSubmit(handleSaveProntuario)} className="space-y-4 pt-4 border-t">
                           <FormField
                               control={prontuarioForm.control}
                               name="conteudo"
                               render={({ field }) => (
                                   <FormItem>
-                                      <FormLabel className="font-semibold">Nova Anotação</FormLabel>
+                                      <FormLabel className="font-semibold">Nova Evolução/Anotação</FormLabel>
                                       <FormControl>
                                           <Textarea 
-                                              placeholder={`Anote aqui a evolução do paciente... (Registrando como ${userName})`} 
+                                              placeholder={`Descreva aqui a evolução do atendimento... (Registrando como ${userName})`} 
                                               rows={3} 
                                               {...field} />
                                       </FormControl>
@@ -885,7 +905,7 @@ export default function PacientesPage() {
                               <Button type="button" variant="ghost" onClick={() => setIsProntuarioOpen(false)}>Cancelar</Button>
                               <Button type="submit" disabled={prontuarioForm.formState.isSubmitting}>
                                   {prontuarioForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                  Salvar Anotação
+                                  Salvar no Prontuário
                               </Button>
                           </DialogFooter>
                       </form>
@@ -897,11 +917,11 @@ export default function PacientesPage() {
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Paciente?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o paciente
+              Esta ação excluirá permanentemente o paciente
               <span className="font-bold"> {patientToDelete?.nome} </span>
-              e todos os seus dados associados.
+              e todos os dados associados (agendamentos e prontuários). Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

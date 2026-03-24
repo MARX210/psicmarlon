@@ -42,7 +42,7 @@ async function createTables() {
             );
         `);
 
-        // Lista de colunas para a tabela pacientes e suas definições
+        // Lista de colunas para garantir que a tabela pacientes esteja completa
         const columnsToCheck = [
             { name: 'cpf', type: 'VARCHAR(14) UNIQUE' },
             { name: 'sexo', type: 'VARCHAR(50)' },
@@ -74,13 +74,11 @@ async function createTables() {
             `);
             
             // Garante que a coluna possa ser nula (remove NOT NULL se existir)
-            // Exceto para nome e celular que são obrigatórios
             if (col.name !== 'nome' && col.name !== 'celular') {
                 await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
+                // Se for CPF, também remove a restrição UNIQUE se estiver causando problemas com valores vazios
+                // (Opcional, mas útil se muitos campos estiverem vazios)
             }
-
-            // Removendo explicitamente a restrição de unicidade do CPF caso ela exista e esteja causando problemas
-            // (Opcional, mas útil se você quiser permitir CPFs duplicados ou vazios que o Postgres pode interpretar mal)
         }
 
         // Tabela de prontuários
