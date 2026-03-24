@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       const result = await client.query(query, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
-      // Busca flexível por nome, cpf ou id
+      // Busca flexível por nome, cpf ou id usando ILIKE para ignorar maiúsculas/minúsculas
       const query = `${baseQuery} WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50`;
       const result = await client.query(query, [`%${search}%`]);
       return NextResponse.json(result.rows, { status: 200 });

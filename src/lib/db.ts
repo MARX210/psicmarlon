@@ -42,7 +42,7 @@ async function createTables() {
             );
         `);
 
-        // 3. Migração Segura de Colunas (Adiciona se não existir e remove NOT NULL)
+        // 3. Migração Segura de Colunas (Garante que colunas opcionais existam e não sejam NOT NULL)
         const columns = [
             { name: 'cpf', type: 'VARCHAR(14)' },
             { name: 'sexo', type: 'VARCHAR(50)' },
@@ -63,18 +63,16 @@ async function createTables() {
         ];
 
         for (const col of columns) {
-            // Tenta adicionar a coluna (se não existir)
             await client.query(`
                 DO $$ 
                 BEGIN 
                     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pacientes' AND column_name='${col.name}') THEN
                         ALTER TABLE pacientes ADD COLUMN ${col.name} ${col.type};
                     END IF;
+                    -- Garante que a coluna seja opcional (exceto se for nome/celular que já tratamos)
+                    ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;
                 END $$;
             `);
-            
-            // Garante que a coluna NÃO seja obrigatória (exceto nome e celular que já estão na base)
-            await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
         }
 
         // 4. Tabela de Prontuários

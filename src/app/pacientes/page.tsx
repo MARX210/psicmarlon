@@ -277,6 +277,7 @@ export default function PacientesPage() {
   const handleSendWhatsApp = () => {
     if (!selectedPatient?.celular) return;
     let phoneNumber = selectedPatient.celular.replace(/\D/g, "");
+    // Adiciona o prefixo do Brasil se necessário
     if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) {
       phoneNumber = '55' + phoneNumber;
     }
