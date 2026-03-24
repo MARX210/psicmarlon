@@ -2,8 +2,8 @@
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id || isNaN(Number(id))) {
     return NextResponse.json({ error: "ID da transação inválido" }, { status: 400 });
   }

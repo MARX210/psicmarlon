@@ -16,8 +16,8 @@ const patientUpdateSchema = z.object({
   pais: z.string().optional().or(z.literal('')),
 });
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ error: "ID do paciente não fornecido" }, { status: 400 });
   }
@@ -43,7 +43,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     const result = await client.query(
       `
-      UPDATE Pacientes
+      UPDATE pacientes
       SET 
         email = $1, celular = $2, cep = $3, logradouro = $4, numero = $5, 
         complemento = $6, bairro = $7, cidade = $8, estado = $9, pais = $10
@@ -72,8 +72,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ error: "ID do paciente não fornecido" }, { status: 400 });
   }
@@ -84,14 +84,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   try {
     client = await pool.connect();
     
-    // As FKs para agendamentos e prontuarios devem ter ON DELETE CASCADE
     const result = await client.query("DELETE FROM pacientes WHERE id = $1 RETURNING *", [id]);
 
     if (result.rowCount === 0) {
       return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
     }
     
-    return new Response(null, { status: 204 }); // 204 No Content for successful deletion
+    return new Response(null, { status: 204 });
 
   } catch (error) {
     console.error("Erro ao excluir paciente:", error);

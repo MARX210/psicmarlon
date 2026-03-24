@@ -15,11 +15,11 @@ const appointmentUpdateSchema = z.object({
 
 const statusUpdateSchema = z.object({
   status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou", "Pago"]),
-  userRole: z.string().optional(), // Recebe o 'userRole' do frontend
+  userRole: z.string().optional(),
 });
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ error: "ID do agendamento não fornecido" }, { status: 400 });
   }
@@ -46,8 +46,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     let updatedAppointmentData: any;
     let newStatus: string;
 
-    // Se a requisição tem mais de uma chave, é uma atualização completa
-    if (Object.keys(body).length > 2) {
+    if (Object.keys(body).length > 2 && !body.statusOnly) {
       const validation = appointmentUpdateSchema.safeParse(body);
       if (!validation.success) {
         await client.query('ROLLBACK');
@@ -72,7 +71,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         [data.date, data.time, data.type, data.duration, data.price, newStatus, data.professional, id]
       );
       updatedAppointmentData = result.rows[0];
-    } else { // Senão, é uma atualização de status
+    } else {
       const validation = statusUpdateSchema.safeParse(body);
       if (!validation.success) {
         await client.query('ROLLBACK');
@@ -80,7 +79,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
       const { status, userRole } = validation.data;
 
-      // REGRA DE NEGÓCIO: Apenas Admins podem marcar como "Pago"
       if (status === 'Pago' && userRole !== 'Admin') {
           await client.query('ROLLBACK');
           return NextResponse.json({ error: "Apenas administradores podem marcar uma consulta como paga." }, { status: 403 });
@@ -93,7 +91,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     if (newStatus === 'Pago' && oldStatus !== 'Pago') {
       await client.query(
-        `INSERT INTO transacoes (date, description, amount, type, agendamento_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (agendamento_id) DO NOTHING`,
+        `INSERT INTO transacoes (date, description, amount, type, agendamento_id) 
+         VALUES ($1, $2, $3, $4, $5) 
+         ON CONFLICT (agendamento_id) DO UPDATE SET amount = EXCLUDED.amount`,
         [updatedAppointmentData.date, `Consulta - ${patientName}`, updatedAppointmentData.price, 'receita_consulta', id]
       );
     } else if (newStatus !== 'Pago' && oldStatus === 'Pago') {
@@ -123,8 +123,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ error: "ID do agendamento não fornecido" }, { status: 400 });
   }

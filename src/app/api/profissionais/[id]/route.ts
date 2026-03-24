@@ -14,8 +14,8 @@ const professionalUpdateSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id || isNaN(Number(id))) {
     return NextResponse.json({ error: "ID do profissional inválido" }, { status: 400 });
   }
@@ -88,8 +88,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!id || isNaN(Number(id))) {
     return NextResponse.json({ error: "ID do profissional inválido" }, { status: 400 });
   }
