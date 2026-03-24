@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, ArrowUpDown, Filter, User } from "lucide-react";
+import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, ArrowUpDown, Filter, User, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,12 +48,36 @@ type Patient = {
   cpf: string | null;
   celular: string | null;
   email: string | null;
+  sexo: string | null;
+  nascimento: string | null;
+  como_conheceu: string | null;
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+  pais: string | null;
   created_at: string;
 };
 
 const patientUpdateSchema = z.object({
-  email: z.string().email("Email inválido").optional().or(z.literal('')),
-  celular: z.string().optional().or(z.literal('')),
+  nome: z.string().min(1, "O nome é obrigatório."),
+  email: z.string().email("Email inválido").optional().nullable().or(z.literal('')),
+  celular: z.string().min(10, "Celular é obrigatório."),
+  cpf: z.string().optional().nullable().or(z.literal('')),
+  sexo: z.string().optional().nullable().or(z.literal('')),
+  nascimento: z.string().optional().nullable().or(z.literal('')),
+  como_conheceu: z.string().optional().nullable().or(z.literal('')),
+  cep: z.string().optional().nullable().or(z.literal('')),
+  logradouro: z.string().optional().nullable().or(z.literal('')),
+  numero: z.string().optional().nullable().or(z.literal('')),
+  complemento: z.string().optional().nullable().or(z.literal('')),
+  bairro: z.string().optional().nullable().or(z.literal('')),
+  cidade: z.string().optional().nullable().or(z.literal('')),
+  estado: z.string().optional().nullable().or(z.literal('')),
+  pais: z.string().optional().nullable().or(z.literal('')),
 });
 
 const prontuarioSchema = z.object({
@@ -84,7 +107,7 @@ export default function PacientesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("date-desc"); // novos por padrão
+  const [sortBy, setSortBy] = useState("date-desc");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -100,6 +123,8 @@ export default function PacientesPage() {
   const { toast } = useToast();
   const form = useForm<PatientUpdateFormValues>({ resolver: zodResolver(patientUpdateSchema) });
   const prontuarioForm = useForm<ProntuarioFormValues>({ resolver: zodResolver(prontuarioSchema), defaultValues: { conteudo: "" } });
+
+  const cepValue = form.watch("cep");
 
   const fetchAllData = useCallback(async (searchQuery = "") => {
     setIsLoading(true);
@@ -125,6 +150,24 @@ export default function PacientesPage() {
     const delay = setTimeout(() => fetchAllData(searchTerm), 500);
     return () => clearTimeout(delay);
   }, [searchTerm, fetchAllData]);
+
+  useEffect(() => {
+    const cleanCep = cepValue?.replace(/\D/g, "") || "";
+    if (cleanCep.length === 8) {
+      fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.erro) {
+            form.setValue("logradouro", data.logradouro);
+            form.setValue("bairro", data.bairro);
+            form.setValue("cidade", data.localidade);
+            form.setValue("estado", data.uf);
+            form.setValue("pais", "Brasil");
+          }
+        })
+        .catch(() => {});
+    }
+  }, [cepValue, form]);
 
   const sortedPatients = useMemo(() => {
     const result = [...patients];
@@ -216,6 +259,57 @@ export default function PacientesPage() {
     }
   };
 
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    fieldName: keyof PatientUpdateFormValues,
+    mask: "cpf" | "nascimento" | "cep" | "celular"
+  ) => {
+    let value = e.target.value;
+    const cleanValue = value.replace(/\D/g, "");
+    let maskedValue = cleanValue;
+
+    switch (mask) {
+      case "cpf":
+        maskedValue = cleanValue
+          .replace(/(\d{3})(\d)/, "$1.$2")
+          .replace(/(\d{3})(\d)/, "$1.$2")
+          .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        break;
+      case "nascimento":
+        maskedValue = cleanValue
+          .replace(/(\d{2})(\d)/, "$1/$2")
+          .replace(/(\d{2})(\d)/, "$1/$2");
+        break;
+      case "cep":
+        maskedValue = cleanValue.replace(/(\d{5})(\d)/, "$1-$2");
+        break;
+      case "celular":
+        if (cleanValue.length > 10) {
+          maskedValue = cleanValue
+            .replace(/(\d{2})(\d)/, "($1) $2")
+            .replace(/(\d{5})(\d)/, "$1-$2");
+        } else {
+          maskedValue = cleanValue
+            .replace(/(\d{2})(\d)/, "($1) $2")
+            .replace(/(\d{4})(\d)/, "$1-$2");
+        }
+        break;
+    }
+
+    const maxLength = { cpf: 14, nascimento: 10, cep: 9, celular: 15 };
+    form.setValue(fieldName, maskedValue.slice(0, maxLength[mask]));
+  };
+
+  const formatDateForInput = (dateString: string | null) => {
+    if (!dateString) return "";
+    try {
+      const date = parseISO(dateString);
+      return format(date, "dd/MM/yyyy");
+    } catch {
+      return dateString;
+    }
+  };
+
   if (!isClient) return null;
 
   return (
@@ -269,7 +363,27 @@ export default function PacientesPage() {
                 <TableCell><Badge variant="outline" className="font-mono">{patient.id}</Badge></TableCell>
                 <TableCell className="text-muted-foreground font-mono">{formatPhone(patient.celular)}</TableCell>
                 <TableCell className="text-right flex justify-end gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setSelectedPatient(patient); setIsProntuarioOpen(false); form.reset({ email: patient.email || '', celular: patient.celular || '' }); }} title="Atualizar Cadastro">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { 
+                        setSelectedPatient(patient); 
+                        setIsProntuarioOpen(false); 
+                        form.reset({ 
+                            nome: patient.nome,
+                            email: patient.email || '', 
+                            celular: patient.celular || '',
+                            cpf: patient.cpf || '',
+                            sexo: patient.sexo || '',
+                            nascimento: formatDateForInput(patient.nascimento),
+                            como_conheceu: patient.como_conheceu || '',
+                            cep: patient.cep || '',
+                            logradouro: patient.logradouro || '',
+                            numero: patient.numero || '',
+                            complemento: patient.complemento || '',
+                            bairro: patient.bairro || '',
+                            cidade: patient.cidade || '',
+                            estado: patient.estado || '',
+                            pais: patient.pais || 'Brasil',
+                        }); 
+                    }} title="Atualizar Cadastro">
                         <FileEdit className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-sky-500" onClick={() => { setSelectedPatient(patient); setIsProntuarioOpen(true); }} title="Ver Prontuário">
@@ -289,29 +403,97 @@ export default function PacientesPage() {
         </Table>
       </div>
 
-      {/* Dialog Edição */}
+      {/* Dialog Edição Completa */}
       <Dialog open={!!selectedPatient && !isProntuarioOpen} onOpenChange={v => !v && setSelectedPatient(null)}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader><DialogTitle>Atualizar Cadastro: {selectedPatient?.nome}</DialogTitle></DialogHeader>
-          <div className="flex gap-2 border-b pb-4 mt-2">
-            <Button onClick={() => { setWhatsappMessage(`Olá, ${selectedPatient?.nome?.split(" ")[0]}! Tudo bem?`); setIsWhatsAppDialogOpen(true); }} className="bg-green-600 hover:bg-green-700 w-full">
-                <MessageCircle className="mr-2 h-4 w-4" /> Iniciar conversa no WhatsApp
-            </Button>
-          </div>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="grid grid-cols-1 gap-4 py-4">
-                <FormField control={form.control} name="celular" render={({ field }) => (
-                    <FormItem><FormLabel>Celular de Contato</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
-                )} />
-                <FormField control={form.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field}/></FormControl><FormMessage/></FormItem>
-                )} />
-                <div className="flex justify-end gap-2 pt-4">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle>Atualizar Cadastro: {selectedPatient?.nome}</DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-grow px-6">
+            <div className="flex gap-2 border-b pb-4 mb-4">
+              <Button onClick={() => { setWhatsappMessage(`Olá, ${selectedPatient?.nome?.split(" ")[0]}! Tudo bem?`); setIsWhatsAppDialogOpen(true); }} className="bg-green-600 hover:bg-green-700 w-full">
+                  <MessageCircle className="mr-2 h-4 w-4" /> Iniciar conversa no WhatsApp
+              </Button>
+            </div>
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="space-y-6 pb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="nome" render={({ field }) => (
+                      <FormItem className="md:col-span-2"><FormLabel>Nome Completo*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                  )} />
+                  <FormField control={form.control} name="cpf" render={({ field }) => (
+                      <FormItem><FormLabel>CPF</FormLabel><FormControl><Input placeholder="000.000.000-00" {...field} onChange={(e) => handleInputChange(e, "cpf", "cpf")}/></FormControl><FormMessage/></FormItem>
+                  )} />
+                  <FormField control={form.control} name="nascimento" render={({ field }) => (
+                      <FormItem><FormLabel>Data de Nascimento</FormLabel><FormControl><Input placeholder="dd/mm/aaaa" {...field} onChange={(e) => handleInputChange(e, "nascimento", "nascimento")}/></FormControl><FormMessage/></FormItem>
+                  )} />
+                  <FormField control={form.control} name="sexo" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sexo</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecione"/></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="Masculino">Masculino</SelectItem>
+                          <SelectItem value="Feminino">Feminino</SelectItem>
+                          <SelectItem value="Outro">Outro</SelectItem>
+                          <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="como_conheceu" render={({ field }) => (
+                      <FormItem><FormLabel>Como conheceu?</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                  )} />
+                </div>
+
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-semibold text-sm">Contato</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="celular" render={({ field }) => (
+                        <FormItem><FormLabel>Celular*</FormLabel><FormControl><Input {...field} onChange={(e) => handleInputChange(e, "celular", "celular")}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                    <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-semibold text-sm">Endereço (Opcional)</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <FormField control={form.control} name="cep" render={({ field }) => (
+                        <FormItem><FormLabel>CEP</FormLabel><FormControl><Input placeholder="00000-000" {...field} onChange={(e) => handleInputChange(e, "cep", "cep")}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                    <FormField control={form.control} name="logradouro" render={({ field }) => (
+                        <FormItem className="col-span-2 md:col-span-3"><FormLabel>Logradouro</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                    <FormField control={form.control} name="numero" render={({ field }) => (
+                        <FormItem><FormLabel>Número</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                    <FormField control={form.control} name="complemento" render={({ field }) => (
+                        <FormItem><FormLabel>Complemento</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                    <FormField control={form.control} name="bairro" render={({ field }) => (
+                        <FormItem className="col-span-2"><FormLabel>Bairro</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                    <FormField control={form.control} name="cidade" render={({ field }) => (
+                        <FormItem><FormLabel>Cidade</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                    <FormField control={form.control} name="estado" render={({ field }) => (
+                        <FormItem><FormLabel>Estado</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                    )} />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 sticky bottom-0 bg-background py-4 border-t z-10">
                     <Button type="button" variant="ghost" onClick={() => setSelectedPatient(null)}>Cancelar</Button>
                     <Button type="submit" disabled={isUpdating}>{isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Salvar Alterações</Button>
                 </div>
-            </form>
-          </Form>
+              </form>
+            </Form>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 

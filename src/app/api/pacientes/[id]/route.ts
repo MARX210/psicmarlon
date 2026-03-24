@@ -1,19 +1,23 @@
-
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { z } from "zod";
 
 const patientUpdateSchema = z.object({
-  email: z.string().email("Email inválido").optional().or(z.literal('')),
-  celular: z.string().optional().or(z.literal('')),
-  cep: z.string().optional().or(z.literal('')),
-  logradouro: z.string().optional().or(z.literal('')),
-  numero: z.string().optional().or(z.literal('')),
-  complemento: z.string().optional(),
-  bairro: z.string().optional().or(z.literal('')),
-  cidade: z.string().optional().or(z.literal('')),
-  estado: z.string().optional().or(z.literal('')),
-  pais: z.string().optional().or(z.literal('')),
+  nome: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("Email inválido").optional().nullable().or(z.literal('')),
+  celular: z.string().min(10, "Celular inválido"),
+  cpf: z.string().optional().nullable().or(z.literal('')),
+  sexo: z.string().optional().nullable().or(z.literal('')),
+  nascimento: z.string().optional().nullable().or(z.literal('')),
+  como_conheceu: z.string().optional().nullable().or(z.literal('')),
+  cep: z.string().optional().nullable().or(z.literal('')),
+  logradouro: z.string().optional().nullable().or(z.literal('')),
+  numero: z.string().optional().nullable().or(z.literal('')),
+  complemento: z.string().optional().nullable().or(z.literal('')),
+  bairro: z.string().optional().nullable().or(z.literal('')),
+  cidade: z.string().optional().nullable().or(z.literal('')),
+  estado: z.string().optional().nullable().or(z.literal('')),
+  pais: z.string().optional().nullable().or(z.literal('')),
 });
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -38,19 +42,37 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const { 
-        email, celular, cep, logradouro, numero, complemento, bairro, cidade, estado, pais 
+        nome, email, celular, cpf, sexo, nascimento, como_conheceu,
+        cep, logradouro, numero, complemento, bairro, cidade, estado, pais 
     } = validation.data;
     
+    let nascimentoISO = null;
+    if (nascimento && nascimento.includes("/")) {
+      const parts = nascimento.split("/");
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        nascimentoISO = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      }
+    } else if (nascimento) {
+      nascimentoISO = nascimento;
+    }
+
     const result = await client.query(
       `
       UPDATE pacientes
       SET 
-        email = $1, celular = $2, cep = $3, logradouro = $4, numero = $5, 
-        complemento = $6, bairro = $7, cidade = $8, estado = $9, pais = $10
-      WHERE id = $11
+        nome = $1, email = $2, celular = $3, cpf = $4, sexo = $5, nascimento = $6, 
+        como_conheceu = $7, cep = $8, logradouro = $9, numero = $10, 
+        complemento = $11, bairro = $12, cidade = $13, estado = $14, pais = $15
+      WHERE id = $16
       RETURNING *
       `,
-      [email, celular, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, id]
+      [
+        nome, email || null, celular, cpf || null, sexo || null, nascimentoISO, 
+        como_conheceu || null, cep || null, logradouro || null, numero || null, 
+        complemento || null, bairro || null, cidade || null, estado || null, pais || "Brasil", 
+        id
+      ]
     );
 
     if (result.rowCount === 0) {
