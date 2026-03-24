@@ -17,6 +17,7 @@ const appointmentSchema = z.object({
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const professionalRoles = searchParams.get("professional");
+  const patientId = searchParams.get("patientId");
 
   const pool = getPool();
   let client;
@@ -38,17 +39,27 @@ export async function GET(req: NextRequest) {
       FROM agendamentos a
       JOIN pacientes p ON a.patient_id = p.id
     `;
-    const queryParams: string[] = [];
+    const queryParams: any[] = [];
 
+    const conditions = [];
     if (professionalRoles) {
       const roles = professionalRoles.split(',').map(role => role.trim());
       if (roles.length > 0) {
-        query += ` WHERE a.professional = ANY($1)`;
         queryParams.push(roles);
+        conditions.push(`a.professional = ANY($${queryParams.length})`);
       }
     }
+
+    if (patientId) {
+      queryParams.push(patientId);
+      conditions.push(`a.patient_id = $${queryParams.length}`);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ` + conditions.join(' AND ');
+    }
     
-    query += ` ORDER BY a.date, a.time`;
+    query += ` ORDER BY a.date DESC, a.time DESC`;
 
     const result = await client.query(query, queryParams);
 

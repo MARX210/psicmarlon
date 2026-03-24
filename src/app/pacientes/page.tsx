@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check, Users } from "lucide-react";
+import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check, Users, Calendar, Clock, Stethoscope, MessageSquareQuote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 type Patient = {
   id: string;
@@ -93,7 +94,20 @@ type Prontuario = {
   data_registro: string;
   conteudo: string;
   profissional_nome: string;
+  type: 'anotacao';
 };
+
+type Appointment = {
+  id: number;
+  date: string;
+  time: string;
+  professional: string;
+  type: string;
+  status: string;
+  price: number;
+};
+
+type HistoryItem = (Prontuario | (Appointment & { type: 'agendamento', data_registro: string })) & { id: number | string };
 
 const formatPhone = (phone: string | null) => {
     if (!phone) return "N/A";
@@ -115,7 +129,7 @@ export default function PacientesPage() {
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [isProntuarioOpen, setIsProntuarioOpen] = useState(false);
-  const [prontuarios, setProntuarios] = useState<Prontuario[]>([]);
+  const [patientHistory, setPatientHistory] = useState<HistoryItem[]>([]);
   const [isLoadingProntuario, setIsLoadingProntuario] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -187,22 +201,41 @@ export default function PacientesPage() {
     }
   }, [patients, sortBy]);
 
-  const fetchProntuarios = useCallback(async (pacienteId: string) => {
+  const fetchPatientHistory = useCallback(async (pacienteId: string) => {
     setIsLoadingProntuario(true);
     try {
-        const res = await fetch(`/api/prontuarios?pacienteId=${pacienteId}`);
-        if (!res.ok) throw new Error();
-        setProntuarios(await res.json());
+        const [prontRes, appRes] = await Promise.all([
+            fetch(`/api/prontuarios?pacienteId=${pacienteId}`),
+            fetch(`/api/agendamentos?patientId=${pacienteId}`)
+        ]);
+
+        if (!prontRes.ok || !appRes.ok) throw new Error();
+
+        const prontuarios: Prontuario[] = await prontRes.json();
+        const agendamentos: Appointment[] = await appRes.json();
+
+        const formattedProntuarios: HistoryItem[] = prontuarios.map(p => ({ ...p, type: 'anotacao' }));
+        const formattedAgendamentos: HistoryItem[] = agendamentos.map(a => ({ 
+            ...a, 
+            type: 'agendamento', 
+            data_registro: `${a.date}T${a.time}:00` 
+        }));
+
+        const combined = [...formattedProntuarios, ...formattedAgendamentos].sort((a, b) => 
+            new Date(b.data_registro).getTime() - new Date(a.data_registro).getTime()
+        );
+
+        setPatientHistory(combined);
     } catch (error) {
-        setProntuarios([]);
+        setPatientHistory([]);
     } finally {
         setIsLoadingProntuario(false);
     }
   }, []);
 
   useEffect(() => {
-    if(isProntuarioOpen && selectedPatient) fetchProntuarios(selectedPatient.id);
-  }, [isProntuarioOpen, selectedPatient, fetchProntuarios]);
+    if(isProntuarioOpen && selectedPatient) fetchPatientHistory(selectedPatient.id);
+  }, [isProntuarioOpen, selectedPatient, fetchPatientHistory]);
 
   const handleSendWhatsApp = () => {
     if (!selectedPatient?.celular) return;
@@ -243,7 +276,7 @@ export default function PacientesPage() {
       if (!res.ok) throw new Error('Erro ao salvar');
       toast({ title: 'Anotação salva!' });
       prontuarioForm.reset();
-      fetchProntuarios(selectedPatient.id);
+      fetchPatientHistory(selectedPatient.id);
     } catch (error) {
        toast({ variant: "destructive", title: "Erro ao salvar" });
     }
@@ -504,35 +537,113 @@ export default function PacientesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Prontuário */}
+      {/* Dialog Prontuário Integrado */}
       <Dialog open={isProntuarioOpen} onOpenChange={setIsProntuarioOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
-          <DialogHeader><DialogTitle>Histórico Clínico: {selectedPatient?.nome}</DialogTitle></DialogHeader>
-          <ScrollArea className="flex-grow border rounded-lg p-4 my-4 bg-muted/20">
-            {isLoadingProntuario ? <div className="text-center py-4"><Loader2 className="animate-spin inline"/></div> :
-              prontuarios.length > 0 ? (
-                <div className="space-y-4">
-                  {prontuarios.map(p => (
-                    <div key={p.id} className="p-3 bg-card rounded-lg border-l-4 border-primary shadow-sm text-sm">
-                      <p className="whitespace-pre-wrap">{p.conteudo}</p>
-                      <div className="mt-2 text-[10px] text-muted-foreground flex justify-between italic">
-                        <span>{p.profissional_nome}</span>
-                        <span>{format(parseISO(p.data_registro), "dd/MM/yyyy HH:mm")}</span>
-                      </div>
+        <DialogContent className="sm:max-w-[700px] h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 border-b">
+            <DialogTitle>Histórico Clínico e Evolução: {selectedPatient?.nome}</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-grow overflow-hidden flex flex-col">
+            <ScrollArea className="flex-grow p-6">
+                {isLoadingProntuario ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Carregando histórico do paciente...</p>
                     </div>
-                  ))}
-                </div>
-              ) : <p className="text-center py-10 text-muted-foreground">Sem registros clínicos até o momento.</p>
-            }
-          </ScrollArea>
-          <Form {...prontuarioForm}>
-            <form onSubmit={prontuarioForm.handleSubmit(handleSaveProntuario)} className="space-y-4">
-              <FormField control={prontuarioForm.control} name="conteudo" render={({ field }) => (
-                <FormItem><FormLabel className="font-bold">Evolução de Atendimento</FormLabel><FormControl><Textarea placeholder="Descreva aqui o resumo da sessão..." rows={4} {...field}/></FormControl><FormMessage/></FormItem>
-              )} />
-              <div className="flex justify-end"><Button type="submit">Registrar Sessão</Button></div>
-            </form>
-          </Form>
+                ) : patientHistory.length > 0 ? (
+                    <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted-foreground/20 before:to-transparent">
+                        {patientHistory.map((item, idx) => {
+                            const isAnotacao = item.type === 'anotacao';
+                            return (
+                                <div key={`${item.type}-${item.id}-${idx}`} className="relative flex items-start gap-6 group">
+                                    <div className={`mt-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm z-10 ${isAnotacao ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground'}`}>
+                                        {isAnotacao ? <MessageSquareQuote className="h-5 w-5" /> : <Calendar className="h-5 w-5" />}
+                                    </div>
+                                    <div className="flex flex-col flex-grow min-w-0 bg-card border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant={isAnotacao ? "default" : "outline"} className="text-[10px] h-5">
+                                                    {isAnotacao ? 'ANOTAÇÃO CLÍNICA' : 'AGENDAMENTO'}
+                                                </Badge>
+                                                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                                                    <Clock className="h-3 w-3" />
+                                                    {format(parseISO(item.data_registro), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                                </span>
+                                            </div>
+                                            {!isAnotacao && (
+                                                <Badge variant="secondary" className="text-[10px]">
+                                                    {item.status}
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                        {isAnotacao ? (
+                                            <>
+                                                <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">
+                                                    {item.conteudo}
+                                                </p>
+                                                <div className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground italic">
+                                                    <User className="h-3 w-3" />
+                                                    Registrado por {item.profissional_nome}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <p className="text-sm font-semibold">
+                                                    Consulta {item.type} de {item.duration} min
+                                                </p>
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                                    <span className="flex items-center gap-1">
+                                                        <Stethoscope className="h-3 w-3" /> {item.professional}
+                                                    </span>
+                                                    <span>R$ {item.price.toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
+                        <FileText className="h-12 w-12 mb-4" />
+                        <p className="text-sm">Nenhum evento registrado no histórico deste paciente.</p>
+                    </div>
+                )}
+            </ScrollArea>
+
+            <div className="p-6 bg-muted/30 border-t mt-auto">
+                <Form {...prontuarioForm}>
+                    <form onSubmit={prontuarioForm.handleSubmit(handleSaveProntuario)} className="space-y-4">
+                        <FormField control={prontuarioForm.control} name="conteudo" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-sm font-bold flex items-center gap-2">
+                                    <MessageSquareQuote className="h-4 w-4 text-primary" />
+                                    Registrar Nova Evolução Clínica / Comentário
+                                </FormLabel>
+                                <FormControl>
+                                    <Textarea 
+                                        placeholder="Descreva o resumo da sessão ou anotações importantes..." 
+                                        rows={3} 
+                                        className="bg-background resize-none shadow-inner"
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <div className="flex justify-end">
+                            <Button type="submit" size="sm" className="gap-2">
+                                <Check className="h-4 w-4" />
+                                Registrar Anotação
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
