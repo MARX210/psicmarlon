@@ -742,7 +742,7 @@ export function SchedulingForm() {
 
       {/* Diálogo de Reagendamento */}
       <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Reagendar Consulta</DialogTitle>
             <DialogDescription>
@@ -781,7 +781,7 @@ export function SchedulingForm() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setIsRescheduleOpen(false)}>Cancelar</Button>
             <Button onClick={handleConfirmReschedule} disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
