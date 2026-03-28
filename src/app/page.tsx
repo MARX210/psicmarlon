@@ -17,7 +17,6 @@ import {
   UserCheck,
   Loader2
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -158,34 +157,6 @@ export default function Home() {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Visual / Image Section */}
-      <div className="relative rounded-2xl overflow-hidden h-[300px] shadow-xl">
-        <Image
-          src={"/images/imgmarlon-claro.jpg"}
-          alt="Consultório"
-          fill
-          className="object-cover dark:hidden"
-          data-ai-hint="modern clinic"
-        />
-        <Image
-          src={"/images/imgmarlon.jpg"}
-          alt="Consultório"
-          fill
-          className="object-cover hidden dark:block"
-          data-ai-hint="modern clinic"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent flex items-center p-8 md:p-12">
-           <div className="max-w-md text-white space-y-4">
-              <h2 className="text-3xl font-bold font-headline leading-tight">Excelência no Atendimento</h2>
-              <p className="text-white/80">O foco do Dr. Marlon é o bem-estar dos pacientes. O sistema é apenas o meio para que sua excelência clínica brilhe no dia a dia.</p>
-              <div className="flex items-center gap-2 text-accent font-bold">
-                 <UserCheck className="h-5 w-5" />
-                 <span>CRP Ativo: 08/44838</span>
-              </div>
-           </div>
-        </div>
       </div>
     </div>
   );
