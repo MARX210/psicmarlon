@@ -35,12 +35,12 @@ async function createTables() {
       CREATE TABLE IF NOT EXISTS pacientes (
         id VARCHAR(255) PRIMARY KEY,
         nome TEXT NOT NULL,
-        celular VARCHAR(20) NOT NULL
+        celular VARCHAR(20) NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE
       );
     `);
 
     // 3. Colunas Opcionais e Migração de Restrições
-    // Este bloco garante que as colunas existam E que NÃO sejam obrigatórias (DROP NOT NULL)
     const columns = [
       { name: 'cpf', type: 'VARCHAR(14)' },
       { name: 'sexo', type: 'VARCHAR(50)' },
@@ -57,11 +57,11 @@ async function createTables() {
       { name: 'cidade', type: 'TEXT' },
       { name: 'estado', type: 'VARCHAR(50)' },
       { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' },
-      { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT NOW()' }
+      { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT NOW()' },
+      { name: 'is_active', type: 'BOOLEAN DEFAULT TRUE' }
     ];
 
     for (const col of columns) {
-      // Adiciona a coluna se não existir
       await client.query(`
         DO $$ 
         BEGIN 
@@ -71,7 +71,6 @@ async function createTables() {
         END $$;
       `);
       
-      // FORÇA a coluna a ser opcional (Remove restrição NOT NULL caso exista)
       await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
     }
 
@@ -118,7 +117,6 @@ async function createTables() {
     `);
 
     await client.query('COMMIT');
-    console.log("Banco de dados sincronizado e restrições removidas.");
   } catch (err) {
     if (client) await client.query('ROLLBACK');
     console.error("Erro ao sincronizar banco de dados:", err);

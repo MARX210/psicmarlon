@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check, Users, Calendar, Clock, Stethoscope, MessageSquareQuote } from "lucide-react";
+import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check, Users, Calendar, Clock, Stethoscope, MessageSquareQuote, UserCheck, UserX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 type Patient = {
   id: string;
@@ -62,6 +62,7 @@ type Patient = {
   estado: string | null;
   pais: string | null;
   created_at: string;
+  is_active: boolean;
 };
 
 const patientUpdateSchema = z.object({
@@ -198,19 +199,26 @@ export default function PacientesPage() {
   }, [cepValue, form, toast]);
 
   const sortedPatients = useMemo(() => {
-    const result = [...patients];
-    switch (sortBy) {
-      case "name-asc":
-        return result.sort((a, b) => a.nome.localeCompare(b.nome));
-      case "name-desc":
-        return result.sort((a, b) => b.nome.localeCompare(a.nome));
-      case "date-desc":
-        return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      case "date-asc":
-        return result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      default:
-        return result;
-    }
+    return [...patients].sort((a, b) => {
+      // Primeiro, joga os inativos para o final
+      if (a.is_active !== b.is_active) {
+        return a.is_active ? -1 : 1;
+      }
+      
+      // Se ambos tiverem o mesmo status, aplica a ordenação selecionada
+      switch (sortBy) {
+        case "name-asc":
+          return a.nome.localeCompare(b.nome);
+        case "name-desc":
+          return b.nome.localeCompare(a.nome);
+        case "date-desc":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "date-asc":
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        default:
+          return 0;
+      }
+    });
   }, [patients, sortBy]);
 
   const fetchPatientHistory = useCallback(async (pacienteId: string) => {
@@ -248,6 +256,22 @@ export default function PacientesPage() {
   useEffect(() => {
     if(isProntuarioOpen && selectedPatient) fetchPatientHistory(selectedPatient.id);
   }, [isProntuarioOpen, selectedPatient, fetchPatientHistory]);
+
+  const handleToggleStatus = async (patient: Patient) => {
+    try {
+        const newStatus = !patient.is_active;
+        const res = await fetch(`/api/pacientes/${patient.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_active: newStatus }),
+        });
+        if (!res.ok) throw new Error('Erro ao atualizar status');
+        toast({ title: newStatus ? "Paciente Ativado" : "Paciente Inativado" });
+        fetchAllData(searchTerm);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Erro" });
+    }
+  };
 
   const handleSendWhatsApp = () => {
     if (!selectedPatient?.celular) return;
@@ -405,16 +429,24 @@ export default function PacientesPage() {
             {isLoading ? (
                 <TableRow><TableCell colSpan={4} className="text-center py-10"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow>
             ) : sortedPatients.length > 0 ? sortedPatients.map(patient => (
-              <TableRow key={patient.id} className="hover:bg-muted/30 transition-colors">
-                <TableCell className="font-medium">
+              <TableRow key={patient.id} className={cn("hover:bg-muted/30 transition-colors", !patient.is_active && "bg-muted/20")}>
+                <TableCell className={cn("font-medium", !patient.is_active && "line-through opacity-50")}>
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
                     {patient.nome}
+                    {!patient.is_active && <Badge variant="outline" className="text-[10px] ml-2">Inativo</Badge>}
                   </div>
                 </TableCell>
-                <TableCell><Badge variant="outline" className="font-mono">{patient.id}</Badge></TableCell>
-                <TableCell className="text-muted-foreground font-mono">{formatPhone(patient.celular)}</TableCell>
+                <TableCell className={cn(!patient.is_active && "line-through opacity-50")}>
+                    <Badge variant="outline" className="font-mono">{patient.id}</Badge>
+                </TableCell>
+                <TableCell className={cn("text-muted-foreground font-mono", !patient.is_active && "line-through opacity-50")}>
+                    {formatPhone(patient.celular)}
+                </TableCell>
                 <TableCell className="text-right flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" className={cn("h-8 w-8", patient.is_active ? "text-green-500" : "text-muted-foreground")} onClick={() => handleToggleStatus(patient)} title={patient.is_active ? "Inativar" : "Ativar"}>
+                        {patient.is_active ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { 
                         setSelectedPatient(patient); 
                         setIsProntuarioOpen(false); 

@@ -32,13 +32,13 @@ export async function GET(req: Request) {
         cidade, 
         estado, 
         pais, 
-        created_at 
+        created_at,
+        COALESCE(is_active, TRUE) as is_active
       FROM pacientes
     `;
 
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      // Busca por CPF ou pelo ID bruto (para IDs alfanuméricos como P-TIMESTAMP)
       const result = await client.query(`${baseQuery} WHERE cpf = $1 OR id = $1 OR id = $2`, [normalizedCpf, cpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
@@ -90,9 +90,9 @@ export async function POST(req: Request) {
       INSERT INTO pacientes (
         id, nome, cpf, sexo, nascimento, email, como_conheceu,
         tipo_paciente, cartao_id, cep, logradouro,
-        numero, complemento, bairro, cidade, estado, pais, celular, created_at
+        numero, complemento, bairro, cidade, estado, pais, celular, created_at, is_active
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), TRUE)
       RETURNING *;
     `;
 
