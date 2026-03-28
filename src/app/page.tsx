@@ -15,7 +15,8 @@ import {
   LayoutDashboard,
   ClipboardList,
   UserCheck,
-  Loader2
+  Loader2,
+  Heart
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -110,52 +111,56 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
         {/* Registration Quick Link */}
         {isAdmin && (
-          <Card className="bg-primary text-primary-foreground border-none overflow-hidden relative group">
-            <CardHeader className="relative z-10">
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <UserPlus className="h-6 w-6" /> Novo Cadastro
-              </CardTitle>
-              <CardDescription className="text-primary-foreground/80">
-                Adicione um novo paciente ao sistema em poucos segundos.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="relative z-10">
-              <Button asChild variant="secondary" size="lg" className="w-full sm:w-auto font-bold shadow-lg">
-                <Link href="/cadastro">Cadastrar Agora</Link>
-              </Button>
-            </CardContent>
-            <UserPlus className="absolute -right-8 -bottom-8 h-48 w-48 text-white/10 group-hover:scale-110 transition-transform duration-500" />
+          <Card className="flex flex-col md:flex-row overflow-hidden border-primary/20 hover:border-primary transition-all shadow-md group">
+            <div className="flex-1 p-6 flex flex-col justify-between">
+              <div className="space-y-2">
+                <CardTitle className="text-2xl flex items-center gap-2 text-primary">
+                  <UserPlus className="h-6 w-6" /> Novo Cadastro
+                </CardTitle>
+                <CardDescription className="text-base">
+                  Adicione um novo paciente ao sistema e gere o ID automático em poucos segundos.
+                </CardDescription>
+              </div>
+              <div className="mt-6">
+                <Button asChild size="lg" className="w-full sm:w-auto font-bold">
+                  <Link href="/cadastro">Cadastrar Agora</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="hidden md:flex bg-primary/5 w-1/3 items-center justify-center border-l border-primary/10">
+               <UserPlus className="h-24 w-24 text-primary/20 group-hover:scale-110 transition-transform duration-500" />
+            </div>
           </Card>
         )}
 
-        {/* Informative Section */}
-        <Card className="border-muted-foreground/20 shadow-md">
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-primary" />
-              Gestão Eficiente
+        {/* Informative Section with Side Icon */}
+        <Card className="flex flex-col md:flex-row overflow-hidden border-accent/20 shadow-md group">
+          <div className="flex-1 p-6">
+            <CardTitle className="text-xl flex items-center gap-2 mb-4">
+              <Heart className="h-5 w-5 text-destructive" />
+              Excelência Clínica
             </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-3">
-              <div className="h-6 w-6 rounded-full bg-accent/30 flex items-center justify-center shrink-0 mt-1">
-                <CheckCircle2 className="h-4 w-4 text-accent-foreground" />
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="h-6 w-6 rounded-full bg-accent/30 flex items-center justify-center shrink-0 mt-1">
+                  <CheckCircle2 className="h-4 w-4 text-accent-foreground" />
+                </div>
+                <p className="text-sm">Prontuários eletrônicos com histórico completo de sessões.</p>
               </div>
-              <p className="text-sm">Prontuários eletrônicos com histórico completo de sessões.</p>
-            </div>
-            <div className="flex gap-3">
-              <div className="h-6 w-6 rounded-full bg-accent/30 flex items-center justify-center shrink-0 mt-1">
-                <CheckCircle2 className="h-4 w-4 text-accent-foreground" />
+              <div className="flex gap-3">
+                <div className="h-6 w-6 rounded-full bg-accent/30 flex items-center justify-center shrink-0 mt-1">
+                  <CheckCircle2 className="h-4 w-4 text-accent-foreground" />
+                </div>
+                <p className="text-sm">Controle de inadimplência e status de pagamento automático.</p>
               </div>
-              <p className="text-sm">Controle de inadimplência e status de pagamento automático.</p>
+              <p className="text-xs text-muted-foreground pt-4 border-t">
+                Dr. Marlon - CRP: 08/44838. Foco no bem-estar e na evolução do paciente.
+              </p>
             </div>
-            <div className="flex gap-3">
-              <div className="h-6 w-6 rounded-full bg-accent/30 flex items-center justify-center shrink-0 mt-1">
-                <CheckCircle2 className="h-4 w-4 text-accent-foreground" />
-              </div>
-              <p className="text-sm">Filtros avançados e busca inteligente por paciente ou ID.</p>
-            </div>
-          </CardContent>
+          </div>
+          <div className="hidden md:flex bg-accent/10 w-1/3 items-center justify-center border-l border-accent/10">
+             <Stethoscope className="h-24 w-24 text-accent/30 group-hover:scale-110 transition-transform duration-500" />
+          </div>
         </Card>
       </div>
     </div>
