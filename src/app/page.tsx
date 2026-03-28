@@ -26,12 +26,17 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [todayDate, setTodayDate] = useState<string>("");
 
   useEffect(() => {
     setIsClient(true);
     const loggedIn = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedIn);
     setUserRole(localStorage.getItem("userRole"));
+
+    // Define a data atual apenas no cliente para evitar erros de hidratação
+    const now = new Date();
+    setTodayDate(now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }));
 
     if (!loggedIn) {
       window.location.href = "/login";
@@ -64,7 +69,7 @@ export default function Home() {
         </div>
         <div className="text-right hidden md:block">
           <p className="text-sm font-medium text-primary uppercase tracking-wider">Data de Hoje</p>
-          <p className="text-2xl font-bold">{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+          <p className="text-2xl font-bold">{todayDate}</p>
         </div>
       </div>
 
