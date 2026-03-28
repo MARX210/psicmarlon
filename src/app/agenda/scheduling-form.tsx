@@ -27,7 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, CheckCircle2, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown, Check, RefreshCw } from "lucide-react";
+import { Edit, Trash2, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, CheckCircle2, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown, Check, RefreshCw, Info } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -60,6 +60,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Feriados
 const holidays: Date[] = [];
@@ -514,6 +515,14 @@ export function SchedulingForm() {
               <CardDescription>{isEditing ? 'Altere os dados abaixo.' : 'Busque o paciente e preencha os dados.'}</CardDescription>
             </CardHeader>
             <CardContent>
+              <Alert variant="default" className="mb-6 bg-primary/5 border-primary/20">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertTitle className="text-primary font-bold">Importante</AlertTitle>
+                <AlertDescription>
+                  Selecione primeiro a <strong>data</strong> no calendário ao lado antes de preencher os dados da consulta, pois a escolha da data reinicia o formulário.
+                </AlertDescription>
+              </Alert>
+
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div className="space-y-2">
