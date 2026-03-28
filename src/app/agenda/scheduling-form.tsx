@@ -27,7 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Edit, Trash2, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, CheckCircle2, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown, Check } from "lucide-react";
+import { Edit, Trash2, User, XCircle, Clock, Loader2, PlusCircle, BadgeAlert, CheckCircle2, AlertCircle, CalendarClock, CreditCard, Stethoscope, ChevronsUpDown, Check, RefreshCw } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -47,11 +47,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-
+import { Label } from "@/components/ui/label";
 
 // Feriados
 const holidays: Date[] = [];
@@ -91,7 +99,7 @@ type Appointment = {
   price: number;
   status: string;
 };
-type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou" | "Pago";
+type AppointmentStatus = "Confirmado" | "Realizado" | "Cancelado" | "Faltou" | "Pago" | "Reagendado";
 
 const statusConfig: Record<AppointmentStatus, { label: string; icon: React.ElementType; color: string }> = {
   Confirmado: { label: "Confirmado", icon: CalendarClock, color: "text-blue-500" },
@@ -99,6 +107,7 @@ const statusConfig: Record<AppointmentStatus, { label: string; icon: React.Eleme
   Pago: { label: "Pago", icon: CreditCard, color: "text-emerald-500" },
   Cancelado: { label: "Cancelado", icon: XCircle, color: "text-gray-500" },
   Faltou: { label: "Faltou", icon: AlertCircle, color: "text-red-500" },
+  Reagendado: { label: "Reagendado", icon: RefreshCw, color: "text-orange-500" },
 };
 
 const calculateAge = (birthDate: string) => {
@@ -129,6 +138,12 @@ export function SchedulingForm() {
   const [isPatientComboboxOpen, setIsPatientComboboxOpen] = useState(false);
   const [patientSearchTerm, setPatientSearchTerm] = useState("");
   const [isSearchingPatients, setIsSearchingPatients] = useState(false);
+
+  // Estados para Reagendamento
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [reschedulingAppointment, setReschedulingAppointment] = useState<Appointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(new Date());
+  const [rescheduleTime, setRescheduleTime] = useState("");
 
   const isAdmin = userRole === 'Admin';
 
@@ -234,7 +249,18 @@ export function SchedulingForm() {
     }
   }, [userRole, isLoadingRole, fetchAppointments, fetchProfessionalRoles, isAdmin]);
 
-  const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus) => {
+  const handleUpdateStatus = async (appointmentId: number, status: AppointmentStatus | "REAGENDAR") => {
+    if (status === "REAGENDAR") {
+        const appointment = appointments.find(a => a.id === appointmentId);
+        if (appointment) {
+            setReschedulingAppointment(appointment);
+            setRescheduleDate(new Date());
+            setRescheduleTime("");
+            setIsRescheduleOpen(true);
+        }
+        return;
+    }
+
     try {
       const response = await fetch(`/api/agendamentos/${appointmentId}`, {
         method: 'PUT',
@@ -254,26 +280,80 @@ export function SchedulingForm() {
     }
   };
 
+  const handleConfirmReschedule = async () => {
+    if (!reschedulingAppointment || !rescheduleDate || !rescheduleTime) {
+        toast({ variant: "destructive", title: "Campos obrigatórios", description: "Selecione a nova data e horário." });
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+        // 1. Cancelar o agendamento antigo
+        const cancelResponse = await fetch(`/api/agendamentos/${reschedulingAppointment.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Cancelado', userRole }),
+        });
+
+        if (!cancelResponse.ok) throw new Error("Erro ao cancelar agendamento anterior");
+
+        // 2. Criar o novo agendamento
+        const newData = {
+            patientId: reschedulingAppointment.patientId,
+            date: format(rescheduleDate, "yyyy-MM-dd"),
+            time: rescheduleTime,
+            professional: reschedulingAppointment.professional,
+            type: reschedulingAppointment.type,
+            duration: reschedulingAppointment.duration,
+            price: reschedulingAppointment.price,
+            status: 'Confirmado',
+        };
+
+        const createResponse = await fetch('/api/agendamentos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newData),
+        });
+
+        if (!createResponse.ok) {
+            const result = await createResponse.json();
+            throw new Error(result.error || "Erro ao criar novo agendamento");
+        }
+
+        toast({ title: "Reagendado!", description: "Consulta reagendada com sucesso." });
+        setIsRescheduleOpen(false);
+        setReschedulingAppointment(null);
+        await fetchAppointments(userRole);
+    } catch (error) {
+        toast({ variant: "destructive", title: "Erro ao reagendar", description: error instanceof Error ? error.message : "Erro desconhecido." });
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
   const appointmentsOnSelectedDate = selectedDate
     ? appointments
         .filter(app => isSameDay(parseISO(app.date), selectedDate))
         .sort((a, b) => a.time.localeCompare(b.time))
     : [];
 
-  const timeSlotsForSelectedDay = timeSlots.filter(slot => {
-    if (!selectedDate) return false;
-    const slotTime = parse(slot, "HH:mm", selectedDate);
-    const currentAppointment = isEditing ? appointments.find(a => a.id === isEditing) : null;
-    if (currentAppointment && slot === currentAppointment.time && isSameDay(parseISO(currentAppointment.date), selectedDate)) {
-      return true;
-    }
-    return !appointmentsOnSelectedDate.some(app => {
-      if (app.id === isEditing) return false;
-      const appStartTime = parse(app.time, "HH:mm", selectedDate);
-      const appEndTime = addMinutes(appStartTime, app.duration);
-      return slotTime >= appStartTime && slotTime < appEndTime;
-    });
-  }).sort();
+  const getAvailableSlots = (date: Date | undefined, excludeAppointmentId: number | null = null) => {
+      if (!date) return [];
+      const appsOnDate = appointments.filter(app => isSameDay(parseISO(app.date), date));
+      
+      return timeSlots.filter(slot => {
+        const slotTime = parse(slot, "HH:mm", date);
+        return !appsOnDate.some(app => {
+          if (app.id === excludeAppointmentId) return false;
+          const appStartTime = parse(app.time, "HH:mm", date);
+          const appEndTime = addMinutes(appStartTime, app.duration);
+          return slotTime >= appStartTime && slotTime < appEndTime;
+        });
+      }).sort();
+  };
+
+  const timeSlotsForSelectedDay = getAvailableSlots(selectedDate, isEditing);
+  const timeSlotsForReschedule = getAvailableSlots(rescheduleDate);
   
   const handleAddTimeSlot = () => {
     const trimmedTime = newTimeSlot.trim();
@@ -322,7 +402,6 @@ export function SchedulingForm() {
     let patientToEdit = searchedPatients.find(p => p.id === appointment.patientId) || 
                           (selectedPatient?.id === appointment.patientId ? selectedPatient : null);
 
-    // Se o paciente não estiver carregado na lista atual de busca, tenta buscar no servidor
     if (!patientToEdit) {
       try {
         const res = await fetch(`/api/pacientes?cpf=${appointment.patientId}`);
@@ -338,7 +417,7 @@ export function SchedulingForm() {
     }
 
     if (!patientToEdit) {
-        toast({ variant: "destructive", title: "Erro", description: "erro" });
+        toast({ variant: "destructive", title: "erro", description: "Paciente do agendamento não encontrado." });
         return;
     }
     
@@ -617,7 +696,7 @@ export function SchedulingForm() {
                           const status = (app.status as AppointmentStatus) || "Confirmado";
                           const config = statusConfig[status];
                           const Icon = config.icon;
-                          const availableStatuses = Object.keys(statusConfig).filter(s => isAdmin || s !== 'Pago') as AppointmentStatus[];
+                          const availableStatuses = Object.keys(statusConfig).filter(s => (isAdmin || s !== 'Pago') && s !== 'Reagendado') as AppointmentStatus[];
                           return (
                             <li key={app.id} className="text-sm p-3 bg-muted rounded-lg flex flex-col sm:flex-row justify-between gap-2">
                               <div className="flex-grow">
@@ -635,6 +714,10 @@ export function SchedulingForm() {
                                       const item = statusConfig[key];
                                       return (<DropdownMenuItem key={key} onSelect={() => handleUpdateStatus(app.id, key)}><item.icon className={`mr-2 h-4 w-4 ${item.color}`} /><span>{item.label}</span></DropdownMenuItem>);
                                     })}
+                                    <DropdownMenuItem onSelect={() => handleUpdateStatus(app.id, "REAGENDAR")}>
+                                      <RefreshCw className="mr-2 h-4 w-4 text-orange-500" />
+                                      <span>REAGENDAR</span>
+                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                                 {isAdmin && (
@@ -656,6 +739,58 @@ export function SchedulingForm() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Diálogo de Reagendamento */}
+      <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reagendar Consulta</DialogTitle>
+            <DialogDescription>
+              Selecione a nova data e horário para {reschedulingAppointment?.patientName}. 
+              O agendamento atual será cancelado automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Nova Data</Label>
+              <div className="border rounded-md p-2">
+                <Calendar
+                  mode="single"
+                  selected={rescheduleDate}
+                  onSelect={setRescheduleDate}
+                  locale={ptBR}
+                  disabled={(date) => isSunday(date) || holidays.some(h => isSameDay(h, date)) || isBefore(date, startOfDay(new Date()))}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Novo Horário</Label>
+              <Select onValueChange={setRescheduleTime} value={rescheduleTime}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o horário" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeSlotsForReschedule.map(slot => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                  {timeSlotsForReschedule.length === 0 && (
+                    <div className="p-2 text-xs text-muted-foreground">Nenhum horário disponível para esta data.</div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRescheduleOpen(false)}>Cancelar</Button>
+            <Button onClick={handleConfirmReschedule} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar Reagendamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>

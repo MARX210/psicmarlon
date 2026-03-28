@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import getPool from "@/lib/db";
 import { z } from "zod";
@@ -14,7 +13,7 @@ const appointmentUpdateSchema = z.object({
 });
 
 const statusUpdateSchema = z.object({
-  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou", "Pago"]),
+  status: z.enum(["Confirmado", "Realizado", "Cancelado", "Faltou", "Pago", "Reagendado"]),
   userRole: z.string().optional(),
 });
 
