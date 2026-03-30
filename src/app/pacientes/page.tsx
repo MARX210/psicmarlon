@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check, Users, Calendar, Clock, Stethoscope, MessageSquareQuote, UserCheck, UserX } from "lucide-react";
+import { Loader2, Search, FileText, FileEdit, Trash2, MessageCircle, Filter, User, X, Check, Users, Calendar, Clock, Stethoscope, MessageSquareQuote, UserCheck, UserX, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { format, parseISO, isValid } from "date-fns";
+import { format, parseISO, isValid, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -95,7 +95,6 @@ type Prontuario = {
   data_registro: string;
   conteudo: string;
   profissional_nome: string;
-  type: 'anotacao';
 };
 
 type Appointment = {
@@ -106,9 +105,17 @@ type Appointment = {
   type: string;
   status: string;
   price: number;
+  duration: number;
 };
 
-type HistoryItem = (Prontuario | (Appointment & { type: 'agendamento', data_registro: string })) & { id: number | string };
+type HistoryItem = {
+  id: number | string;
+  historyType: 'anotacao' | 'agendamento';
+  data_registro: string;
+  conteudo?: string;
+  profissional_nome?: string;
+  appointmentDetails?: Appointment;
+};
 
 const formatPhone = (phone: string | null) => {
     if (!phone) return "N/A";
@@ -118,37 +125,40 @@ const formatPhone = (phone: string | null) => {
     return phone;
 };
 
-const safeFormatDate = (dateStr: any, formatStr: string = "dd/MM/yyyy HH:mm") => {
-  if (!dateStr) return "N/A";
+// Função de formatação de data extremamente resiliente
+const safeFormatDate = (dateVal: any, formatStr: string = "dd/MM/yyyy HH:mm") => {
+  if (!dateVal) return "N/A";
   
   try {
-    const s = String(dateStr);
-    
-    // 1. Tenta parseISO (melhor para formatos YYYY-MM-DDTHH:mm:ssZ)
-    let date = parseISO(s);
-    
-    // 2. Fallback: Se tiver espaço em vez de T (comum em SQL), tenta trocar
-    if (!isValid(date)) {
-      date = parseISO(s.replace(' ', 'T'));
+    let dateObj: Date;
+
+    if (dateVal instanceof Date) {
+      dateObj = dateVal;
+    } else {
+      const s = String(dateVal);
+      
+      // Tenta parseISO (melhor para datas vindas do JSON/Banco)
+      dateObj = parseISO(s);
+      
+      // Se falhou, tenta o construtor nativo (lida bem com espaços e formatos variados)
+      if (!isValid(dateObj)) {
+        dateObj = new Date(s);
+      }
+
+      // Se ainda falhou e a string parece YYYY-MM-DD HH:mm, tenta trocar espaço por T
+      if (!isValid(dateObj) && s.includes(' ')) {
+        dateObj = new Date(s.replace(' ', 'T'));
+      }
     }
 
-    // 3. Fallback: Native Date constructor
-    if (!isValid(date)) {
-      date = new Date(s);
+    if (isValid(dateObj)) {
+      return format(dateObj, formatStr, { locale: ptBR });
     }
-
-    // 4. Fallback: Native Date com troca de espaço por T
-    if (!isValid(date)) {
-      date = new Date(s.replace(' ', 'T'));
-    }
-    
-    if (!isValid(date)) return "Data inválida";
-    
-    return format(date, formatStr, { locale: ptBR });
   } catch (error) {
-    console.error("Erro ao formatar data:", dateStr, error);
-    return "Erro na data";
+    console.error("Erro ao formatar data:", dateVal, error);
   }
+  
+  return "Data inválida";
 };
 
 export default function PacientesPage() {
@@ -222,23 +232,15 @@ export default function PacientesPage() {
 
   const sortedPatients = useMemo(() => {
     return [...patients].sort((a, b) => {
-      // Primeiro, joga os inativos para o final
       if (a.is_active !== b.is_active) {
         return a.is_active ? -1 : 1;
       }
-      
-      // Se ambos tiverem o mesmo status, aplica a ordenação selecionada
       switch (sortBy) {
-        case "name-asc":
-          return a.nome.localeCompare(b.nome);
-        case "name-desc":
-          return b.nome.localeCompare(a.nome);
-        case "date-desc":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "date-asc":
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        default:
-          return 0;
+        case "name-asc": return a.nome.localeCompare(b.nome);
+        case "name-desc": return b.nome.localeCompare(a.nome);
+        case "date-desc": return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "date-asc": return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        default: return 0;
       }
     });
   }, [patients, sortBy]);
@@ -251,29 +253,39 @@ export default function PacientesPage() {
             fetch(`/api/agendamentos?patientId=${pacienteId}`)
         ]);
 
-        if (!prontRes.ok || !appRes.ok) throw new Error();
+        if (!prontRes.ok || !appRes.ok) throw new Error('Falha ao buscar histórico');
 
         const prontuarios: Prontuario[] = await prontRes.json();
         const agendamentos: Appointment[] = await appRes.json();
 
-        const formattedProntuarios: HistoryItem[] = prontuarios.map(p => ({ ...p, type: 'anotacao' }));
-        const formattedAgendamentos: HistoryItem[] = agendamentos.map(a => ({ 
-            ...a, 
-            type: 'agendamento', 
-            data_registro: `${a.date}T${a.time}:00` 
+        const historyAnotacoes: HistoryItem[] = prontuarios.map(p => ({
+            id: p.id,
+            historyType: 'anotacao',
+            data_registro: p.data_registro,
+            conteudo: p.conteudo,
+            profissional_nome: p.profissional_nome
         }));
 
-        const combined = [...formattedProntuarios, ...formattedAgendamentos].sort((a, b) => 
+        const historyAgendamentos: HistoryItem[] = agendamentos.map(a => ({
+            id: `app-${a.id}`,
+            historyType: 'agendamento',
+            data_registro: `${a.date}T${a.time}:00`,
+            appointmentDetails: a
+        }));
+
+        const combined = [...historyAnotacoes, ...historyAgendamentos].sort((a, b) => 
             new Date(b.data_registro).getTime() - new Date(a.data_registro).getTime()
         );
 
         setPatientHistory(combined);
     } catch (error) {
+        console.error(error);
         setPatientHistory([]);
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar o histórico." });
     } finally {
         setIsLoadingProntuario(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if(isProntuarioOpen && selectedPatient) fetchPatientHistory(selectedPatient.id);
@@ -636,9 +648,9 @@ export default function PacientesPage() {
                 ) : patientHistory.length > 0 ? (
                     <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted-foreground/20 before:to-transparent">
                         {patientHistory.map((item, idx) => {
-                            const isAnotacao = item.type === 'anotacao';
+                            const isAnotacao = item.historyType === 'anotacao';
                             return (
-                                <div key={`${item.type}-${item.id}-${idx}`} className="relative flex items-start gap-6 group">
+                                <div key={`${item.historyType}-${item.id}-${idx}`} className="relative flex items-start gap-6 group">
                                     <div className={`mt-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm z-10 ${isAnotacao ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground'}`}>
                                         {isAnotacao ? <MessageSquareQuote className="h-5 w-5" /> : <Calendar className="h-5 w-5" />}
                                     </div>
@@ -655,7 +667,7 @@ export default function PacientesPage() {
                                             </div>
                                             {!isAnotacao && (
                                                 <Badge variant="secondary" className="text-[10px]">
-                                                    {item.status}
+                                                    {item.appointmentDetails?.status}
                                                 </Badge>
                                             )}
                                         </div>
@@ -673,13 +685,13 @@ export default function PacientesPage() {
                                         ) : (
                                             <div className="space-y-2">
                                                 <p className="text-sm font-semibold">
-                                                    Consulta {item.type} de {item.duration} min
+                                                    Consulta {item.appointmentDetails?.type} de {item.appointmentDetails?.duration} min
                                                 </p>
                                                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                                                     <span className="flex items-center gap-1">
-                                                        <Stethoscope className="h-3 w-3" /> {item.professional}
+                                                        <Stethoscope className="h-3 w-3" /> {item.appointmentDetails?.professional}
                                                     </span>
-                                                    <span>R$ {item.price.toFixed(2)}</span>
+                                                    <span>R$ {item.appointmentDetails?.price.toFixed(2)}</span>
                                                 </div>
                                             </div>
                                         )}
