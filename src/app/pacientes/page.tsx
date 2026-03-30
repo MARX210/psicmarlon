@@ -121,7 +121,12 @@ const formatPhone = (phone: string | null) => {
 const safeFormatDate = (dateStr: string | null | undefined, formatStr: string = "dd/MM/yyyy HH:mm") => {
   if (!dateStr) return "N/A";
   try {
-    const date = new Date(dateStr);
+    // Tenta usar parseISO para strings ISO (vinda da API) ou fallback para Date normal
+    let date = parseISO(dateStr);
+    if (!isValid(date)) {
+        date = new Date(dateStr);
+    }
+    
     if (!isValid(date)) return "Data inválida";
     return format(date, formatStr, { locale: ptBR });
   } catch {
