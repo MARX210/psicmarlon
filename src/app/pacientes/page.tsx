@@ -118,18 +118,35 @@ const formatPhone = (phone: string | null) => {
     return phone;
 };
 
-const safeFormatDate = (dateStr: string | null | undefined, formatStr: string = "dd/MM/yyyy HH:mm") => {
+const safeFormatDate = (dateStr: any, formatStr: string = "dd/MM/yyyy HH:mm") => {
   if (!dateStr) return "N/A";
+  
   try {
-    // Tenta usar parseISO para strings ISO (vinda da API) ou fallback para Date normal
-    let date = parseISO(dateStr);
+    const s = String(dateStr);
+    
+    // 1. Tenta parseISO (melhor para formatos YYYY-MM-DDTHH:mm:ssZ)
+    let date = parseISO(s);
+    
+    // 2. Fallback: Se tiver espaço em vez de T (comum em SQL), tenta trocar
     if (!isValid(date)) {
-        date = new Date(dateStr);
+      date = parseISO(s.replace(' ', 'T'));
+    }
+
+    // 3. Fallback: Native Date constructor
+    if (!isValid(date)) {
+      date = new Date(s);
+    }
+
+    // 4. Fallback: Native Date com troca de espaço por T
+    if (!isValid(date)) {
+      date = new Date(s.replace(' ', 'T'));
     }
     
     if (!isValid(date)) return "Data inválida";
+    
     return format(date, formatStr, { locale: ptBR });
-  } catch {
+  } catch (error) {
+    console.error("Erro ao formatar data:", dateStr, error);
     return "Erro na data";
   }
 };
