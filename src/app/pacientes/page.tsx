@@ -130,32 +130,46 @@ const safeFormatDate = (dateVal: any, formatStr: string = "dd/MM/yyyy HH:mm") =>
   if (!dateVal) return "N/A";
   
   try {
-    let dateObj: Date;
+    let dateObj: Date | null = null;
 
     if (dateVal instanceof Date) {
       dateObj = dateVal;
     } else {
       const s = String(dateVal);
       
-      // Tenta parseISO (melhor para datas vindas do JSON/Banco)
+      // 1. Tenta parseISO (muito eficiente para strings vindas de JSON)
       dateObj = parseISO(s);
       
-      // Se falhou, tenta o construtor nativo (lida bem com espaços e formatos variados)
+      // 2. Se falhou, tenta o construtor nativo do JavaScript
       if (!isValid(dateObj)) {
         dateObj = new Date(s);
       }
 
-      // Se ainda falhou e a string parece YYYY-MM-DD HH:mm, tenta trocar espaço por T
+      // 3. Se falhou e tem espaço, tenta formatar para ISO trocando espaço por T
       if (!isValid(dateObj) && s.includes(' ')) {
         dateObj = new Date(s.replace(' ', 'T'));
       }
+      
+      // 4. Se falhou, tenta um parse manual robusto (YYYY-MM-DD HH:mm:ss)
+      if (!isValid(dateObj)) {
+        const parts = s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+        if (parts) {
+          const year = parseInt(parts[1]);
+          const month = parseInt(parts[2]) - 1;
+          const day = parseInt(parts[3]);
+          const hour = parts[4] ? parseInt(parts[4]) : 0;
+          const minute = parts[5] ? parseInt(parts[5]) : 0;
+          const second = parts[6] ? parseInt(parts[6]) : 0;
+          dateObj = new Date(year, month, day, hour, minute, second);
+        }
+      }
     }
 
-    if (isValid(dateObj)) {
+    if (dateObj && isValid(dateObj)) {
       return format(dateObj, formatStr, { locale: ptBR });
     }
   } catch (error) {
-    console.error("Erro ao formatar data:", dateVal, error);
+    // Silencia o erro para não poluir
   }
   
   return "Data inválida";
@@ -269,13 +283,15 @@ export default function PacientesPage() {
         const historyAgendamentos: HistoryItem[] = agendamentos.map(a => ({
             id: `app-${a.id}`,
             historyType: 'agendamento',
-            data_registro: `${a.date}T${a.time}:00`,
+            data_registro: `${a.date}T${a.time}:00`, // Formato ISO robusto YYYY-MM-DDTHH:mm:00
             appointmentDetails: a
         }));
 
-        const combined = [...historyAnotacoes, ...historyAgendamentos].sort((a, b) => 
-            new Date(b.data_registro).getTime() - new Date(a.data_registro).getTime()
-        );
+        const combined = [...historyAnotacoes, ...historyAgendamentos].sort((a, b) => {
+            const dateA = new Date(a.data_registro).getTime();
+            const dateB = new Date(b.data_registro).getTime();
+            return dateB - dateA;
+        });
 
         setPatientHistory(combined);
     } catch (error) {
