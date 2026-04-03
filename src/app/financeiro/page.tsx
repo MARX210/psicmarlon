@@ -201,7 +201,8 @@ export default function FinanceiroPage() {
     const selectedDate = new Date(selectedYear, selectedMonth);
     const interval = { start: startOfMonth(selectedDate), end: endOfMonth(selectedDate) };
     return transactions
-        .filter(t => isWithinInterval(parseISO(t.date), interval))
+        .filter(t => t.type === 'receita_consulta' && isWithinInterval(parseISO(t.date), interval))
+        .concat(transactions.filter(t => t.type !== 'receita_consulta' && isWithinInterval(parseISO(t.date), interval)))
         .sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [transactions, selectedMonth, selectedYear]);
 
@@ -220,9 +221,11 @@ export default function FinanceiroPage() {
           const appointment = appointments.find(a => String(a.id) === t.agendamento_id);
           if (!appointment) return 0;
 
-          if (appointment.professional === 'Psicólogo') {
+          // Se o profissional for o Marlon (Psicólogo ou Neuropsicólogo), a clínica fica com 100%
+          if (appointment.professional === 'Psicólogo' || appointment.professional === 'Neuropsicólogo') {
               return appointment.price; // 100% para a clínica
           } else {
+              // Outros profissionais (Nutricionista, etc)
               if (appointment.price > 150) {
                   return appointment.price * 0.2; // 20% para a clínica
               } else {
@@ -267,9 +270,11 @@ export default function FinanceiroPage() {
             if (!appointment) return;
             
             let clinicShare = 0;
-            if (appointment.professional === 'Psicólogo') {
+            // Se o profissional for o Marlon (Psicólogo ou Neuropsicólogo), a clínica fica com 100%
+            if (appointment.professional === 'Psicólogo' || appointment.professional === 'Neuropsicólogo') {
                 clinicShare = appointment.price;
             } else {
+                // Outros profissionais
                 if (appointment.price > 150) {
                     clinicShare = appointment.price * 0.2;
                 } else {
@@ -348,7 +353,7 @@ export default function FinanceiroPage() {
                             <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p className="max-w-xs">Soma das comissões de consultas e outras receitas.</p>
+                            <p className="max-w-xs">Soma das comissões de consultas e outras receitas. Consultas do Marlon (Psicólogo/Neuropsicólogo) contam 100%.</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -525,5 +530,3 @@ export default function FinanceiroPage() {
     </div>
   );
 }
-
-    
