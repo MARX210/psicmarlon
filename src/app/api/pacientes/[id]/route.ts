@@ -3,9 +3,9 @@ import getPool from "@/lib/db";
 import { z } from "zod";
 
 const patientUpdateSchema = z.object({
-  nome: z.string().min(1, "Nome é obrigatório"),
+  nome: z.string().min(1, "Nome é obrigatório").optional(),
   email: z.string().email("Email inválido").optional().nullable().or(z.literal('')),
-  celular: z.string().min(10, "Celular inválido"),
+  celular: z.string().min(10, "Celular inválido").optional(),
   cpf: z.string().optional().nullable().or(z.literal('')),
   sexo: z.string().optional().nullable().or(z.literal('')),
   nascimento: z.string().optional().nullable().or(z.literal('')),
@@ -19,6 +19,7 @@ const patientUpdateSchema = z.object({
   estado: z.string().optional().nullable().or(z.literal('')),
   pais: z.string().optional().nullable().or(z.literal('')),
   is_active: z.boolean().optional(),
+  ultima_mensagem_data: z.string().optional().nullable(),
 });
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,6 +35,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     client = await pool.connect();
     const body = await req.json();
     
+    // Suporte para update de última mensagem (leads)
+    if (Object.keys(body).length === 1 && 'ultima_mensagem_data' in body) {
+        const result = await client.query('UPDATE pacientes SET ultima_mensagem_data = $1 WHERE id = $2 RETURNING *', [body.ultima_mensagem_data, id]);
+        if (result.rowCount === 0) return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
+        return NextResponse.json({ message: "Data de contato atualizada", patient: result.rows[0] });
+    }
+
     // Se o corpo contiver apenas is_active, faz um update parcial rápido
     if (Object.keys(body).length === 1 && 'is_active' in body) {
         const result = await client.query('UPDATE pacientes SET is_active = $1 WHERE id = $2 RETURNING *', [body.is_active, id]);
@@ -52,7 +60,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const { 
         nome, email, celular, cpf, sexo, nascimento, como_conheceu,
-        cep, logradouro, numero, complemento, bairro, cidade, estado, pais, is_active
+        cep, logradouro, numero, complemento, bairro, cidade, estado, pais, is_active, ultima_mensagem_data
     } = validation.data;
     
     let nascimentoISO = null;
@@ -66,29 +74,44 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       nascimentoISO = nascimento;
     }
 
+    // Buscar dados atuais para não sobrescrever com undefined
+    const currentRes = await client.query('SELECT * FROM pacientes WHERE id = $1', [id]);
+    if (currentRes.rowCount === 0) return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
+    const current = currentRes.rows[0];
+
     const result = await client.query(
       `
       UPDATE pacientes
       SET 
-        nome = $1, email = $2, celular = $3, cpf = $4, sexo = $5, nascimento = $6, 
-        como_conheceu = $7, cep = $8, logradouro = $9, numero = $10, 
-        complemento = $11, bairro = $12, cidade = $13, estado = $14, pais = $15,
-        is_active = COALESCE($16, is_active)
-      WHERE id = $17
+        nome = COALESCE($1, nome), 
+        email = COALESCE($2, email), 
+        celular = COALESCE($3, celular), 
+        cpf = COALESCE($4, cpf), 
+        sexo = COALESCE($5, sexo), 
+        nascimento = COALESCE($6, nascimento), 
+        como_conheceu = COALESCE($7, como_conheceu), 
+        cep = COALESCE($8, cep), 
+        logradouro = COALESCE($9, logradouro), 
+        numero = COALESCE($10, numero), 
+        complemento = COALESCE($11, complemento), 
+        bairro = COALESCE($12, bairro), 
+        cidade = COALESCE($13, cidade), 
+        estado = COALESCE($14, estado), 
+        pais = COALESCE($15, pais),
+        is_active = COALESCE($16, is_active),
+        ultima_mensagem_data = COALESCE($17, ultima_mensagem_data)
+      WHERE id = $18
       RETURNING *
       `,
       [
-        nome, email || null, celular, cpf || null, sexo || null, nascimentoISO, 
+        nome || null, email || null, celular || null, cpf || null, sexo || null, nascimentoISO, 
         como_conheceu || null, cep || null, logradouro || null, numero || null, 
-        complemento || null, bairro || null, cidade || null, estado || null, pais || "Brasil", 
+        complemento || null, bairro || null, cidade || null, estado || null, pais || null, 
         is_active === undefined ? null : is_active,
+        ultima_mensagem_data || null,
         id
       ]
     );
-
-    if (result.rowCount === 0) {
-      return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
-    }
 
     return NextResponse.json(
       { message: "Paciente atualizado com sucesso", patient: result.rows[0] },

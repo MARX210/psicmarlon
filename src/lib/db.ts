@@ -58,7 +58,8 @@ async function createTables() {
       { name: 'estado', type: 'VARCHAR(50)' },
       { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' },
       { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT NOW()' },
-      { name: 'is_active', type: 'BOOLEAN DEFAULT TRUE' }
+      { name: 'is_active', type: 'BOOLEAN DEFAULT TRUE' },
+      { name: 'ultima_mensagem_data', type: 'TIMESTAMPTZ' }
     ];
 
     for (const col of columns) {

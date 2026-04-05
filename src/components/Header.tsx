@@ -44,6 +44,7 @@ export function Header() {
     { href: "/", label: "Início", adminOnly: false },
     { href: "/cadastro", label: "Cadastro", adminOnly: true },
     { href: "/agenda", label: "Agenda", adminOnly: false },
+    { href: "/leads", label: "Leads", adminOnly: false },
     { href: "/pacientes", label: "Pacientes", adminOnly: false },
     { href: "/profissionais", label: "Profissionais", adminOnly: true },
     { href: "/financeiro", label: "Financeiro", adminOnly: true },
