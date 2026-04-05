@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   Info,
   BadgeAlert,
-  ArrowRight
+  ArrowRight,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,10 @@ import {
   parseISO, 
   isMonday, 
   isToday,
-  differenceInDays
+  differenceInDays,
+  startOfDay,
+  isAfter,
+  isSameDay
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -73,7 +77,7 @@ export default function LeadsPage() {
       
       const normalizedApps = appData.map(a => ({
           id: a.id,
-          patient_id: a.patientId || a.patient_id,
+          patient_id: String(a.patientId || a.patient_id || ""),
           date: a.date,
           time: a.time,
           professional: a.professional
@@ -94,15 +98,24 @@ export default function LeadsPage() {
   }, [fetchLeadsData]);
 
   const leadsInfo = useMemo(() => {
-    const today = new Date();
+    const today = startOfDay(new Date());
     const weekStart = startOfWeek(today, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
     const patientsWithStatus = patients.map(patient => {
-      const weekAppointment = appointments.find(app => {
-        if (app.patient_id !== patient.id) return false;
-        const appDate = parseISO(app.date);
-        return isWithinInterval(appDate, { start: weekStart, end: weekEnd });
+      // Procura qualquer agendamento deste paciente que seja nesta semana ou no futuro
+      const futureOrWeekAppointment = appointments.find(app => {
+        if (String(app.patient_id).trim() !== String(patient.id).trim()) return false;
+        
+        const appDate = startOfDay(parseISO(app.date));
+        
+        // Critério 1: Está dentro da semana atual (Segunda a Domingo)
+        const inCurrentWeek = isWithinInterval(appDate, { start: weekStart, end: weekEnd });
+        
+        // Critério 2: É uma consulta futura (após esta semana)
+        const isFuture = isAfter(appDate, weekEnd);
+
+        return inCurrentWeek || isFuture;
       });
 
       const lastContact = patient.ultima_mensagem_data ? parseISO(patient.ultima_mensagem_data) : null;
@@ -110,8 +123,8 @@ export default function LeadsPage() {
 
       return {
         ...patient,
-        hasAppointmentThisWeek: !!weekAppointment,
-        appointmentDetails: weekAppointment,
+        hasAppointmentThisWeek: !!futureOrWeekAppointment,
+        appointmentDetails: futureOrWeekAppointment,
         contactedRecently,
         lastContact
       };
@@ -145,6 +158,11 @@ export default function LeadsPage() {
   };
 
   const openWhatsApp = (lead: any) => {
+    if (!lead.celular) {
+        toast({ variant: "destructive", title: "Sem Telefone", description: "Este paciente não possui celular cadastrado." });
+        return;
+    }
+
     let phoneNumber = lead.celular.replace(/\D/g, "");
     if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) phoneNumber = '55' + phoneNumber;
     
@@ -178,9 +196,15 @@ export default function LeadsPage() {
             Acompanhe quem precisa de atenção para agendamento esta semana.
           </p>
         </div>
-        <div className="bg-primary/10 px-4 py-2 rounded-lg border border-primary/20 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">{pendingCount} Pacientes sem agenda esta semana</span>
+        <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={fetchLeadsData} className="gap-2">
+                <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                Atualizar
+            </Button>
+            <div className="bg-primary/10 px-4 py-2 rounded-lg border border-primary/20 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">{pendingCount} Pacientes sem agenda</span>
+            </div>
         </div>
       </div>
 
@@ -204,41 +228,38 @@ export default function LeadsPage() {
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
-        <Button variant="outline" size="icon" onClick={fetchLeadsData}>
-            <Loader2 className={cn("h-4 w-4", isLoading && "animate-spin")} />
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="h-32 bg-muted rounded-lg" />
+              <CardContent className="h-40 bg-muted rounded-lg m-6" />
             </Card>
           ))
         ) : filteredLeads.length > 0 ? (
           filteredLeads.map(lead => (
             <Card key={lead.id} className={cn(
-              "overflow-hidden transition-all hover:shadow-md border-l-4",
+              "overflow-hidden transition-all hover:shadow-md border-l-4 h-full flex flex-col",
               lead.hasAppointmentThisWeek ? "border-l-green-500" : "border-l-orange-500"
             )}>
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{lead.nome}</CardTitle>
+                  <CardTitle className="text-lg truncate pr-2" title={lead.nome}>{lead.nome}</CardTitle>
                   {lead.hasAppointmentThisWeek ? (
-                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 flex gap-1">
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 flex gap-1 shrink-0">
                       <CheckCircle2 className="h-3 w-3" /> Agendado
                     </Badge>
                   ) : (
-                    <Badge variant="destructive" className="bg-orange-100 text-orange-700 hover:bg-orange-100 flex gap-1">
+                    <Badge variant="destructive" className="bg-orange-100 text-orange-700 hover:bg-orange-100 flex gap-1 shrink-0">
                       <AlertTriangle className="h-3 w-3" /> Sem Agenda
                     </Badge>
                   )}
                 </div>
                 <CardDescription className="font-mono text-xs">{lead.id}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-xs space-y-1">
+              <CardContent className="space-y-4 flex-grow flex flex-col justify-between">
+                <div className="text-xs space-y-1.5">
                   <p className="text-muted-foreground flex items-center gap-1.5">
                     <MessageCircle className="h-3 w-3" />
                     Último contato: {lead.lastContact ? format(lead.lastContact, "dd/MM 'às' HH:mm", { locale: ptBR }) : "Nunca"}
@@ -248,16 +269,23 @@ export default function LeadsPage() {
                       <CheckCircle2 className="h-3 w-3" /> Mensagem enviada esta semana
                     </p>
                   )}
+                  {lead.hasAppointmentThisWeek && lead.appointmentDetails && (
+                    <div className="mt-2 p-2 bg-green-50 rounded border border-green-100">
+                        <p className="text-green-800 font-bold flex items-center gap-1">
+                            <Calendar className="h-3 w-3" /> Próxima: {format(parseISO(lead.appointmentDetails.date), "dd/MM")} às {lead.appointmentDetails.time}
+                        </p>
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-auto">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className="flex-1 text-xs gap-1.5"
                     onClick={() => openWhatsApp(lead)}
                   >
-                    <MessageCircle className="h-3.5 w-3.5" /> Mandar WhatsApp
+                    <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
                   </Button>
                   <Button 
                     variant="secondary" 
@@ -289,9 +317,9 @@ export default function LeadsPage() {
         <CardContent>
           <ul className="text-xs text-muted-foreground space-y-2 list-disc pl-4">
             <li>O sistema analisa todos os seus pacientes <strong>Ativos</strong>.</li>
-            <li>Pacientes com a cor <span className="text-green-600 font-bold">Verde</span> já possuem pelo menos uma consulta marcada entre hoje e domingo.</li>
-            <li>Pacientes com a cor <span className="text-orange-600 font-bold">Laranja</span> estão sem agendamento para os próximos dias.</li>
-            <li>Use o botão <strong>"Já avisei"</strong> para registrar que você entrou em contato com o paciente hoje.</li>
+            <li>Pacientes com a cor <span className="text-green-600 font-bold">Verde</span> já possuem consulta marcada nesta semana ou em datas futuras.</li>
+            <li>Pacientes com a cor <span className="text-orange-600 font-bold">Laranja</span> estão sem nenhum agendamento futuro no sistema.</li>
+            <li>Use o botão <strong>"Já avisei"</strong> para registrar que você entrou em contato com o paciente hoje e limpar o lembrete visual.</li>
           </ul>
         </CardContent>
       </Card>
