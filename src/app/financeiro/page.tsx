@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -165,7 +164,7 @@ export default function FinanceiroPage() {
         toast({ title: "Sucesso!", description: "Novo lançamento adicionado." });
         form.reset();
         setIsFormOpen(false);
-        fetchFinancialData(); // Re-fetch data to update the UI
+        fetchFinancialData(); 
     } catch (error) {
         toast({
             variant: 'destructive',
@@ -187,7 +186,7 @@ export default function FinanceiroPage() {
         }
 
         toast({ title: "Transação Removida", description: "O lançamento foi excluído com sucesso." });
-        fetchFinancialData(); // Re-fetch data to update the UI
+        fetchFinancialData(); 
     } catch (error) {
          toast({
             variant: 'destructive',
@@ -201,8 +200,7 @@ export default function FinanceiroPage() {
     const selectedDate = new Date(selectedYear, selectedMonth);
     const interval = { start: startOfMonth(selectedDate), end: endOfMonth(selectedDate) };
     return transactions
-        .filter(t => t.type === 'receita_consulta' && isWithinInterval(parseISO(t.date), interval))
-        .concat(transactions.filter(t => t.type !== 'receita_consulta' && isWithinInterval(parseISO(t.date), interval)))
+        .filter(t => isWithinInterval(parseISO(t.date), interval))
         .sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [transactions, selectedMonth, selectedYear]);
 
@@ -215,27 +213,7 @@ export default function FinanceiroPage() {
         .filter(t => t.type === 'receita_outros')
         .reduce((sum, t) => sum + t.amount, 0);
     
-    const clinicRevenueFromAppointments = transactionsForPeriod
-      .filter(t => t.type === 'receita_consulta' && t.agendamento_id)
-      .map(t => {
-          const appointment = appointments.find(a => String(a.id) === t.agendamento_id);
-          if (!appointment) return 0;
-
-          // Se o profissional for o Marlon (Psicólogo ou Neuropsicólogo), a clínica fica com 100%
-          if (appointment.professional === 'Psicólogo' || appointment.professional === 'Neuropsicólogo') {
-              return appointment.price; // 100% para a clínica
-          } else {
-              // Outros profissionais (Nutricionista, etc)
-              if (appointment.price > 150) {
-                  return appointment.price * 0.2; // 20% para a clínica
-              } else {
-                  return 50; // R$50 fixo para a clínica
-              }
-          }
-      })
-      .reduce((sum, value) => sum + value, 0);
-    
-    const clinicTotalRevenue = clinicRevenueFromAppointments + otherRevenues;
+    const clinicTotalRevenue = totalBilledFromAppointments + otherRevenues;
 
     const totalExpenses = transactionsForPeriod
         .filter(t => t.type === 'despesa')
@@ -244,7 +222,7 @@ export default function FinanceiroPage() {
     const netProfit = clinicTotalRevenue - totalExpenses;
 
     return { clinicTotalRevenue, totalExpenses, netProfit, totalBilledFromAppointments };
-}, [transactionsForPeriod, appointments]);
+}, [transactionsForPeriod]);
   
   
   const monthlyChartData = useMemo(() => {
@@ -263,25 +241,9 @@ export default function FinanceiroPage() {
       if(dataByMonth[monthKey]) {
         if(t.type === 'despesa') {
             dataByMonth[monthKey].expenses += t.amount;
-        } else if (t.type === 'receita_outros') {
+        } else {
+            // Conta 100% de qualquer receita (consulta ou outros)
             dataByMonth[monthKey].revenue += t.amount;
-        } else if (t.type === 'receita_consulta' && t.agendamento_id) {
-            const appointment = appointments.find(a => String(a.id) === t.agendamento_id);
-            if (!appointment) return;
-            
-            let clinicShare = 0;
-            // Se o profissional for o Marlon (Psicólogo ou Neuropsicólogo), a clínica fica com 100%
-            if (appointment.professional === 'Psicólogo' || appointment.professional === 'Neuropsicólogo') {
-                clinicShare = appointment.price;
-            } else {
-                // Outros profissionais
-                if (appointment.price > 150) {
-                    clinicShare = appointment.price * 0.2;
-                } else {
-                    clinicShare = 50;
-                }
-            }
-            dataByMonth[monthKey].revenue += clinicShare;
         }
       }
     });
@@ -290,7 +252,7 @@ export default function FinanceiroPage() {
       month,
       ...values
     }));
-  }, [transactions, appointments]);
+  }, [transactions]);
 
 
   if (!isClient || !isLoggedIn || userRole !== 'Admin') {
@@ -346,14 +308,14 @@ export default function FinanceiroPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-                Lucro Bruto (Receita Clínica)
+                Lucro Bruto (Faturamento Real)
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Info className="h-3 w-3 text-muted-foreground cursor-pointer" />
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p className="max-w-xs">Soma das comissões de consultas e outras receitas. Consultas do Marlon (Psicólogo/Neuropsicólogo) contam 100%.</p>
+                            <p className="max-w-xs">Valor real integral de todas as receitas e consultas pagas no mês.</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -364,7 +326,7 @@ export default function FinanceiroPage() {
             <div className="text-2xl font-bold text-green-600">
               {financialSummary.clinicTotalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-             <p className="text-xs text-muted-foreground">Total de consultas pagas: {financialSummary.totalBilledFromAppointments.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+             <p className="text-xs text-muted-foreground">Total bruto de todas as modalidades.</p>
           </CardContent>
         </Card>
         <Card>
@@ -376,19 +338,19 @@ export default function FinanceiroPage() {
             <div className="text-2xl font-bold text-red-600">
               {financialSummary.totalExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <p className="text-xs text-muted-foreground">Custos fixos e variáveis.</p>
+            <p className="text-xs text-muted-foreground">Custos fixos e variáveis registrados.</p>
           </CardContent>
         </Card>
         <Card className="sm:col-span-2 lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lucro Líquido do Mês</CardTitle>
+            <CardTitle className="text-sm font-medium">Lucro Líquido Real</CardTitle>
             <Hourglass className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${financialSummary.netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
               {financialSummary.netProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <p className="text-xs text-muted-foreground">Lucro Bruto - Despesas.</p>
+            <p className="text-xs text-muted-foreground">Faturamento real menos despesas.</p>
           </CardContent>
         </Card>
       </div>
@@ -398,7 +360,7 @@ export default function FinanceiroPage() {
         <div className="lg:col-span-3 space-y-8">
             <Card>
                 <CardHeader>
-                    <CardTitle>Receita Clínica vs. Despesa (Últimos 6 meses)</CardTitle>
+                    <CardTitle>Receitas vs. Despesas (Últimos 6 meses)</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ChartContainer config={chartConfig} className="w-full h-[250px]">
@@ -417,7 +379,7 @@ export default function FinanceiroPage() {
                         content={<ChartTooltipContent indicator="dot" />}
                         />
                         <Legend />
-                        <Bar dataKey="revenue" name="Receita Clínica" fill="var(--color-revenue)" radius={4} />
+                        <Bar dataKey="revenue" name="Receita Total" fill="var(--color-revenue)" radius={4} />
                         <Bar dataKey="expenses" name="Despesa" fill="var(--color-expenses)" radius={4} />
                     </BarChart>
                     </ChartContainer>
