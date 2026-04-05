@@ -13,12 +13,12 @@ export async function GET(req: Request) {
   try {
     client = await pool.connect();
     
-    // Verifica se a coluna ultima_mensagem_data existe para evitar erro 500
+    // Verifica se a coluna ultima_mensagem_data existe para evitar erro 500 na query
     const columnCheck = await client.query(`
       SELECT 1 FROM information_schema.columns 
       WHERE table_name='pacientes' AND column_name='ultima_mensagem_data'
     `);
-    const hasContactColumn = columnCheck.rowCount! > 0;
+    const hasContactColumn = columnCheck.rowCount !== null && columnCheck.rowCount > 0;
 
     const baseQuery = `
       SELECT 
@@ -42,13 +42,13 @@ export async function GET(req: Request) {
         pais, 
         created_at,
         COALESCE(is_active, TRUE) as is_active
-        ${hasContactColumn ? ', ultima_mensagem_data' : ''}
+        ${hasContactColumn ? ', ultima_mensagem_data' : ', NULL as ultima_mensagem_data'}
       FROM pacientes
     `;
 
     if (cpf) {
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const result = await client.query(`${baseQuery} WHERE cpf = $1 OR id = $1 OR id = $2`, [normalizedCpf, cpf]);
+      const result = await client.query(`${baseQuery} WHERE cpf = $1 OR id = $1`, [normalizedCpf]);
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
       const result = await client.query(`${baseQuery} WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50`, [`%${search}%`]);

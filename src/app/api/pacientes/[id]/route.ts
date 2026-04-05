@@ -35,7 +35,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     client = await pool.connect();
     const body = await req.json();
     
-    // Validação dos dados recebidos
+    // Validação flexível para permitir atualização de apenas um campo (como data de contato)
     const validation = patientUpdateSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
@@ -46,7 +46,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const data = validation.data;
 
-    // Se o corpo contiver apenas a data de contato (fluxo de Leads)
+    // Caso de uso: Botão "Já avisei" (Apenas data de contato)
     if (Object.keys(body).length === 1 && 'ultima_mensagem_data' in body) {
         const result = await client.query(
           'UPDATE pacientes SET ultima_mensagem_data = $1 WHERE id = $2 RETURNING *', 
@@ -56,14 +56,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ message: "Data de contato atualizada", patient: result.rows[0] });
     }
 
-    // Se o corpo contiver apenas is_active, faz um update parcial rápido
+    // Caso de uso: Ativar/Inativar (Apenas is_active)
     if (Object.keys(body).length === 1 && 'is_active' in body) {
         const result = await client.query('UPDATE pacientes SET is_active = $1 WHERE id = $2 RETURNING *', [data.is_active, id]);
         if (result.rowCount === 0) return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
         return NextResponse.json({ message: "Status atualizado", patient: result.rows[0] });
     }
 
-    // Para atualizações completas
+    // Atualização completa (Cadastro)
     const { 
         nome, email, celular, cpf, sexo, nascimento, como_conheceu,
         cep, logradouro, numero, complemento, bairro, cidade, estado, pais, is_active, ultima_mensagem_data
