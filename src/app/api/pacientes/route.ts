@@ -12,6 +12,14 @@ export async function GET(req: Request) {
 
   try {
     client = await pool.connect();
+    
+    // Verifica se a coluna ultima_mensagem_data existe para evitar erro 500
+    const columnCheck = await client.query(`
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_name='pacientes' AND column_name='ultima_mensagem_data'
+    `);
+    const hasContactColumn = columnCheck.rowCount! > 0;
+
     const baseQuery = `
       SELECT 
         id, 
@@ -33,8 +41,8 @@ export async function GET(req: Request) {
         estado, 
         pais, 
         created_at,
-        COALESCE(is_active, TRUE) as is_active,
-        ultima_mensagem_data
+        COALESCE(is_active, TRUE) as is_active
+        ${hasContactColumn ? ', ultima_mensagem_data' : ''}
       FROM pacientes
     `;
 
