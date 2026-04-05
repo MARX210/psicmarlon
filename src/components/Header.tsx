@@ -59,8 +59,8 @@ export function Header() {
       return (
         <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
           <div className="container mx-auto flex justify-between items-center p-4 gap-4">
-            <div className="w-1/4"></div>
-            <div className="flex justify-center w-1/2">
+            <div className="flex-1"></div>
+            <div className="flex justify-center shrink-0">
                 <Link href="/" className="flex items-center gap-2 flex-shrink-0">
                 <Image
                     src="/images/logopreta.png"
@@ -80,7 +80,7 @@ export function Header() {
                 />
                 </Link>
             </div>
-            <div className="flex items-center justify-end gap-2 w-1/4">
+            <div className="flex items-center justify-end gap-2 flex-1">
                 <ThemeToggle />
             </div>
           </div>
@@ -92,7 +92,7 @@ export function Header() {
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
         {/* Left side */}
-        <div className="flex items-center justify-start w-1/4">
+        <div className="flex items-center justify-start flex-1 min-w-0">
           <div className="lg:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -147,13 +147,13 @@ export function Header() {
             </Sheet>
           </div>
 
-          <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2">
+          <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2 overflow-x-auto no-scrollbar">
              {firstHalfLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-sm lg:text-base px-3 py-2 rounded-md transition-colors",
+                  "text-sm lg:text-base px-3 py-2 rounded-md transition-colors whitespace-nowrap",
                   "hover:bg-accent hover:text-accent-foreground",
                   pathname === link.href 
                     ? "font-bold text-primary underline" 
@@ -168,7 +168,7 @@ export function Header() {
         </div>
 
         {/* Logo */}
-        <div className="flex justify-center w-1/2">
+        <div className="flex justify-center shrink-0 z-10">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
               src="/images/logopreta.png"
@@ -190,14 +190,14 @@ export function Header() {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center justify-end gap-2 w-1/4">
-          <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2">
+        <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
+          <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2 overflow-x-auto no-scrollbar">
              {secondHalfLinks.map((link) => (
                <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-sm lg:text-base px-3 py-2 rounded-md transition-colors",
+                  "text-sm lg:text-base px-3 py-2 rounded-md transition-colors whitespace-nowrap",
                   "hover:bg-accent hover:text-accent-foreground",
                   pathname === link.href 
                     ? "font-bold text-primary underline" 

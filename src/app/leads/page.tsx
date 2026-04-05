@@ -130,7 +130,7 @@ export default function LeadsPage() {
 
   const handleMarkAsContacted = async (patientId: string) => {
     try {
-      const res = await fetch(`/api/pacientes/${patientId}`, {
+      const res = await fetch(`/api/pacientes/${encodeURIComponent(patientId)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ultima_mensagem_data: new Date().toISOString() }),
@@ -243,7 +243,7 @@ export default function LeadsPage() {
                     <MessageCircle className="h-3 w-3" />
                     Último contato: {lead.lastContact ? format(lead.lastContact, "dd/MM 'às' HH:mm", { locale: ptBR }) : "Nunca"}
                   </p>
-                  {lead.contactedRecently && !lead.hasAppointmentThisWeek && (
+                  {lead.contactedRecently && (
                     <p className="text-blue-600 font-medium flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" /> Mensagem enviada esta semana
                     </p>
@@ -291,7 +291,7 @@ export default function LeadsPage() {
             <li>O sistema analisa todos os seus pacientes <strong>Ativos</strong>.</li>
             <li>Pacientes com a cor <span className="text-green-600 font-bold">Verde</span> já possuem pelo menos uma consulta marcada entre hoje e domingo.</li>
             <li>Pacientes com a cor <span className="text-orange-600 font-bold">Laranja</span> estão sem agendamento para os próximos dias.</li>
-            <li>Use o botão <strong>"Já avisei"</strong> para limpar o alerta visual por uma semana após o contato.</li>
+            <li>Use o botão <strong>"Já avisei"</strong> para registrar que você entrou em contato com o paciente hoje.</li>
           </ul>
         </CardContent>
       </Card>
