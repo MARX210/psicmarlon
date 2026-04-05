@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Loader2, DollarSign, Banknote, Hourglass, CalendarCheck2, CheckCircle2, TrendingUp, TrendingDown, Landmark, PlusCircle, Trash2, ArrowRightLeft, MoreHorizontal, Info } from "lucide-react";
+import { Loader2, DollarSign, Banknote, Hourglass, CalendarCheck2, CheckCircle2, TrendingUp, TrendingDown, Landmark, PlusCircle, Trash2, Edit, ArrowRightLeft, MoreHorizontal, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Table,
@@ -58,7 +59,7 @@ type Appointment = {
 const transactionSchema = z.object({
   description: z.string().min(1, "Descrição é obrigatória."),
   amount: z.coerce.number().positive("O valor deve ser positivo."),
-  type: z.enum(['receita_outros', 'despesa']),
+  type: z.enum(['receita_consulta', 'receita_outros', 'despesa']),
   date: z.string(),
 });
 type TransactionFormValues = z.infer<typeof transactionSchema>;
@@ -90,6 +91,7 @@ export default function FinanceiroPage() {
   const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const { toast } = useToast();
   const form = useForm<TransactionFormValues>({
@@ -150,20 +152,24 @@ export default function FinanceiroPage() {
 
   const onTransactionSubmit = async (data: TransactionFormValues) => {
     try {
-        const response = await fetch('/api/financeiro', {
-            method: 'POST',
+        const url = editingTransaction ? `/api/financeiro/${editingTransaction.id}` : '/api/financeiro';
+        const method = editingTransaction ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
 
         if (!response.ok) {
             const result = await response.json();
-            throw new Error(result.error || 'Erro ao adicionar lançamento.');
+            throw new Error(result.error || 'Erro ao salvar lançamento.');
         }
         
-        toast({ title: "Sucesso!", description: "Novo lançamento adicionado." });
+        toast({ title: "Sucesso!", description: editingTransaction ? "Lançamento atualizado." : "Novo lançamento adicionado." });
         form.reset();
         setIsFormOpen(false);
+        setEditingTransaction(null);
         fetchFinancialData(); 
     } catch (error) {
         toast({
@@ -174,6 +180,17 @@ export default function FinanceiroPage() {
     }
   };
   
+  const handleEditClick = (t: Transaction) => {
+    setEditingTransaction(t);
+    form.reset({
+      description: t.description,
+      amount: t.amount,
+      type: t.type,
+      date: t.date,
+    });
+    setIsFormOpen(true);
+  };
+
   const deleteTransaction = async (id: string) => {
     try {
         const response = await fetch(`/api/financeiro/${id}`, {
@@ -242,7 +259,6 @@ export default function FinanceiroPage() {
         if(t.type === 'despesa') {
             dataByMonth[monthKey].expenses += t.amount;
         } else {
-            // Conta 100% de qualquer receita (consulta ou outros)
             dataByMonth[monthKey].revenue += t.amount;
         }
       }
@@ -395,25 +411,44 @@ export default function FinanceiroPage() {
                     <CardTitle className="flex items-center gap-2">
                         <ArrowRightLeft /> Lançamentos do Mês
                     </CardTitle>
-                    <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <Dialog open={isFormOpen} onOpenChange={(v) => {
+                      if (!v) {
+                        setEditingTransaction(null);
+                        form.reset({
+                          description: "",
+                          amount: 0,
+                          type: "despesa",
+                          date: format(new Date(), "yyyy-MM-dd"),
+                        });
+                      }
+                      setIsFormOpen(v);
+                    }}>
                         <DialogTrigger asChild>
                             <Button size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Adicionar</Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Adicionar Lançamento Manual</DialogTitle>
-                                <DialogDescription>Registre uma receita ou despesa que não seja de uma consulta.</DialogDescription>
+                                <DialogTitle>{editingTransaction ? 'Editar Lançamento' : 'Adicionar Lançamento Manual'}</DialogTitle>
+                                <DialogDescription>
+                                  {editingTransaction ? 'Atualize os dados do lançamento.' : 'Registre uma receita ou despesa que não seja de uma consulta.'}
+                                </DialogDescription>
                             </DialogHeader>
                              <form onSubmit={form.handleSubmit(onTransactionSubmit)} className="space-y-4 py-4">
-                                <input type="hidden" {...form.register("date")} value={format(new Date(selectedYear, selectedMonth), "yyyy-MM-dd")} />
+                                <input type="hidden" {...form.register("date")} />
                                 
                                 <div>
                                     <Label htmlFor="type">Tipo de Lançamento</Label>
-                                    <Select required onValueChange={(v) => form.setValue('type', v as 'receita_outros' | 'despesa')} defaultValue={form.getValues('type')}>
+                                    <Select 
+                                      required 
+                                      onValueChange={(v) => form.setValue('type', v as any)} 
+                                      value={form.watch('type')}
+                                      disabled={editingTransaction?.type === 'receita_consulta'}
+                                    >
                                         <SelectTrigger id="type">
                                             <SelectValue placeholder="Selecione o tipo" />
                                         </SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="receita_consulta" disabled>Receita de Consulta</SelectItem>
                                             <SelectItem value="receita_outros">Outra Receita</SelectItem>
                                             <SelectItem value="despesa">Despesa</SelectItem>
                                         </SelectContent>
@@ -422,7 +457,7 @@ export default function FinanceiroPage() {
 
                                 <div>
                                    <Label htmlFor="description">Descrição</Label>
-                                   <Input id="description" {...form.register("description")} />
+                                   <Input id="description" {...form.register("description")} disabled={editingTransaction?.type === 'receita_consulta'} />
                                    {form.formState.errors.description && <p className="text-sm text-destructive mt-1">{form.formState.errors.description.message}</p>}
                                 </div>
 
@@ -436,7 +471,7 @@ export default function FinanceiroPage() {
                                     <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
                                     <Button type="submit" disabled={form.formState.isSubmitting}>
                                       {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                      Salvar
+                                      {editingTransaction ? 'Salvar Alterações' : 'Salvar'}
                                     </Button>
                                 </DialogFooter>
                             </form>
@@ -450,7 +485,7 @@ export default function FinanceiroPage() {
                     <TableRow>
                       <TableHead>Descrição</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
-                       <TableHead className="w-[50px] text-right"> </TableHead>
+                       <TableHead className="w-[80px] text-right"> </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -470,8 +505,11 @@ export default function FinanceiroPage() {
                         <TableCell className={`text-right font-semibold ${t.type === 'despesa' ? 'text-red-600' : 'text-green-600'}`}>
                            {t.type === 'despesa' ? '-' : '+'} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </TableCell>
-                         <TableCell className="text-right">
-                           {t.type === 'receita_consulta' ? null : (
+                         <TableCell className="text-right flex gap-1 justify-end">
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleEditClick(t)}>
+                              <Edit className="h-4 w-4" />
+                           </Button>
+                           {t.type !== 'receita_consulta' && (
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => deleteTransaction(t.id)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
