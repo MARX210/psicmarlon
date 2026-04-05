@@ -91,9 +91,9 @@ export function Header() {
 
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto flex justify-between items-center p-4 gap-4">
-        {/* Left side: Mobile Menu + First Half of Nav */}
-        <div className="flex items-center flex-1 min-w-0 lg:justify-end">
+      <div className="container mx-auto flex items-center p-4">
+        {/* Lado Esquerdo: Menu Mobile + Links da Primeira Metade */}
+        <div className="flex-1 flex items-center justify-end">
           <div className="lg:hidden mr-auto">
             <Sheet>
               <SheetTrigger asChild>
@@ -148,13 +148,13 @@ export function Header() {
             </Sheet>
           </div>
 
-          <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2 overflow-x-auto no-scrollbar">
+          <nav className="hidden lg:flex items-center space-x-1">
              {firstHalfLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-sm lg:text-base px-3 py-2 rounded-md transition-colors whitespace-nowrap",
+                  "text-sm px-2 py-2 rounded-md transition-colors whitespace-nowrap",
                   "hover:bg-accent hover:text-accent-foreground",
                   pathname === link.href 
                     ? "font-bold text-primary underline" 
@@ -168,8 +168,8 @@ export function Header() {
           </nav>
         </div>
 
-        {/* Logo centered */}
-        <div className="flex justify-center shrink-0 z-10 px-2">
+        {/* Logo Centralizado */}
+        <div className="shrink-0 px-4">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
               src="/images/logopreta.png"
@@ -190,15 +190,15 @@ export function Header() {
           </Link>
         </div>
 
-        {/* Right side: Second Half of Nav + Actions */}
-        <div className="flex items-center flex-1 min-w-0">
-          <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2 overflow-x-auto no-scrollbar">
+        {/* Lado Direito: Segunda Metade de Links + Ações */}
+        <div className="flex-1 flex items-center justify-start">
+          <nav className="hidden lg:flex items-center space-x-1">
              {secondHalfLinks.map((link) => (
                <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-sm lg:text-base px-3 py-2 rounded-md transition-colors whitespace-nowrap",
+                  "text-sm px-2 py-2 rounded-md transition-colors whitespace-nowrap",
                   "hover:bg-accent hover:text-accent-foreground",
                   pathname === link.href 
                     ? "font-bold text-primary underline" 
@@ -218,13 +218,13 @@ export function Header() {
               {isLoggedIn ? (
                 <Button onClick={handleLogout} variant="outline" size="sm">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                  Sair
                 </Button>
               ) : (pathname !== '/login' && pathname !== '/setup' &&
                 <Button asChild variant="outline" size="sm">
                   <Link href="/login">
                     <LogIn className="mr-2 h-4 w-4" />
-                    Login
+                    Entrar
                   </Link>
                 </Button>
               )}
