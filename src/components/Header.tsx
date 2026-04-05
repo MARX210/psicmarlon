@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -91,9 +92,9 @@ export function Header() {
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto flex justify-between items-center p-4 gap-4">
-        {/* Left side */}
-        <div className="flex items-center justify-start flex-1 min-w-0">
-          <div className="lg:hidden">
+        {/* Left side: Mobile Menu + First Half of Nav */}
+        <div className="flex items-center flex-1 min-w-0 lg:justify-end">
+          <div className="lg:hidden mr-auto">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" disabled={!isMounted || !isLoggedIn}>
@@ -167,8 +168,8 @@ export function Header() {
           </nav>
         </div>
 
-        {/* Logo */}
-        <div className="flex justify-center shrink-0 z-10">
+        {/* Logo centered */}
+        <div className="flex justify-center shrink-0 z-10 px-2">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
               src="/images/logopreta.png"
@@ -189,8 +190,8 @@ export function Header() {
           </Link>
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
+        {/* Right side: Second Half of Nav + Actions */}
+        <div className="flex items-center flex-1 min-w-0">
           <nav className="hidden lg:flex items-center space-x-1 lg:space-x-2 overflow-x-auto no-scrollbar">
              {secondHalfLinks.map((link) => (
                <Link
@@ -210,22 +211,24 @@ export function Header() {
             ))}
           </nav>
           
-          <ThemeToggle />
+          <div className="flex items-center gap-2 ml-auto">
+            <ThemeToggle />
 
-          <div className={cn("hidden lg:inline-flex", { "hidden": !isMounted })}>
-            {isLoggedIn ? (
-              <Button onClick={handleLogout} variant="outline" size="sm">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            ) : (pathname !== '/login' && pathname !== '/setup' &&
-              <Button asChild variant="outline" size="sm">
-                <Link href="/login">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Login
-                </Link>
-              </Button>
-            )}
+            <div className={cn("hidden lg:inline-flex", { "hidden": !isMounted })}>
+              {isLoggedIn ? (
+                <Button onClick={handleLogout} variant="outline" size="sm">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+              ) : (pathname !== '/login' && pathname !== '/setup' &&
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/login">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
