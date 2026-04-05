@@ -614,14 +614,17 @@ export default function PacientesPage() {
               </Button>
             </div>
 
-            {/* Área de Visualização */}
+            {/* Área de Visualização e Edição */}
             <div className="flex-grow flex flex-col p-6 bg-card overflow-hidden">
               {selectedDocTemplate ? (
                 <>
-                  <ScrollArea className="flex-grow border rounded-md p-6 bg-white dark:bg-slate-900 shadow-inner">
-                    <pre className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-foreground">
-                      {documentContent}
-                    </pre>
+                  <ScrollArea className="flex-grow border rounded-md bg-white dark:bg-slate-900 shadow-inner">
+                    <Textarea 
+                      className="min-h-full w-full p-6 font-serif text-sm leading-relaxed text-foreground border-none focus-visible:ring-0 resize-none bg-transparent"
+                      value={documentContent}
+                      onChange={(e) => setDocumentContent(e.target.value)}
+                      placeholder="Edite o conteúdo do documento aqui..."
+                    />
                   </ScrollArea>
                   <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3 shrink-0">
                     <Button variant="outline" size="sm" onClick={copyToClipboard} className="gap-2 h-auto py-2">
