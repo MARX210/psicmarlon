@@ -66,7 +66,7 @@ import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/badge";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type Patient = {
@@ -158,15 +158,12 @@ const safeFormatDate = (dateVal: any, formatStr: string = "dd/MM/yyyy HH:mm") =>
       dateObj = dateVal;
     } else {
       const s = String(dateVal);
-      // Tentativa 1: parseISO (melhor para strings ISO vindo da API)
       dateObj = parseISO(s);
       
-      // Tentativa 2: Fallback para Date nativo se parseISO falhar
       if (!isValid(dateObj)) {
         dateObj = new Date(s);
       }
       
-      // Tentativa 3: Tratamento manual se ainda for inválido (comum em alguns navegadores com strings T)
       if (!isValid(dateObj) && s.includes('T')) {
           dateObj = new Date(s.replace('T', ' '));
       }
@@ -181,7 +178,6 @@ const safeFormatDate = (dateVal: any, formatStr: string = "dd/MM/yyyy HH:mm") =>
   return "Data inválida";
 };
 
-// Status config para badges no histórico
 const historyStatusConfig: Record<string, string> = {
   Confirmado: "bg-blue-100 text-blue-700 hover:bg-blue-100",
   Realizado: "bg-green-100 text-green-700 hover:bg-green-100",
@@ -191,7 +187,6 @@ const historyStatusConfig: Record<string, string> = {
   Reagendado: "bg-orange-100 text-orange-700 hover:bg-orange-100",
 };
 
-// Document Templates
 const getAtestadoTemplate = (patientName: string, cpf: string, date: string) => `
 ATESTADO PSICOLÓGICO
 
@@ -255,16 +250,11 @@ export default function PacientesPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
-  const [whatsappMessage, setWhatsappMessage] = useState("");
   const [isProntuarioOpen, setIsProntuarioOpen] = useState(false);
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
-  
-  // States para Documentos
   const [isDocumentsOpen, setIsDocumentsOpen] = useState(false);
   const [selectedDocTemplate, setSelectedDocTemplate] = useState<string | null>(null);
   const [documentContent, setDocumentContent] = useState("");
-
   const [patientHistory, setPatientHistory] = useState<HistoryItem[]>([]);
   const [isLoadingProntuario, setIsLoadingProntuario] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
@@ -430,7 +420,6 @@ export default function PacientesPage() {
     form.setValue(fieldName, maskedValue.slice(0, maxLength[mask]));
   };
 
-  // Funções para Documentos
   const generateDocument = (type: string) => {
     if (!selectedPatient) return;
     const today = new Date().toLocaleDateString('pt-BR');
@@ -545,7 +534,6 @@ export default function PacientesPage() {
         </Table>
       </div>
 
-      {/* Dialog Prontuário Integrado */}
       <Dialog open={isProntuarioOpen} onOpenChange={(v) => { setIsProntuarioOpen(v); if(!v) setSelectedPatient(null); }}>
         <DialogContent className="sm:max-w-[700px] h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-6 border-b flex flex-row justify-between items-center">
@@ -582,7 +570,6 @@ export default function PacientesPage() {
                                                   {safeFormatDate(item.data_registro)}
                                                 </span>
                                             </div>
-                                            {/* Status do agendamento solicitado pelo usuário */}
                                             {status && (
                                               <Badge variant="secondary" className={cn("text-[10px] h-5", historyStatusConfig[status] || "bg-muted text-muted-foreground")}>
                                                 {status.toUpperCase()}
@@ -620,7 +607,6 @@ export default function PacientesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Documentos */}
       <Dialog open={isDocumentsOpen} onOpenChange={setIsDocumentsOpen}>
         <DialogContent className="sm:max-w-[700px] h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-6 border-b">
@@ -628,7 +614,6 @@ export default function PacientesPage() {
             <DialogDescription>Gere atestados, declarações e laudos para {selectedPatient?.nome}.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col md:flex-row flex-grow overflow-hidden">
-            {/* Sidebar de Seleção */}
             <div className="w-full md:w-64 border-r bg-muted/20 p-4 space-y-2 overflow-y-auto">
               <Button 
                 variant={selectedDocTemplate === 'atestado' ? 'default' : 'ghost'} 
@@ -653,7 +638,6 @@ export default function PacientesPage() {
               </Button>
             </div>
 
-            {/* Área de Visualização e Edição */}
             <div className="flex-grow flex flex-col p-6 bg-card overflow-hidden">
               {selectedDocTemplate ? (
                 <>
