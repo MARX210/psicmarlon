@@ -46,6 +46,8 @@ type Appointment = {
   id: number;
   patient_id: string;
   date: string;
+  time: string;
+  professional: string;
 };
 
 export default function LeadsPage() {
@@ -69,11 +71,12 @@ export default function LeadsPage() {
       const patientsData: Patient[] = await patientsRes.json();
       const appData: any[] = await appRes.json();
       
-      // Adaptar dados do agendamento se vierem com campos diferentes
       const normalizedApps = appData.map(a => ({
           id: a.id,
           patient_id: a.patientId || a.patient_id,
-          date: a.date
+          date: a.date,
+          time: a.time,
+          professional: a.professional
       }));
 
       setPatients(patientsData.filter(p => p.is_active));
@@ -96,7 +99,7 @@ export default function LeadsPage() {
     const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
     const patientsWithStatus = patients.map(patient => {
-      const hasAppointmentThisWeek = appointments.some(app => {
+      const weekAppointment = appointments.find(app => {
         if (app.patient_id !== patient.id) return false;
         const appDate = parseISO(app.date);
         return isWithinInterval(appDate, { start: weekStart, end: weekEnd });
@@ -107,7 +110,8 @@ export default function LeadsPage() {
 
       return {
         ...patient,
-        hasAppointmentThisWeek,
+        hasAppointmentThisWeek: !!weekAppointment,
+        appointmentDetails: weekAppointment,
         contactedRecently,
         lastContact
       };
@@ -144,7 +148,19 @@ export default function LeadsPage() {
     let phoneNumber = lead.celular.replace(/\D/g, "");
     if (phoneNumber.length >= 10 && !phoneNumber.startsWith('55')) phoneNumber = '55' + phoneNumber;
     
-    const message = `Olá, ${lead.nome.split(" ")[0]}! Tudo bem? Estou passando para ver como você está e se gostaria de agendar sua sessão para esta semana.`;
+    let message = "";
+    const firstName = lead.nome.split(" ")[0];
+
+    if (lead.hasAppointmentThisWeek && lead.appointmentDetails) {
+      const dateFormatted = format(parseISO(lead.appointmentDetails.date), "dd/MM", { locale: ptBR });
+      const timeFormatted = lead.appointmentDetails.time;
+      const professional = lead.appointmentDetails.professional;
+      
+      message = `Olá, ${lead.nome}! 😊 Passando para lembrá-lo(a) de que sua consulta está agendada para amanhã, ${dateFormatted} às ${timeFormatted}, com o Dr(a). ${professional}. Esperamos por você! 🏥`;
+    } else {
+      message = `Olá, ${firstName}! Tudo bem? Estou passando para ver como você está e se gostaria de agendar sua sessão para esta semana.`;
+    }
+
     window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
