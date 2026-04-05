@@ -66,7 +66,7 @@ import { ptBR } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/badge";
 import { cn } from "@/lib/utils";
 
 type Patient = {
@@ -158,12 +158,37 @@ const safeFormatDate = (dateVal: any, formatStr: string = "dd/MM/yyyy HH:mm") =>
       dateObj = dateVal;
     } else {
       const s = String(dateVal);
+      // Tentativa 1: parseISO (melhor para strings ISO vindo da API)
       dateObj = parseISO(s);
-      if (!isValid(dateObj)) dateObj = new Date(s);
+      
+      // Tentativa 2: Fallback para Date nativo se parseISO falhar
+      if (!isValid(dateObj)) {
+        dateObj = new Date(s);
+      }
+      
+      // Tentativa 3: Tratamento manual se ainda for inválido (comum em alguns navegadores com strings T)
+      if (!isValid(dateObj) && s.includes('T')) {
+          dateObj = new Date(s.replace('T', ' '));
+      }
     }
-    if (dateObj && isValid(dateObj)) return format(dateObj, formatStr, { locale: ptBR });
-  } catch (error) {}
+    
+    if (dateObj && isValid(dateObj)) {
+      return format(dateObj, formatStr, { locale: ptBR });
+    }
+  } catch (error) {
+      console.error("Erro ao formatar data:", error);
+  }
   return "Data inválida";
+};
+
+// Status config para badges no histórico
+const historyStatusConfig: Record<string, string> = {
+  Confirmado: "bg-blue-100 text-blue-700 hover:bg-blue-100",
+  Realizado: "bg-green-100 text-green-700 hover:bg-green-100",
+  Pago: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
+  Cancelado: "bg-gray-100 text-gray-700 hover:bg-gray-100",
+  Faltou: "bg-red-100 text-red-700 hover:bg-red-100",
+  Reagendado: "bg-orange-100 text-orange-700 hover:bg-orange-100",
 };
 
 // Document Templates
@@ -298,6 +323,7 @@ export default function PacientesPage() {
         if (!prontRes.ok || !appRes.ok) throw new Error('Falha ao buscar histórico');
         const prontuarios: Prontuario[] = await prontRes.json();
         const agendamentos: Appointment[] = await appRes.json();
+        
         const historyAnotacoes: HistoryItem[] = prontuarios.map(p => ({
             id: p.id,
             historyType: 'anotacao',
@@ -305,12 +331,14 @@ export default function PacientesPage() {
             conteudo: p.conteudo,
             profissional_nome: p.profissional_nome
         }));
+        
         const historyAgendamentos: HistoryItem[] = agendamentos.map(a => ({
             id: `app-${a.id}`,
             historyType: 'agendamento',
             data_registro: `${a.date}T${a.time}:00`,
             appointmentDetails: a
         }));
+        
         const combined = [...historyAnotacoes, ...historyAgendamentos].sort((a, b) => new Date(b.data_registro).getTime() - new Date(a.data_registro).getTime());
         setPatientHistory(combined);
     } catch (error) {
@@ -539,6 +567,7 @@ export default function PacientesPage() {
                     <div className="space-y-6">
                         {patientHistory.map((item, idx) => {
                             const isAnotacao = item.historyType === 'anotacao';
+                            const status = item.appointmentDetails?.status;
                             return (
                                 <div key={idx} className="relative flex items-start gap-6 group">
                                     <div className={`mt-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm z-10 ${isAnotacao ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted text-muted-foreground'}`}>
@@ -548,8 +577,17 @@ export default function PacientesPage() {
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">
                                                 <Badge variant={isAnotacao ? "default" : "outline"} className="text-[10px] h-5">{isAnotacao ? 'ANOTAÇÃO' : 'AGENDA'}</Badge>
-                                                <span className="text-xs text-muted-foreground font-medium"><Clock className="h-3 w-3 inline mr-1" />{safeFormatDate(item.data_registro)}</span>
+                                                <span className="text-xs text-muted-foreground font-medium">
+                                                  <Clock className="h-3 w-3 inline mr-1" />
+                                                  {safeFormatDate(item.data_registro)}
+                                                </span>
                                             </div>
+                                            {/* Status do agendamento solicitado pelo usuário */}
+                                            {status && (
+                                              <Badge variant="secondary" className={cn("text-[10px] h-5", historyStatusConfig[status] || "bg-muted text-muted-foreground")}>
+                                                {status.toUpperCase()}
+                                              </Badge>
+                                            )}
                                         </div>
                                         {isAnotacao ? (
                                             <>
@@ -560,6 +598,7 @@ export default function PacientesPage() {
                                             <div className="text-sm">
                                                 <p className="font-semibold">Consulta {item.appointmentDetails?.type}</p>
                                                 <p className="text-xs text-muted-foreground">{item.appointmentDetails?.professional} - R$ {item.appointmentDetails?.price.toFixed(2)}</p>
+                                                <p className="text-[10px] font-bold mt-1 text-primary">{status}</p>
                                             </div>
                                         )}
                                     </div>
