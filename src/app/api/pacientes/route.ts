@@ -33,7 +33,8 @@ export async function GET(req: Request) {
         estado, 
         pais, 
         created_at,
-        COALESCE(is_active, TRUE) as is_active
+        COALESCE(is_active, TRUE) as is_active,
+        ultima_mensagem_data
       FROM pacientes
     `;
 

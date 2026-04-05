@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -92,8 +91,8 @@ export function Header() {
   return (
     <header className="bg-card border-b sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto flex items-center p-4">
-        {/* Lado Esquerdo: Menu Mobile + Links da Primeira Metade */}
-        <div className="flex-1 flex items-center justify-end">
+        {/* Lado Esquerdo: Links da Primeira Metade */}
+        <div className="flex-1 flex items-center justify-end overflow-hidden">
           <div className="lg:hidden mr-auto">
             <Sheet>
               <SheetTrigger asChild>
@@ -148,16 +147,16 @@ export function Header() {
             </Sheet>
           </div>
 
-          <nav className="hidden lg:flex items-center space-x-1">
+          <nav className="hidden lg:flex items-center space-x-0.5">
              {firstHalfLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-sm px-2 py-2 rounded-md transition-colors whitespace-nowrap",
+                  "text-sm px-2.5 py-2 rounded-md transition-colors whitespace-nowrap",
                   "hover:bg-accent hover:text-accent-foreground",
                   pathname === link.href 
-                    ? "font-bold text-primary underline" 
+                    ? "font-bold text-primary underline decoration-2 underline-offset-4" 
                     : "text-foreground",
                   isMounted && !isLoggedIn && "hidden"
                 )}
@@ -169,7 +168,7 @@ export function Header() {
         </div>
 
         {/* Logo Centralizado */}
-        <div className="shrink-0 px-4">
+        <div className="shrink-0 px-6 z-10">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image
               src="/images/logopreta.png"
@@ -191,17 +190,17 @@ export function Header() {
         </div>
 
         {/* Lado Direito: Segunda Metade de Links + Ações */}
-        <div className="flex-1 flex items-center justify-start">
-          <nav className="hidden lg:flex items-center space-x-1">
+        <div className="flex-1 flex items-center justify-start overflow-hidden">
+          <nav className="hidden lg:flex items-center space-x-0.5">
              {secondHalfLinks.map((link) => (
                <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-sm px-2 py-2 rounded-md transition-colors whitespace-nowrap",
+                  "text-sm px-2.5 py-2 rounded-md transition-colors whitespace-nowrap",
                   "hover:bg-accent hover:text-accent-foreground",
                   pathname === link.href 
-                    ? "font-bold text-primary underline" 
+                    ? "font-bold text-primary underline decoration-2 underline-offset-4" 
                     : "text-foreground",
                   isMounted && !isLoggedIn && "hidden"
                 )}
@@ -211,7 +210,7 @@ export function Header() {
             ))}
           </nav>
           
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 ml-auto shrink-0">
             <ThemeToggle />
 
             <div className={cn("hidden lg:inline-flex", { "hidden": !isMounted })}>
