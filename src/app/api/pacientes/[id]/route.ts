@@ -35,22 +35,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     client = await pool.connect();
     const body = await req.json();
     
-    // Suporte para update de última mensagem (leads)
-    if (Object.keys(body).length === 1 && 'ultima_mensagem_data' in body) {
-        const result = await client.query('UPDATE pacientes SET ultima_mensagem_data = $1 WHERE id = $2 RETURNING *', [body.ultima_mensagem_data, id]);
-        if (result.rowCount === 0) return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
-        return NextResponse.json({ message: "Data de contato atualizada", patient: result.rows[0] });
-    }
-
-    // Se o corpo contiver apenas is_active, faz um update parcial rápido
-    if (Object.keys(body).length === 1 && 'is_active' in body) {
-        const result = await client.query('UPDATE pacientes SET is_active = $1 WHERE id = $2 RETURNING *', [body.is_active, id]);
-        if (result.rowCount === 0) return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
-        return NextResponse.json({ message: "Status atualizado", patient: result.rows[0] });
-    }
-
+    // Validação dos dados recebidos
     const validation = patientUpdateSchema.safeParse(body);
-
     if (!validation.success) {
       return NextResponse.json(
         { error: "Dados inválidos", details: validation.error.flatten() },
@@ -58,10 +44,30 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       );
     }
 
+    const data = validation.data;
+
+    // Se o corpo contiver apenas a data de contato (fluxo de Leads)
+    if (Object.keys(body).length === 1 && 'ultima_mensagem_data' in body) {
+        const result = await client.query(
+          'UPDATE pacientes SET ultima_mensagem_data = $1 WHERE id = $2 RETURNING *', 
+          [data.ultima_mensagem_data, id]
+        );
+        if (result.rowCount === 0) return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
+        return NextResponse.json({ message: "Data de contato atualizada", patient: result.rows[0] });
+    }
+
+    // Se o corpo contiver apenas is_active, faz um update parcial rápido
+    if (Object.keys(body).length === 1 && 'is_active' in body) {
+        const result = await client.query('UPDATE pacientes SET is_active = $1 WHERE id = $2 RETURNING *', [data.is_active, id]);
+        if (result.rowCount === 0) return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
+        return NextResponse.json({ message: "Status atualizado", patient: result.rows[0] });
+    }
+
+    // Para atualizações completas
     const { 
         nome, email, celular, cpf, sexo, nascimento, como_conheceu,
         cep, logradouro, numero, complemento, bairro, cidade, estado, pais, is_active, ultima_mensagem_data
-    } = validation.data;
+    } = data;
     
     let nascimentoISO = null;
     if (nascimento && nascimento.includes("/")) {
@@ -73,11 +79,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     } else if (nascimento) {
       nascimentoISO = nascimento;
     }
-
-    // Buscar dados atuais para não sobrescrever com undefined
-    const currentRes = await client.query('SELECT * FROM pacientes WHERE id = $1', [id]);
-    if (currentRes.rowCount === 0) return NextResponse.json({ error: "Paciente não encontrado" }, { status: 404 });
-    const current = currentRes.rows[0];
 
     const result = await client.query(
       `
@@ -104,11 +105,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       RETURNING *
       `,
       [
-        nome || null, email || null, celular || null, cpf || null, sexo || null, nascimentoISO, 
-        como_conheceu || null, cep || null, logradouro || null, numero || null, 
-        complemento || null, bairro || null, cidade || null, estado || null, pais || null, 
-        is_active === undefined ? null : is_active,
-        ultima_mensagem_data || null,
+        nome ?? null, email ?? null, celular ?? null, cpf ?? null, sexo ?? null, nascimentoISO, 
+        como_conheceu ?? null, cep ?? null, logradouro ?? null, numero ?? null, 
+        complemento ?? null, bairro ?? null, cidade ?? null, estado ?? null, pais ?? null, 
+        is_active ?? null,
+        ultima_mensagem_data ?? null,
         id
       ]
     );
