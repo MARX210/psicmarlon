@@ -583,7 +583,7 @@ export default function PacientesPage() {
 
       {/* Dialog de Documentos */}
       <Dialog open={isDocumentsOpen} onOpenChange={setIsDocumentsOpen}>
-        <DialogContent className="sm:max-w-[700px] h-[85vh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[700px] h-[90vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-6 border-b">
             <DialogTitle>Modelos de Documentos</DialogTitle>
             <DialogDescription>Gere atestados, declarações e laudos para {selectedPatient?.nome}.</DialogDescription>
@@ -618,9 +618,9 @@ export default function PacientesPage() {
             <div className="flex-grow flex flex-col p-6 bg-card overflow-hidden">
               {selectedDocTemplate ? (
                 <>
-                  <ScrollArea className="flex-grow border rounded-md bg-white dark:bg-slate-900 shadow-inner">
+                  <ScrollArea className="flex-1 border rounded-md bg-white dark:bg-slate-900 shadow-inner">
                     <Textarea 
-                      className="min-h-full w-full p-6 font-serif text-sm leading-relaxed text-foreground border-none focus-visible:ring-0 resize-none bg-transparent"
+                      className="min-h-[600px] w-full p-8 font-serif text-base leading-relaxed text-foreground border-none focus-visible:ring-0 resize-none bg-transparent"
                       value={documentContent}
                       onChange={(e) => setDocumentContent(e.target.value)}
                       placeholder="Edite o conteúdo do documento aqui..."
