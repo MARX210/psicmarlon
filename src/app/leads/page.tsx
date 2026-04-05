@@ -156,7 +156,7 @@ export default function LeadsPage() {
       const timeFormatted = lead.appointmentDetails.time;
       const professional = lead.appointmentDetails.professional;
       
-      message = `Olá, ${lead.nome}! 😊 Passando para lembrá-lo(a) de que sua consulta está agendada para amanhã, ${dateFormatted} às ${timeFormatted}, com o Dr(a). ${professional}. Esperamos por você! 🏥`;
+      message = `Olá, ${lead.nome}! 😊 Passando para lembrá-lo(a) de que sua consulta está agendada para o dia ${dateFormatted} às ${timeFormatted}, com o Dr(a). ${professional}. Esperamos por você! 🏥`;
     } else {
       message = `Olá, ${firstName}! Tudo bem? Estou passando para ver como você está e se gostaria de agendar sua sessão para esta semana.`;
     }
