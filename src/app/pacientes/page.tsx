@@ -583,14 +583,14 @@ export default function PacientesPage() {
 
       {/* Dialog de Documentos */}
       <Dialog open={isDocumentsOpen} onOpenChange={setIsDocumentsOpen}>
-        <DialogContent className="sm:max-w-[700px] h-[85vh] flex flex-col p-0">
+        <DialogContent className="sm:max-w-[700px] h-[85vh] flex flex-col p-0 overflow-hidden">
           <DialogHeader className="p-6 border-b">
             <DialogTitle>Modelos de Documentos</DialogTitle>
             <DialogDescription>Gere atestados, declarações e laudos para {selectedPatient?.nome}.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col md:flex-row flex-grow overflow-hidden">
             {/* Sidebar de Seleção */}
-            <div className="w-full md:w-64 border-r bg-muted/20 p-4 space-y-2">
+            <div className="w-full md:w-64 border-r bg-muted/20 p-4 space-y-2 overflow-y-auto">
               <Button 
                 variant={selectedDocTemplate === 'atestado' ? 'default' : 'ghost'} 
                 className="w-full justify-start gap-2" 
@@ -615,7 +615,7 @@ export default function PacientesPage() {
             </div>
 
             {/* Área de Visualização */}
-            <div className="flex-grow flex flex-col p-6 bg-card">
+            <div className="flex-grow flex flex-col p-6 bg-card overflow-hidden">
               {selectedDocTemplate ? (
                 <>
                   <ScrollArea className="flex-grow border rounded-md p-6 bg-white dark:bg-slate-900 shadow-inner">
@@ -623,11 +623,11 @@ export default function PacientesPage() {
                       {documentContent}
                     </pre>
                   </ScrollArea>
-                  <div className="mt-6 flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={copyToClipboard} className="gap-2">
+                  <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3 shrink-0">
+                    <Button variant="outline" size="sm" onClick={copyToClipboard} className="gap-2 h-auto py-2">
                       <Copy className="h-4 w-4" /> Copiar para Word/Docs
                     </Button>
-                    <Button size="sm" onClick={printDocument} className="gap-2">
+                    <Button size="sm" onClick={printDocument} className="gap-2 h-auto py-2">
                       <Printer className="h-4 w-4" /> Imprimir / PDF
                     </Button>
                   </div>
