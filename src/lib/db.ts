@@ -40,8 +40,8 @@ async function createTables() {
       );
     `);
 
-    // 3. Colunas Opcionais e Migração
-    const columns = [
+    // 3. Migração Pacientes
+    const patientColumns = [
       { name: 'cpf', type: 'VARCHAR(14)' },
       { name: 'sexo', type: 'VARCHAR(50)' },
       { name: 'nascimento', type: 'DATE' },
@@ -61,16 +61,15 @@ async function createTables() {
       { name: 'ultima_mensagem_data', type: 'TIMESTAMPTZ' }
     ];
 
-    for (const col of columns) {
+    for (const col of patientColumns) {
       await client.query(`
         DO $$ 
         BEGIN 
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pacientes' AND column_name='${col.name}') THEN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pacientes' AND column_name='${col.name.toLowerCase()}') THEN
             ALTER TABLE pacientes ADD COLUMN ${col.name} ${col.type};
           END IF;
         END $$;
       `);
-      await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
     }
 
     // 4. Tabela de Prontuários
@@ -93,14 +92,29 @@ async function createTables() {
         patient_id VARCHAR(255) NOT NULL,
         date DATE NOT NULL,
         time VARCHAR(5) NOT NULL,
-        professional TEXT NOT NULL,
         type VARCHAR(20) NOT NULL,
         duration INTEGER NOT NULL,
         price DECIMAL(10,2) NOT NULL,
-        status VARCHAR(20) DEFAULT 'Confirmado',
         FOREIGN KEY (patient_id) REFERENCES pacientes(id) ON DELETE CASCADE
       );
     `);
+
+    // Migração Agendamentos (Colunas novas)
+    const appointmentColumns = [
+      { name: 'professional', type: 'TEXT DEFAULT \'Dr. Marlon\'' },
+      { name: 'status', type: 'VARCHAR(20) DEFAULT \'Confirmado\'' }
+    ];
+
+    for (const col of appointmentColumns) {
+      await client.query(`
+        DO $$ 
+        BEGIN 
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='agendamentos' AND column_name='${col.name.toLowerCase()}') THEN
+            ALTER TABLE agendamentos ADD COLUMN ${col.name} ${col.type};
+          END IF;
+        END $$;
+      `);
+    }
 
     // 6. Tabela de Transações
     await client.query(`
@@ -115,13 +129,12 @@ async function createTables() {
       );
     `);
 
-    // 7. Índices para Performance
+    // 7. Índices para Performance (Otimização da lentidão)
     await client.query(`CREATE INDEX IF NOT EXISTS idx_pacientes_nome ON pacientes (nome);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_pacientes_cpf ON pacientes (cpf);`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_pacientes_is_active ON pacientes (is_active);`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_agendamentos_date_time ON agendamentos (date, time);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pacientes_id ON pacientes (id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_agendamentos_date ON agendamentos (date);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_agendamentos_patient_id ON agendamentos (patient_id);`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_prontuarios_paciente_id ON prontuarios (paciente_id);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_transacoes_date ON transacoes (date);`);
 
     await client.query('COMMIT');

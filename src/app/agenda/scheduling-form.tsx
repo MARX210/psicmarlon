@@ -209,15 +209,23 @@ export function SchedulingForm() {
         }
 
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`Erro ao buscar agendamentos`);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Erro ao buscar agendamentos`);
+        }
         const data: Appointment[] = await res.json();
         setAppointments(data);
     } catch (error) {
         console.error("Erro no fetchAppointments:", error);
+        toast({
+          variant: "destructive",
+          title: "Erro de Conexão",
+          description: "Não foi possível carregar os agendamentos. Verifique o banco de dados."
+        });
     } finally {
         setIsLoading(false);
     }
-}, []);
+}, [toast]);
 
   useEffect(() => {
     setIsClient(true);
