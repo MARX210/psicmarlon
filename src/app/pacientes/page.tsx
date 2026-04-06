@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -290,6 +289,28 @@ export default function PacientesPage() {
     return () => clearTimeout(delay);
   }, [searchTerm, fetchAllData]);
 
+  useEffect(() => {
+    if (selectedPatient && isUpdateOpen) {
+      form.reset({
+        nome: selectedPatient.nome,
+        email: selectedPatient.email,
+        celular: selectedPatient.celular || "",
+        cpf: selectedPatient.cpf,
+        sexo: selectedPatient.sexo,
+        nascimento: selectedPatient.nascimento,
+        como_conheceu: selectedPatient.como_conheceu,
+        cep: selectedPatient.cep,
+        logradouro: selectedPatient.logradouro,
+        numero: selectedPatient.numero,
+        complemento: selectedPatient.complemento,
+        bairro: selectedPatient.bairro,
+        cidade: selectedPatient.cidade,
+        estado: selectedPatient.estado,
+        pais: selectedPatient.pais || "Brasil",
+      });
+    }
+  }, [selectedPatient, isUpdateOpen, form]);
+
   const sortedPatients = useMemo(() => {
     return [...patients].sort((a, b) => {
       if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
@@ -362,17 +383,18 @@ export default function PacientesPage() {
     if (!selectedPatient) return;
     setIsUpdating(true);
     try {
-        await fetch(`/api/pacientes/${selectedPatient.id}`, {
+        const response = await fetch(`/api/pacientes/${selectedPatient.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         });
+        if (!response.ok) throw new Error("Erro ao atualizar");
         toast({ title: "Sucesso!", description: "Dados atualizados com sucesso." });
         setIsUpdateOpen(false);
         setSelectedPatient(null);
         fetchAllData(searchTerm);
     } catch (error) {
-        toast({ variant: "destructive", title: "Erro na atualização" });
+        toast({ variant: "destructive", title: "Erro na atualização", description: "Ocorreu um problema ao salvar os dados." });
     } finally {
         setIsUpdating(false);
     }
@@ -533,6 +555,64 @@ export default function PacientesPage() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={isUpdateOpen} onOpenChange={(v) => { setIsUpdateOpen(v); if(!v) setSelectedPatient(null); }}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Dados do Paciente</DialogTitle>
+            <DialogDescription>Atualize as informações cadastrais de {selectedPatient?.nome}.</DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleUpdatePatient)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="nome" render={({ field }) => (
+                  <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="celular" render={({ field }) => (
+                  <FormItem><FormLabel>Celular</FormLabel><FormControl><Input {...field} onChange={e => handleInputChange(e, 'celular', 'celular')} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="cpf" render={({ field }) => (
+                  <FormItem><FormLabel>CPF</FormLabel><FormControl><Input {...field} value={field.value || ""} onChange={e => handleInputChange(e, 'cpf', 'cpf')} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="nascimento" render={({ field }) => (
+                  <FormItem><FormLabel>Data de Nascimento</FormLabel><FormControl><Input placeholder="dd/mm/aaaa" {...field} value={field.value || ""} onChange={e => handleInputChange(e, 'nascimento', 'nascimento')} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="sexo" render={({ field }) => (
+                  <FormItem><FormLabel>Sexo</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="Masculino">Masculino</SelectItem>
+                        <SelectItem value="Feminino">Feminino</SelectItem>
+                        <SelectItem value="Outro">Outro</SelectItem>
+                        <SelectItem value="Prefiro não informar">Prefiro não informar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField control={form.control} name="cep" render={({ field }) => (
+                  <FormItem><FormLabel>CEP</FormLabel><FormControl><Input {...field} value={field.value || ""} onChange={e => handleInputChange(e, 'cep', 'cep')} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="cidade" render={({ field }) => (
+                  <FormItem><FormLabel>Cidade</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                )} />
+              </div>
+              <FormField control={form.control} name="logradouro" render={({ field }) => (
+                <FormItem><FormLabel>Logradouro</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <DialogFooter className="mt-6">
+                <Button type="button" variant="outline" onClick={() => setIsUpdateOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={isUpdating}>{isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar Alterações</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isProntuarioOpen} onOpenChange={(v) => { setIsProntuarioOpen(v); if(!v) setSelectedPatient(null); }}>
         <DialogContent className="sm:max-w-[700px] h-[90vh] flex flex-col p-0 overflow-hidden">
