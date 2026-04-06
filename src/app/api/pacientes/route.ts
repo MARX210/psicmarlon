@@ -13,13 +13,6 @@ export async function GET(req: Request) {
   try {
     client = await pool.connect();
     
-    // Verifica se a coluna ultima_mensagem_data existe para evitar erro 500 na query
-    const columnCheck = await client.query(`
-      SELECT 1 FROM information_schema.columns 
-      WHERE table_name='pacientes' AND column_name='ultima_mensagem_data'
-    `);
-    const hasContactColumn = columnCheck.rowCount !== null && columnCheck.rowCount > 0;
-
     const baseQuery = `
       SELECT 
         id, 
@@ -41,13 +34,12 @@ export async function GET(req: Request) {
         estado, 
         pais, 
         created_at,
-        COALESCE(is_active, TRUE) as is_active
-        ${hasContactColumn ? ', ultima_mensagem_data' : ', NULL as ultima_mensagem_data'}
+        COALESCE(is_active, TRUE) as is_active,
+        ultima_mensagem_data
       FROM pacientes
     `;
 
     if (cpf) {
-      // Tenta busca exata por ID ou CPF, e busca normalizada se houver apenas números
       const normalizedCpf = cpf.replace(/\D/g, "");
       const result = await client.query(
         `${baseQuery} WHERE id = $1 OR cpf = $1 OR (cpf IS NOT NULL AND $2 != '' AND REPLACE(REPLACE(cpf, '.', ''), '-', '') = $2)`, 

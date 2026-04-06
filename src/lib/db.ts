@@ -30,7 +30,7 @@ async function createTables() {
       );
     `);
 
-    // 2. Tabela Pacientes (Base)
+    // 2. Tabela Pacientes
     await client.query(`
       CREATE TABLE IF NOT EXISTS pacientes (
         id VARCHAR(255) PRIMARY KEY,
@@ -40,7 +40,7 @@ async function createTables() {
       );
     `);
 
-    // 3. Colunas Opcionais e Migração de Restrições
+    // 3. Colunas Opcionais e Migração
     const columns = [
       { name: 'cpf', type: 'VARCHAR(14)' },
       { name: 'sexo', type: 'VARCHAR(50)' },
@@ -58,7 +58,6 @@ async function createTables() {
       { name: 'estado', type: 'VARCHAR(50)' },
       { name: 'pais', type: 'TEXT DEFAULT \'Brasil\'' },
       { name: 'created_at', type: 'TIMESTAMPTZ DEFAULT NOW()' },
-      { name: 'is_active', type: 'BOOLEAN DEFAULT TRUE' },
       { name: 'ultima_mensagem_data', type: 'TIMESTAMPTZ' }
     ];
 
@@ -71,7 +70,6 @@ async function createTables() {
           END IF;
         END $$;
       `);
-      
       await client.query(`ALTER TABLE pacientes ALTER COLUMN ${col.name} DROP NOT NULL;`);
     }
 
@@ -116,6 +114,15 @@ async function createTables() {
         FOREIGN KEY (agendamento_id) REFERENCES agendamentos(id) ON DELETE CASCADE
       );
     `);
+
+    // 7. Índices para Performance
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pacientes_nome ON pacientes (nome);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pacientes_cpf ON pacientes (cpf);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pacientes_is_active ON pacientes (is_active);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_agendamentos_date_time ON agendamentos (date, time);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_agendamentos_patient_id ON agendamentos (patient_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_prontuarios_paciente_id ON prontuarios (paciente_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_transacoes_date ON transacoes (date);`);
 
     await client.query('COMMIT');
   } catch (err) {
