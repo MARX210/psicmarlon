@@ -47,8 +47,12 @@ export async function GET(req: Request) {
     `;
 
     if (cpf) {
+      // Tenta busca exata por ID ou CPF, e busca normalizada se houver apenas números
       const normalizedCpf = cpf.replace(/\D/g, "");
-      const result = await client.query(`${baseQuery} WHERE cpf = $1 OR id = $1`, [normalizedCpf]);
+      const result = await client.query(
+        `${baseQuery} WHERE id = $1 OR cpf = $1 OR (cpf IS NOT NULL AND $2 != '' AND REPLACE(REPLACE(cpf, '.', ''), '-', '') = $2)`, 
+        [cpf, normalizedCpf]
+      );
       return NextResponse.json(result.rows, { status: 200 });
     } else if (search) {
       const result = await client.query(`${baseQuery} WHERE nome ILIKE $1 OR cpf ILIKE $1 OR id ILIKE $1 ORDER BY nome LIMIT 50`, [`%${search}%`]);

@@ -405,7 +405,8 @@ export function SchedulingForm() {
 
     if (!patientToEdit) {
       try {
-        const res = await fetch(`/api/pacientes?cpf=${appointment.patientId}`);
+        // Busca o paciente usando o ID exato
+        const res = await fetch(`/api/pacientes?cpf=${encodeURIComponent(appointment.patientId)}`);
         if (res.ok) {
           const data: Patient[] = await res.json();
           if (data && data.length > 0) {
@@ -418,7 +419,7 @@ export function SchedulingForm() {
     }
 
     if (!patientToEdit) {
-        toast({ variant: "destructive", title: "erro", description: "Paciente do agendamento não encontrado." });
+        toast({ variant: "destructive", title: "Erro", description: "Paciente do agendamento não encontrado no banco de dados." });
         return;
     }
     
